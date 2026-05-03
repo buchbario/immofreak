@@ -212,83 +212,78 @@ export function DokumenteArchivPage() {
 
   return (
     <div className="page-container">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Dokumenten-Archiv</h1>
-          <p className="page-subtitle">
-            Zentrale Ablage aller Verträge, Nachweise und Fotos — Aufbewahrungsfrist 10 Jahre (§ 147 AO, GoBD)
+      <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">
+        {/* Header */}
+        <div className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 border-b border-card-divider">
+          <h1 className="text-[24px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight mb-1">
+            Dokumenten-Archiv
+          </h1>
+          <p className="text-[13px] text-muted-foreground max-w-2xl leading-relaxed">
+            Zentrale Ablage aller Verträge, Nachweise und Fotos — gefiltert nach Typ, Objekt und Jahr.
           </p>
         </div>
-      </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-        <KpiCard label="Gesamt" value={String(kpiCounts.total)} />
-        <KpiCard label="Objekt-Dokumente" value={String(kpiCounts.propertyDocs)} color="#4F6BFF" />
-        <KpiCard label="Vertrags-Dokumente" value={String(kpiCounts.contractDocs)} color="#8b5cf6" />
-        <KpiCard label="Fotos" value={String(kpiCounts.photos)} color="#10b981" />
-        <KpiCard label="Gesamt-Größe" value={formatFileSize(kpiCounts.totalSize)} />
-      </div>
+        {/* KPI strip inside card */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-px bg-card-divider border-b border-card-divider">
+          <ArchiveKpi label="Gesamt" value={String(kpiCounts.total)} />
+          <ArchiveKpi label="Objekt-Dokumente" value={String(kpiCounts.propertyDocs)} color="#4F6BFF" />
+          <ArchiveKpi label="Vertrags-Dokumente" value={String(kpiCounts.contractDocs)} color="#8b5cf6" />
+          <ArchiveKpi label="Fotos" value={String(kpiCounts.photos)} color="#10b981" />
+          <ArchiveKpi label="Gesamt-Größe" value={formatFileSize(kpiCounts.totalSize)} />
+        </div>
 
-      {/* Filter-Leiste */}
-      <div className="mb-4 p-3 rounded-[10px] border border-card-line bg-layer-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground-2" />
+        {/* Filter-Leiste */}
+        <div className="px-5 sm:px-7 py-3 border-b border-card-divider flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
               placeholder="Dateiname, Objekt, Mieter suchen…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="input input-sm w-full !pl-9"
+              className="h-8 pl-7 pr-3 rounded-md bg-layer-hover text-[12px] text-foreground placeholder:text-muted-foreground/70 border border-transparent hover:border-card-line focus:bg-card focus:border-[#4F6BFF]/40 focus:outline-none focus:ring-2 focus:ring-[#4F6BFF]/15 transition-all w-full"
             />
           </div>
 
-          <select value={kindFilter} onChange={(e) => setKindFilter(e.target.value as DocKind | 'all')} className="input input-sm !w-[180px]">
+          <select value={kindFilter} onChange={(e) => setKindFilter(e.target.value as DocKind | 'all')} className="h-8 px-2 rounded-md bg-layer-hover hover:bg-layer-active text-[12px] border-0 cursor-pointer">
             <option value="all">Alle Typen</option>
             <option value="property-doc">Objekt-Dokumente</option>
             <option value="contract-doc">Mietvertrags-Dokumente</option>
             <option value="property-photo">Fotos</option>
           </select>
 
-          <select value={propertyFilter} onChange={(e) => setPropertyFilter(e.target.value)} className="input input-sm !w-[200px]">
+          <select value={propertyFilter} onChange={(e) => setPropertyFilter(e.target.value)} className="h-8 px-2 rounded-md bg-layer-hover hover:bg-layer-active text-[12px] border-0 cursor-pointer">
             <option value="all">Alle Objekte</option>
             {properties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
 
-          <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} className="input input-sm !w-[110px]">
+          <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value)} className="h-8 px-2 rounded-md bg-layer-hover hover:bg-layer-active text-[12px] border-0 cursor-pointer">
             <option value="all">Alle Jahre</option>
             {availableYears.map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
 
           {hasActiveFilter && (
-            <button onClick={resetFilters} className="btn btn-sm btn-ghost">
-              <Filter size={13} /> Zurücksetzen
+            <button onClick={resetFilters} className="inline-flex items-center gap-1 h-8 px-2.5 rounded-md text-[12px] font-medium text-muted-foreground hover:text-foreground hover:bg-layer-hover transition-colors cursor-pointer">
+              <Filter size={12} /> Zurücksetzen
             </button>
           )}
         </div>
-      </div>
 
-      {/* Ergebnis-Zahl */}
-      <div className="mb-3 text-xs text-muted-foreground-2">
-        {filteredDocs.length} von {allDocs.length} Dokumenten
-      </div>
-
-      {/* Dokumentenliste */}
-      {filteredDocs.length === 0 ? (
-        <div className="rounded-[10px] p-10 text-center border border-dashed border-card-line">
-          <div className="rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-3 bg-[#4F6BFF]/10">
-            <FileText size={24} className="text-[#4F6BFF]" />
+        {/* Dokumentenliste */}
+        {filteredDocs.length === 0 ? (
+          <div className="text-center py-12 px-5">
+            <div className="rounded-2xl w-14 h-14 flex items-center justify-center mx-auto mb-3 bg-[#4F6BFF]/10">
+              <FileText size={22} className="text-[#4F6BFF]" />
+            </div>
+            <p className="text-[13px] text-foreground font-semibold mb-1">Keine Dokumente gefunden</p>
+            <p className="text-[12px] text-muted-foreground">
+              {hasActiveFilter
+                ? 'Passe die Filter an oder setze sie zurück.'
+                : 'Lade Dokumente bei Objekten, Mietverträgen oder Fotos hoch — sie erscheinen hier zentral.'}
+            </p>
           </div>
-          <p className="text-sm text-foreground font-medium">Keine Dokumente gefunden</p>
-          <p className="text-xs mt-1 text-muted-foreground-2">
-            {hasActiveFilter
-              ? 'Passe die Filter an oder setze sie zurück.'
-              : 'Lade Dokumente bei Objekten, Mietverträgen oder Fotos hoch — sie erscheinen hier zentral.'}
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        ) : (
+          <div className="p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-2 gap-3">
           {filteredDocs.map((doc) => {
             const visual = getFileVisual(doc.mimeType, doc.name);
             const { Icon: FileTypeIcon } = visual;
@@ -410,10 +405,20 @@ export function DokumenteArchivPage() {
             );
           })}
         </div>
-      )}
+        )}
+
+        {/* Footer counter */}
+        {filteredDocs.length > 0 && (
+          <div className="px-5 sm:px-7 py-3 border-t border-card-divider">
+            <p className="text-[11.5px] text-muted-foreground tabular-nums">
+              {filteredDocs.length} von {allDocs.length} Dokumenten
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Rechtlicher Hinweis */}
-      <div className="mt-8 p-4 rounded-[10px] border border-card-line bg-layer-1 text-[11px] leading-relaxed text-muted-foreground-2">
+      <div className="mt-4 sm:mt-5 p-4 rounded-2xl border border-card-line bg-card text-[11.5px] leading-relaxed text-muted-foreground">
         <p className="font-semibold text-foreground mb-1.5">Aufbewahrungsfristen für Vermieter (Deutschland)</p>
         <ul className="list-disc ml-5 space-y-1">
           <li><strong>10 Jahre</strong> — Mietverträge, Nebenkostenabrechnungen, Belege, Rechnungen, Verträge mit Dienstleistern (§ 147 Abs. 3 AO, § 14b UStG)</li>
@@ -461,9 +466,9 @@ export function DokumenteArchivPage() {
   );
 }
 
-function KpiCard({ label, value, color }: { label: string; value: string; color?: string }) {
+function ArchiveKpi({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
-    <div className="p-3 rounded-[10px] border border-card-line bg-layer-1">
+    <div className="p-4 bg-card">
       <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">{label}</div>
       <div className="text-lg font-bold" style={color ? { color } : {}}>{value}</div>
     </div>

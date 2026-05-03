@@ -1058,48 +1058,56 @@ export function BerichtePage() {
 
   return (
     <div className="page-container">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Berichte</h1>
-          <p className="page-subtitle">Rechtssichere Auswertungen — nach aktueller BGB-, EStG-, BetrKV- und HeizkostenV-Rechtslage (Stand {new Date().getFullYear()})</p>
+      <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">
+        {/* Header */}
+        <div className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 border-b border-card-divider">
+          <h1 className="text-[24px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight mb-1">
+            Berichte
+          </h1>
+          <p className="text-[13px] text-muted-foreground max-w-2xl leading-relaxed">
+            Rechtssichere Auswertungen für Steuer, Mieter, Banken und Behörden — gruppiert nach Anwendungsfall.
+          </p>
         </div>
-      </div>
 
-      <div className="space-y-8">
-        {SECTIONS.map((sec) => {
-          const items = REPORTS.filter((r) => r.section === sec.key);
-          if (items.length === 0) return null;
-          return (
-            <div key={sec.key}>
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground-2 mb-3">{sec.label}</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {items.map((r) => {
-                  const Icon = r.icon;
-                  return (
-                    <button
-                      key={r.id}
-                      onClick={() => setActiveReport(r.id)}
-                      className="surface-hover p-5 text-left"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'rgba(79, 107, 255, 0.1)' }}>
-                          <Icon size={18} className="text-[#4F6BFF]" />
+        {/* Reports grouped by section */}
+        <div className="p-5 sm:p-6 space-y-6">
+          {SECTIONS.map((sec) => {
+            const items = REPORTS.filter((r) => r.section === sec.key);
+            if (items.length === 0) return null;
+            return (
+              <div key={sec.key}>
+                <h2 className="text-[10.5px] uppercase tracking-wider font-semibold text-muted-foreground/70 mb-2.5 px-1">
+                  {sec.label}
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {items.map((r) => {
+                    const Icon = r.icon;
+                    return (
+                      <button
+                        key={r.id}
+                        onClick={() => setActiveReport(r.id)}
+                        className="group bg-card border border-card-line rounded-[12px] p-4 text-left hover:-translate-y-px transition-all hover:shadow-[0_4px_12px_rgba(79,107,255,0.10)] hover:border-[#4F6BFF]/30 cursor-pointer"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="size-10 rounded-[10px] flex items-center justify-center flex-shrink-0 bg-[#4F6BFF]/10 group-hover:bg-[#4F6BFF]/15 transition-colors">
+                            <Icon size={17} className="text-[#4F6BFF]" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-[13.5px] font-semibold text-foreground tracking-tight">{r.name}</h3>
+                            <p className="text-[11.5px] mt-1 leading-relaxed text-muted-foreground">{r.description}</p>
+                            {r.legalRef && (
+                              <p className="text-[10px] mt-2 text-[#4F6BFF] font-semibold tracking-tight">{r.legalRef}</p>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-sm font-semibold text-foreground">{r.name}</h3>
-                          <p className="text-xs mt-1 leading-relaxed text-muted-foreground-2">{r.description}</p>
-                          {r.legalRef && (
-                            <p className="text-[10px] mt-2 text-[#4F6BFF] font-medium">{r.legalRef}</p>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       {activeReport && activeDef && (

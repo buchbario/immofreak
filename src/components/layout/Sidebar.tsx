@@ -12,6 +12,7 @@ import { cn } from '../../lib/utils';
 import { useAppMode } from '../../context/AppModeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTour } from '../../context/TourContext';
+import { NotificationBell } from './NotificationBell';
 
 interface NavItem {
   to: string;
@@ -159,70 +160,64 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
   return (
     <aside
       className={cn(
-        'flex flex-col transition-[width,transform] duration-200 z-40 h-[100dvh] flex-shrink-0',
-        'bg-sidebar border-r border-sidebar-line',
-        'fixed inset-y-0 left-0 lg:sticky lg:top-0',
+        'flex flex-col transition-[width,transform] duration-200 z-40 flex-shrink-0',
+        // Floating panel: rounded card with subtle inner gradient + soft shadow
+        'sidebar-floating border border-card-line',
+        // Mobile: fixed drawer (full height); Desktop: sticky inline panel inside the padded shell
+        'fixed inset-y-2 left-2 lg:static lg:inset-auto lg:h-full',
         // Mobile: slide-in drawer at fixed width 270px (off-screen when closed)
         open
-          ? 'w-[270px] translate-x-0 lg:w-[250px] overflow-hidden'
-          : '-translate-x-full w-[270px] lg:translate-x-0 lg:w-[72px] overflow-hidden lg:overflow-visible'
+          ? 'w-[270px] translate-x-0 lg:w-[238px] overflow-hidden'
+          : '-translate-x-[calc(100%+0.5rem)] w-[270px] lg:translate-x-0 lg:w-[68px] overflow-hidden lg:overflow-visible'
       )}
     >
       {/* ── Logo ── */}
       <div className={cn(
         'flex items-center flex-shrink-0',
-        open ? 'justify-between px-4 pt-3.5 pb-3' : 'justify-center px-2 py-3'
+        open ? 'justify-between px-4 pt-4 pb-3.5' : 'justify-center px-2 py-3'
       )}>
         <div
           className={cn('flex items-center', !open && 'cursor-pointer')}
           onClick={() => { if (!open) setSidebarOpen(true); }}
         >
           {open ? (
-            <img src="/logo.png" alt="ImmoFreak" className="h-7 object-contain" />
+            <img src="/logo.png" alt="ImmoFreak" className="h-9 object-contain" />
           ) : (
-            <img src="/logo-icon.png" alt="ImmoFreak" className="size-7 object-contain flex-shrink-0" />
+            <img src="/logo-icon.png" alt="ImmoFreak" className="size-9 object-contain flex-shrink-0" />
           )}
         </div>
-        {/* Close button — Mobile schließt den Drawer transient (Desktop-Präferenz
-            bleibt unberührt); Desktop klappt die Sidebar auf Icon-Breite und
-            persistiert die Präferenz in localStorage. */}
         {open && (
           <>
             <button
               onClick={() => setSidebarOpenTransient(false)}
               aria-label="Sidebar schließen"
-              className="lg:hidden size-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-sidebar-nav-hover cursor-pointer"
+              className="lg:hidden size-7 rounded-md flex items-center justify-center text-foreground/60 hover:text-foreground hover:bg-white/40 cursor-pointer transition-colors"
             >
-              <X size={18} />
+              <X size={16} />
             </button>
             <Tip label="Sidebar einklappen">
               <button
                 onClick={() => setSidebarOpen(false)}
                 aria-label="Sidebar einklappen"
-                className="hidden lg:flex size-8 rounded-lg items-center justify-center text-muted-foreground hover:text-foreground hover:bg-sidebar-nav-hover cursor-pointer"
+                className="hidden lg:flex size-7 rounded-md items-center justify-center text-foreground/60 hover:text-foreground hover:bg-white/40 cursor-pointer transition-colors"
               >
-                <PanelLeftClose size={18} strokeWidth={1.9} />
+                <PanelLeftClose size={15} strokeWidth={2} />
               </button>
             </Tip>
           </>
         )}
       </div>
 
-      {/* Divider */}
-      <div className={cn('flex-shrink-0', open ? 'px-4 mb-2' : 'px-2 mb-2')}>
-        <div className="border-t border-sidebar-divider" />
-      </div>
-
       {/* ── Search ── */}
-      <div className={cn('flex-shrink-0 mb-2', open ? 'px-3' : 'px-2.5')}>
+      <div className={cn('flex-shrink-0 mb-3', open ? 'px-3' : 'px-2.5')}>
         {open ? (
           <button
             onClick={onSearchClick}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-sidebar-nav-hover hover:text-foreground transition-colors cursor-pointer border border-card-line bg-card/50"
+            className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-[12.5px] text-foreground/60 hover:text-foreground/85 bg-white/55 hover:bg-white/75 transition-colors cursor-pointer"
           >
-            <Search size={15} className="shrink-0" />
-            <span className="flex-1 text-left text-xs">Suchen...</span>
-            <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-muted rounded text-[10px] font-medium text-muted-foreground border border-card-divider">
+            <Search size={13} className="shrink-0" />
+            <span className="flex-1 text-left">Suchen...</span>
+            <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-white/65 rounded text-[10px] font-medium text-foreground/55">
               ⌘K
             </kbd>
           </button>
@@ -231,9 +226,9 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
             <button
               onClick={onSearchClick}
               aria-label="Suchen"
-              className="w-full flex items-center justify-center py-2.5 rounded-lg text-muted-foreground hover:bg-sidebar-nav-hover hover:text-foreground transition-colors cursor-pointer"
+              className="w-full flex items-center justify-center py-2 rounded-md text-foreground/60 hover:bg-white/40 hover:text-foreground transition-colors cursor-pointer"
             >
-              <Search size={20} strokeWidth={2} />
+              <Search size={18} strokeWidth={2} />
             </button>
           </Tip>
         )}
@@ -243,38 +238,34 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
       <nav className={cn('flex-1 pb-2', open ? 'px-3 overflow-y-auto overflow-x-hidden' : 'px-2.5 overflow-visible')}>
         {open ? (
           <div className="flex flex-col">
-            {sections.map(section => (
-              <div key={section.title} className="mb-1">
+            {sections.map((section, sectionIdx) => (
+              <div key={section.title} className={cn(sectionIdx === 0 ? 'mb-3' : 'mb-3 mt-1')}>
                 <button
                   onClick={() => toggleSection(section.title)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 w-full text-left cursor-pointer group"
+                  className="sidebar-section-label flex items-center gap-1 py-1 w-full text-left cursor-pointer hover:opacity-100 opacity-90"
                 >
+                  <span className="capitalize">{section.title.toLowerCase()}</span>
                   <ChevronRight
-                    size={12}
+                    size={9}
                     className={cn(
-                      'text-muted-foreground transition-transform',
+                      'opacity-50 transition-transform ml-0.5',
                       !collapsedSections[section.title] && 'rotate-90'
                     )}
+                    strokeWidth={2.5}
                   />
-                  <span className="text-[11px] font-medium tracking-wider text-muted-foreground">
-                    {section.title}
-                  </span>
                 </button>
                 {!collapsedSections[section.title] && (
-                  <div className="flex flex-col gap-0.5 mt-0.5">
+                  <div className="flex flex-col gap-0.5 mt-1.5">
                     {section.items.map(item => (
                       <NavLink key={item.to} to={item.to} end={item.to === '/' || item.to === '/bh'}>
                         {({ isActive }) => (
-                          <div
-                            className={cn(
-                              'flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors duration-100',
-                              isActive
-                                ? 'bg-[var(--sidebar-active-bg)] text-[var(--sidebar-active-text)] font-bold'
-                                : 'text-foreground hover:bg-sidebar-nav-hover font-semibold'
-                            )}
-                          >
-                            <item.icon size={17} className="flex-shrink-0" strokeWidth={isActive ? 2.2 : 1.8} />
-                            <span className="text-sm truncate">{item.label}</span>
+                          <div className={cn('sidebar-nav-item', isActive && 'is-active')}>
+                            <item.icon
+                              size={15}
+                              className="flex-shrink-0 opacity-90"
+                              strokeWidth={isActive ? 2.2 : 1.9}
+                            />
+                            <span className="truncate">{item.label}</span>
                           </div>
                         )}
                       </NavLink>
@@ -292,13 +283,13 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
                   <Tip label={item.label}>
                     <div
                       className={cn(
-                        'flex items-center justify-center py-2.5 rounded-lg transition-colors duration-100',
+                        'flex items-center justify-center py-2 rounded-md transition-colors duration-100',
                         isActive
-                          ? 'bg-[var(--sidebar-active-bg)] text-[var(--sidebar-active-text)]'
-                          : 'text-muted-foreground hover:bg-sidebar-nav-hover hover:text-foreground'
+                          ? 'bg-white/85 text-[#4F6BFF] shadow-[0_1px_2px_rgba(15,23,42,0.06)]'
+                          : 'text-foreground/65 hover:bg-white/40 hover:text-foreground'
                       )}
                     >
-                      <item.icon size={20} className="flex-shrink-0" strokeWidth={isActive ? 2.2 : 1.9} />
+                      <item.icon size={18} className="flex-shrink-0" strokeWidth={isActive ? 2.2 : 1.9} />
                     </div>
                   </Tip>
                 )}
@@ -309,94 +300,90 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
       </nav>
 
       {/* ── Bottom ── */}
-      <div className={cn('flex-shrink-0 pb-3 pt-2 border-t border-sidebar-divider', open ? 'px-3' : 'px-2.5')}>
-        {/* Start Tour */}
+      <div className={cn('flex-shrink-0 pb-3 pt-3', open ? 'px-3' : 'px-2.5')}>
+        {/* Notifications + Tour + Settings — full-row nav items when expanded, icon-stack when collapsed */}
         {open ? (
-          <button
-            onClick={handleStartTour}
-            className="group w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors cursor-pointer mb-1 text-foreground hover:bg-sidebar-nav-hover text-sm font-semibold"
-          >
-            <span className="relative flex items-center justify-center size-[17px]">
-              <Sparkles
-                size={17}
-                className="text-[#4F6BFF] transition-transform group-hover:scale-110"
-                strokeWidth={2}
-              />
-            </span>
-            Tour starten
-            <span className="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-[#4F6BFF]/10 text-[#4F6BFF] tracking-wide">
-              DEMO
-            </span>
-          </button>
-        ) : (
-          <Tip label="Tour starten">
+          <div className="flex flex-col gap-0.5 mb-2">
+            <NotificationBell variant="row" />
             <button
               onClick={handleStartTour}
-              aria-label="Tour starten"
-              className="group w-full flex items-center justify-center py-2 rounded-lg cursor-pointer mb-1 text-[#4F6BFF] hover:bg-sidebar-nav-hover"
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] font-medium text-foreground/85 hover:text-[#4F6BFF] hover:bg-white/55 transition-colors cursor-pointer"
             >
-              <Sparkles size={20} className="transition-transform group-hover:scale-110" strokeWidth={2} />
+              <Sparkles size={15} strokeWidth={2} className="text-[#4F6BFF] shrink-0" />
+              <span className="truncate">Tour starten</span>
+              <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#4F6BFF]/10 text-[#4F6BFF] tracking-wide">
+                DEMO
+              </span>
             </button>
-          </Tip>
-        )}
-
-        {/* Settings */}
-        {open ? (
-          <button onClick={() => navigate('/einstellungen')} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors cursor-pointer mb-1 text-foreground hover:bg-sidebar-nav-hover text-sm font-semibold">
-            <Settings size={17} />
-            Einstellungen
-          </button>
-        ) : (
-          <Tip label="Einstellungen">
             <button
               onClick={() => navigate('/einstellungen')}
-              aria-label="Einstellungen"
-              className="w-full flex items-center justify-center py-2 rounded-lg cursor-pointer mb-1 text-muted-foreground hover:text-foreground hover:bg-sidebar-nav-hover"
+              className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] font-medium text-foreground/85 hover:text-foreground hover:bg-white/55 transition-colors cursor-pointer"
             >
-              <Settings size={20} strokeWidth={1.9} />
+              <Settings size={15} strokeWidth={1.9} className="opacity-90 shrink-0" />
+              <span className="truncate">Einstellungen</span>
             </button>
-          </Tip>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1 mb-2">
+            <div className="flex justify-center">
+              <NotificationBell />
+            </div>
+            <Tip label="Tour starten">
+              <button
+                onClick={handleStartTour}
+                aria-label="Tour starten"
+                className="w-full flex items-center justify-center py-2 rounded-md cursor-pointer text-[#4F6BFF] hover:bg-white/40 transition-colors"
+              >
+                <Sparkles size={17} strokeWidth={2} />
+              </button>
+            </Tip>
+            <Tip label="Einstellungen">
+              <button
+                onClick={() => navigate('/einstellungen')}
+                aria-label="Einstellungen"
+                className="w-full flex items-center justify-center py-2 rounded-md cursor-pointer text-foreground/60 hover:text-foreground hover:bg-white/40 transition-colors"
+              >
+                <Settings size={17} strokeWidth={1.9} />
+              </button>
+            </Tip>
+          </div>
         )}
 
-        {/* Mode Switch */}
-        <div className={cn('relative', open ? '' : '')} ref={modeRef} data-tour="mode-switch">
+        {/* Mode Switch — glass-friendly, with subtle brand-blue framing */}
+        <div className="relative mb-2" ref={modeRef} data-tour="mode-switch">
           {open ? (
             <button
               onClick={() => setModeOpen(!modeOpen)}
-              className={cn(
-                'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors cursor-pointer border text-left mb-1',
-                mode === 'fixflip'
-                  ? 'bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/20'
-                  : 'bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/20'
-              )}
+              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-white/55 hover:bg-white/75 transition-colors cursor-pointer text-left border border-white/60"
             >
               <div className={cn(
-                'size-8 rounded-lg flex items-center justify-center flex-shrink-0',
-                mode === 'fixflip' ? 'bg-amber-500' : 'bg-emerald-500'
+                'size-7 rounded-md flex items-center justify-center flex-shrink-0 ring-1 ring-white/60',
+                mode === 'fixflip'
+                  ? 'bg-gradient-to-br from-amber-400 to-orange-500'
+                  : 'bg-gradient-to-br from-emerald-400 to-teal-600',
               )}>
-                <ModeIcon size={15} className="text-white" />
+                <ModeIcon size={13} className="text-white" strokeWidth={2.2} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className={cn(
-                  'text-sm font-semibold',
-                  mode === 'fixflip' ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400'
-                )}>{modeLabel}</p>
-                <p className="text-xs text-muted-foreground truncate">{modeDesc}</p>
+                <p className="text-[12.5px] font-semibold text-foreground leading-[1.15]">{modeLabel}</p>
+                <p className="text-[10.5px] text-foreground/55 truncate leading-[1.2] mt-0.5">{modeDesc}</p>
               </div>
-              <SlidersHorizontal size={14} className="text-muted-foreground flex-shrink-0" />
+              <SlidersHorizontal size={12} className="text-foreground/55 flex-shrink-0" strokeWidth={2} />
             </button>
           ) : (
             <Tip label={modeLabel}>
               <button
                 onClick={() => setModeOpen(!modeOpen)}
                 aria-label={`Modus wechseln — aktuell ${modeLabel}`}
-                className="w-full flex items-center justify-center py-2 rounded-lg cursor-pointer mb-1"
+                className="w-full flex items-center justify-center py-2 rounded-md cursor-pointer hover:bg-white/40 transition-colors"
               >
                 <div className={cn(
-                  'size-9 rounded-lg flex items-center justify-center',
-                  mode === 'fixflip' ? 'bg-amber-500' : 'bg-emerald-500'
+                  'size-8 rounded-md flex items-center justify-center ring-1 ring-white/60',
+                  mode === 'fixflip'
+                    ? 'bg-gradient-to-br from-amber-400 to-orange-500'
+                    : 'bg-gradient-to-br from-emerald-400 to-teal-600',
                 )}>
-                  <ModeIcon size={17} className="text-white" />
+                  <ModeIcon size={15} className="text-white" strokeWidth={2.2} />
                 </div>
               </button>
             </Tip>
@@ -431,27 +418,30 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
           )}
         </div>
 
-        {/* User */}
+        {/* User — large avatar + name + email row, like the screenshot */}
         <div className="relative" ref={profileRef}>
           {open ? (
             <button
               onClick={() => setProfileOpen(!profileOpen)}
-              className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg transition-colors cursor-pointer hover:bg-sidebar-nav-hover"
+              className="flex items-center gap-2.5 w-full px-2 py-2 rounded-lg transition-colors cursor-pointer hover:bg-white/45 group"
             >
-              <div className="size-7 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
-                <span className="text-[11px] font-bold text-white">{(userName || 'U').charAt(0).toUpperCase()}</span>
+              <div className="size-9 rounded-full bg-gradient-to-br from-[#4F6BFF] to-[#6B5BFF] flex items-center justify-center flex-shrink-0 ring-2 ring-white/70 shadow-sm">
+                <span className="text-[12px] font-bold text-white">{(userName || 'U').charAt(0).toUpperCase()}</span>
               </div>
-              <span className="text-sm font-semibold flex-1 text-left truncate text-foreground">{userName || 'User'}</span>
-              <ChevronDown size={13} className={cn('transition-transform text-muted-foreground', profileOpen && 'rotate-180')} />
+              <div className="min-w-0 flex-1 text-left">
+                <p className="text-[12.5px] font-semibold text-foreground truncate leading-[1.2]">{userName || 'User'}</p>
+                <p className="text-[10.5px] text-foreground/55 truncate leading-[1.2] mt-0.5">{userEmail || ''}</p>
+              </div>
+              <ChevronDown size={12} className={cn('transition-transform text-foreground/55 flex-shrink-0', profileOpen && 'rotate-180')} strokeWidth={2.2} />
             </button>
           ) : (
             <Tip label={userName || 'Profil'}>
               <button
                 onClick={() => setProfileOpen(!profileOpen)}
                 aria-label="Profil"
-                className="w-full flex items-center justify-center py-2 cursor-pointer rounded-lg hover:bg-sidebar-nav-hover"
+                className="w-full flex items-center justify-center py-2 cursor-pointer rounded-md hover:bg-white/40 transition-colors"
               >
-                <div className="size-8 rounded-full bg-emerald-500 flex items-center justify-center">
+                <div className="size-8 rounded-full bg-gradient-to-br from-[#4F6BFF] to-[#6B5BFF] flex items-center justify-center ring-2 ring-white/70 shadow-sm">
                   <span className="text-xs font-bold text-white">{(userName || 'U').charAt(0).toUpperCase()}</span>
                 </div>
               </button>

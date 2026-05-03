@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
-import { Plus, Check, Minus } from 'lucide-react';
+import { Plus, Check, Minus, Wallet } from 'lucide-react';
 import { useRentalProperties } from '../../hooks/useRentalProperties';
 import { Modal } from '../ui/Modal';
 import { NumberInput } from '../ui/NumberInput';
+import { PageCard, PageCardNoResults } from '../ui/PageCard';
 
 type ExpenseCategory =
   | 'Instandhaltung'
@@ -118,24 +119,6 @@ export function AusgabenPage() {
   // KPIs
   const totalExpenses = filtered.reduce((s, e) => s + e.amount, 0);
   const umlagefaehig = filtered.filter((e) => e.isUmlagefaehig).reduce((s, e) => s + e.amount, 0);
-  const nichtUmlagefaehig = filtered.filter((e) => !e.isUmlagefaehig).reduce((s, e) => s + e.amount, 0);
-
-  const avgPerMonth = useMemo(() => {
-    const monthSet = new Set(
-      expenses.map((e) => {
-        const d = new Date(e.date);
-        return `${d.getFullYear()}-${d.getMonth()}`;
-      })
-    );
-    return monthSet.size > 0 ? expenses.reduce((s, e) => s + e.amount, 0) / monthSet.size : 0;
-  }, [expenses]);
-
-  const kpis = [
-    { label: 'Gesamt Ausgaben', value: `${fmt(totalExpenses)} EUR`, sub: 'Gefiltert' },
-    { label: 'Umlagefähig', value: `${fmt(umlagefaehig)} EUR`, sub: 'Auf Mieter umlegbar' },
-    { label: 'Nicht umlagefähig', value: `${fmt(nichtUmlagefaehig)} EUR`, sub: 'Eigentumerkosten' },
-    { label: 'Durchschn./Monat', value: `${fmt(avgPerMonth)} EUR`, sub: 'Alle Ausgaben' },
-  ];
 
   const handleAddExpense = () => {
     if (!formDescription || !formAmount || !formDate) return;
@@ -161,139 +144,111 @@ export function AusgabenPage() {
 
   return (
     <div className="page-container">
-      {/* Header */}
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Ausgaben</h1>
-          <p className="page-subtitle">Alle Kosten und Aufwendungen verwalten</p>
-        </div>
-        <button
-          onClick={() => setDialogOpen(true)}
-          className="btn btn-md btn-primary"
-        >
-          <Plus size={15} />
-          Ausgabe erfassen
-        </button>
-      </div>
-
-      {/* KPI Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {kpis.map((kpi) => (
-          <div key={kpi.label} className="surface p-5">
-            <p className="stat-label">{kpi.label}</p>
-            <p className="stat-value mt-1">{kpi.value}</p>
-            <p className="text-xs text-muted-foreground">{kpi.sub}</p>
+      <PageCard
+        title="Ausgaben"
+        description="Alle Kosten und Aufwendungen — gefiltert, gruppiert und kategorisiert nach umlagefähig."
+        meta={
+          <>
+            <Wallet size={11} /> {expenses.length} {expenses.length === 1 ? 'Ausgabe' : 'Ausgaben'}
+            <span className="size-[3px] rounded-full bg-muted-foreground/40 mx-0.5" />
+            <span className="tabular-nums">{fmt(totalExpenses)} € gesamt</span>
+            <span className="size-[3px] rounded-full bg-muted-foreground/40 mx-0.5" />
+            <span className="text-emerald-600 dark:text-emerald-400 tabular-nums">{fmt(umlagefaehig)} € umlagefähig</span>
+          </>
+        }
+        actions={
+          <button onClick={() => setDialogOpen(true)} className="btn btn-sm btn-primary">
+            <Plus size={14} /> Ausgabe erfassen
+          </button>
+        }
+        tabExtras={
+          <div className="flex items-center gap-1.5">
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="h-8 px-2 rounded-md bg-layer-hover hover:bg-layer-active text-[12px] border-0 cursor-pointer"
+            >
+              <option value="alle">Alle Kategorien</option>
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+            <select
+              value={propertyFilter}
+              onChange={(e) => setPropertyFilter(e.target.value)}
+              className="h-8 px-2 rounded-md bg-layer-hover hover:bg-layer-active text-[12px] border-0 cursor-pointer"
+            >
+              <option value="alle">Alle Objekte</option>
+              {properties.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+            <select
+              value={monthFilter}
+              onChange={(e) => setMonthFilter(e.target.value)}
+              className="h-8 px-2 rounded-md bg-layer-hover hover:bg-layer-active text-[12px] border-0 cursor-pointer"
+            >
+              <option value="alle">Alle Monate</option>
+              {monthOptions.map((m) => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
           </div>
-        ))}
-      </div>
-
-      {/* Filter Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-4">
-        <select
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          className="input w-auto"
-        >
-          <option value="alle">Alle Kategorien</option>
-          {CATEGORIES.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
-        <select
-          value={propertyFilter}
-          onChange={(e) => setPropertyFilter(e.target.value)}
-          className="input w-auto"
-        >
-          <option value="alle">Alle Objekte</option>
-          {properties.map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
-        <select
-          value={monthFilter}
-          onChange={(e) => setMonthFilter(e.target.value)}
-          className="input w-auto"
-        >
-          <option value="alle">Alle Monate</option>
-          {monthOptions.map((m) => (
-            <option key={m.value} value={m.value}>{m.label}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* Table */}
-      <div className="surface">
-        <div className="overflow-x-auto">
-          <table className="min-w-full">
-            <thead>
-              <tr className="border-b border-card-divider">
-                <th className="th">Datum</th>
-                <th className="th">Beschreibung</th>
-                <th className="th">Kategorie</th>
-                <th className="th">Objekt</th>
-                <th className="th text-end">Betrag</th>
-                <th className="th text-center">Umlagefähig</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-16 px-4">
-                    <p className="text-sm text-muted-foreground-2">Keine Ausgaben gefunden</p>
-                    <p className="text-xs mt-1 text-muted-foreground">
-                      Passe deine Filter an oder erfasse eine neue Ausgabe
-                    </p>
-                  </td>
+        }
+        footer={
+          <span className="flex items-center justify-between">
+            <span>{filtered.length} von {expenses.length} {expenses.length === 1 ? 'Ausgabe' : 'Ausgaben'}</span>
+            {filtered.length > 0 && (
+              <span className="font-semibold text-foreground tabular-nums">Summe: {fmt(totalExpenses)} €</span>
+            )}
+          </span>
+        }
+      >
+        {filtered.length === 0 ? (
+          <PageCardNoResults message="Keine Ausgaben gefunden — passe deine Filter an oder erfasse eine neue Ausgabe." />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead>
+                <tr className="border-b border-card-divider">
+                  <th className="th text-[10.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold">Datum</th>
+                  <th className="th text-[10.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold">Beschreibung</th>
+                  <th className="th text-[10.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold">Kategorie</th>
+                  <th className="th text-[10.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold">Objekt</th>
+                  <th className="th text-end text-[10.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold">Betrag</th>
+                  <th className="th text-center text-[10.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold">Umlagefähig</th>
                 </tr>
-              ) : (
-                filtered.map((expense) => {
+              </thead>
+              <tbody>
+                {filtered.map((expense) => {
                   const property = propertyMap.get(expense.propertyId);
                   return (
                     <tr key={expense.id} className="transition-colors hover:bg-layer-hover border-b border-card-divider">
-                      <td className="td tabular-nums text-muted-foreground-2">
-                        {fmtDate(expense.date)}
-                      </td>
-                      <td className="td text-foreground">{expense.description}</td>
-                      <td className="td">
+                      <td className="td tabular-nums text-muted-foreground text-[12.5px]">{fmtDate(expense.date)}</td>
+                      <td className="td text-foreground text-[13px] font-medium">{expense.description}</td>
+                      <td className="td text-[12.5px]">
                         <span className="inline-flex items-center gap-1.5">
                           <span className={`dot ${categoryDotColor[expense.category]}`} />
-                          <span className="text-muted-foreground-2">{expense.category}</span>
+                          <span className="text-muted-foreground">{expense.category}</span>
                         </span>
                       </td>
-                      <td className="td text-muted-foreground-2">
-                        {property?.name || '-'}
-                      </td>
-                      <td className="td text-end font-semibold tabular-nums text-foreground">
-                        {fmt(expense.amount)} EUR
-                      </td>
+                      <td className="td text-muted-foreground text-[12.5px]">{property?.name || '—'}</td>
+                      <td className="td text-end font-semibold tabular-nums text-foreground text-[13px]">{fmt(expense.amount)} €</td>
                       <td className="td text-center">
                         {expense.isUmlagefaehig ? (
-                          <Check size={15} className="inline-block text-emerald-400" />
+                          <Check size={15} className="inline-block text-emerald-500" />
                         ) : (
-                          <Minus size={15} className="inline-block text-muted-foreground" />
+                          <Minus size={15} className="inline-block text-muted-foreground/60" />
                         )}
                       </td>
                     </tr>
                   );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-        {filtered.length > 0 && (
-          <>
-            <div className="border-t border-card-divider" />
-            <div className="px-4 py-3.5 flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">
-                {filtered.length} von {expenses.length} Ausgaben
-              </span>
-              <span className="text-sm font-semibold tabular-nums text-foreground">
-                Summe: {fmt(totalExpenses)} EUR
-              </span>
-            </div>
-          </>
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
-      </div>
+      </PageCard>
 
       {/* Add Expense Dialog */}
       <Modal open={dialogOpen} onClose={() => setDialogOpen(false)} title="Ausgabe erfassen">

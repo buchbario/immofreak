@@ -270,45 +270,44 @@ export function NebenkostenPage() {
 
   return (
     <div className="page-container">
-      {/* Header */}
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Nebenkostenabrechnung</h1>
-          <p className="page-subtitle">Erstelle rechtssichere Betriebskostenabrechnungen</p>
-        </div>
-      </div>
+      {/* Header card */}
+      <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-5 sm:p-7 mb-4 sm:mb-5">
+        <h1 className="text-[24px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight mb-1">
+          Nebenkostenabrechnung
+        </h1>
+        <p className="text-[13px] text-muted-foreground max-w-2xl leading-relaxed mb-5">
+          Erstelle rechtssichere Betriebskostenabrechnungen — Schritt für Schritt vom Objekt bis zum Versand.
+        </p>
 
-      {/* Step Indicator */}
-      <div className="flex items-center gap-2 mb-8 flex-wrap">
-        {stepLabels.map((label, i) => {
-          const stepNum = i + 1;
-          const isActive = step === stepNum;
-          const isDone = step > stepNum;
-          return (
-            <div key={label} className="flex items-center gap-2">
-              {i > 0 && <div className="w-8 h-px" style={{ backgroundColor: isDone ? 'var(--accent)' : 'var(--border)' }} />}
-              <div className="flex items-center gap-2">
-                <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold ${
-                    isActive
-                      ? 'text-white'
-                      : isDone
-                        ? 'text-blue-400'
-                        : 'text-muted-foreground'
-                  }`}
-                  style={{
-                    backgroundColor: isActive ? 'var(--accent)' : isDone ? 'var(--accent-dim)' : 'var(--surface-hover)',
-                  }}
-                >
-                  {isDone ? <Check size={14} /> : stepNum}
+        {/* Step Indicator */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {stepLabels.map((label, i) => {
+            const stepNum = i + 1;
+            const isActive = step === stepNum;
+            const isDone = step > stepNum;
+            return (
+              <div key={label} className="flex items-center gap-2">
+                {i > 0 && <div className={`w-8 h-px ${isDone ? 'bg-[#4F6BFF]' : 'bg-card-line'}`} />}
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-semibold transition-colors ${
+                      isActive
+                        ? 'bg-[#4F6BFF] text-white shadow-[0_2px_8px_rgba(79,107,255,0.3)]'
+                        : isDone
+                          ? 'bg-[#4F6BFF]/15 text-[#4F6BFF]'
+                          : 'bg-layer-hover text-muted-foreground'
+                    }`}
+                  >
+                    {isDone ? <Check size={13} strokeWidth={2.4} /> : stepNum}
+                  </div>
+                  <span className={`text-[12px] hidden sm:inline ${isActive ? 'font-semibold text-foreground' : isDone ? 'text-[#4F6BFF] font-medium' : 'text-muted-foreground'}`}>
+                    {label}
+                  </span>
                 </div>
-                <span className={`text-xs hidden sm:inline ${isActive ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
-                  {label}
-                </span>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       {/* Step 1: Objekt & Zeitraum */}

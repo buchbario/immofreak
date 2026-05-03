@@ -61,69 +61,95 @@ export function ContractorListPage() {
 
   return (
     <div className="page-container">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Handwerker</h1>
-          <p className="page-subtitle">{contractors.length} Handwerker in der Datenbank</p>
-        </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="btn btn-md btn-primary"
-        >
-          <Plus size={15} />
-          <span className="hidden sm:inline">Neuer Handwerker</span>
-          <span className="sm:hidden">Neu</span>
-        </button>
-      </div>
-
       {contractors.length === 0 ? (
-        <div className="empty-state">
-          <div className="w-12 h-12 rounded-xl bg-[#4F6BFF]/10 flex items-center justify-center mb-4">
-            <HardHat size={22} className="text-[#4F6BFF]" />
-          </div>
-          <p className="text-sm font-semibold mb-1 text-foreground">Noch keine Handwerker</p>
-          <p className="text-sm mb-5 text-muted-foreground-2">Erstelle deine Handwerker-Datenbank, um sie Projekten zuzuweisen.</p>
-          <button
-            onClick={() => setShowForm(true)}
-            className="btn btn-md btn-primary"
-          >
-            <Plus size={15} />
-            Handwerker anlegen
-          </button>
-        </div>
-      ) : (
         <>
-          {/* Search + Filters */}
-          <div className="space-y-3 mb-6">
-            <div className="relative max-w-sm">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <div className="page-header">
+            <div>
+              <h1 className="page-title">Handwerker</h1>
+              <p className="page-subtitle">Baue deine Handwerker-Datenbank auf.</p>
+            </div>
+            <button onClick={() => setShowForm(true)} className="btn btn-md btn-primary">
+              <Plus size={15} /> Neuer Handwerker
+            </button>
+          </div>
+          <div className="empty-state">
+            <div className="w-12 h-12 rounded-xl bg-[#4F6BFF]/10 flex items-center justify-center mb-4">
+              <HardHat size={22} className="text-[#4F6BFF]" />
+            </div>
+            <p className="text-sm font-semibold mb-1 text-foreground">Noch keine Handwerker</p>
+            <p className="text-sm mb-5 text-muted-foreground-2">Erstelle deine Handwerker-Datenbank, um sie Projekten zuzuweisen.</p>
+            <button onClick={() => setShowForm(true)} className="btn btn-md btn-primary">
+              <Plus size={15} /> Handwerker anlegen
+            </button>
+          </div>
+        </>
+      ) : (
+        /* ╭──────────────── Floating page card ────────────────╮ */
+        <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">
+          {/* Header inside card */}
+          <div className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 border-b border-card-divider">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="min-w-0 flex-1" />
+              <button onClick={() => setShowForm(true)} className="btn btn-sm btn-primary shrink-0">
+                <Plus size={14} /> Neuer Handwerker
+              </button>
+            </div>
+            <h1 className="text-[26px] sm:text-[28px] font-bold text-foreground tracking-tight leading-tight mb-1">Handwerker</h1>
+            <p className="text-[13px] text-muted-foreground max-w-2xl leading-relaxed">
+              Deine Kontakt-Datenbank für Gewerke. Filter nach Gewerk-Typ oder suche nach Name, Firma oder Stundensatz.
+            </p>
+          </div>
+
+          {/* Underline-tabs + search */}
+          <div className="px-5 sm:px-7 py-3 border-b border-card-divider flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-3 sm:gap-4 flex-wrap min-w-0 -mb-3">
+              {trades.map((trade) => {
+                const isActive = tradeFilter === trade;
+                const count = trade === 'all' ? contractors.length : contractors.filter((c) => c.trade === trade).length;
+                if (trade !== 'all' && count === 0) return null;
+                return (
+                  <button
+                    key={trade}
+                    onClick={() => setTradeFilter(trade)}
+                    className={cn(
+                      'group relative inline-flex items-center gap-1.5 pb-2 text-[13px] font-medium transition-colors cursor-pointer',
+                      isActive ? 'text-[#4F6BFF]' : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {trade === 'all' ? 'Alle' : trade}
+                    <span className={cn(
+                      'inline-flex items-center justify-center min-w-[20px] h-[18px] px-1.5 rounded-full text-[10.5px] font-semibold tabular-nums',
+                      isActive ? 'bg-[#4F6BFF]/15 text-[#4F6BFF]' : 'bg-layer-hover text-muted-foreground/80',
+                    )}>
+                      {count}
+                    </span>
+                    {isActive && <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-[#4F6BFF]" />}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex-1" />
+
+            <div className="relative">
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
-                placeholder="Name, Firma oder Gewerk suchen..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="input pl-9"
+                placeholder="Suchen..."
+                className="h-8 pl-7 pr-3 rounded-md bg-layer-hover text-[12px] text-foreground placeholder:text-muted-foreground/70 border border-transparent hover:border-card-line focus:bg-card focus:border-[#4F6BFF]/40 focus:outline-none focus:ring-2 focus:ring-[#4F6BFF]/15 transition-all w-[160px] focus:w-[220px]"
               />
-            </div>
-            <div className="flex gap-1 items-center flex-wrap">
-              {trades.map((trade) => (
-                <button
-                  key={trade}
-                  onClick={() => setTradeFilter(trade)}
-                  className={cn(
-                    'inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer',
-                    tradeFilter === trade
-                      ? 'bg-[#4F6BFF]/10 text-[#4F6BFF]'
-                      : 'bg-layer-hover text-foreground/80 hover:bg-layer-active'
-                  )}
-                >
-                  {trade === 'all' ? 'Alle' : trade}
-                </button>
-              ))}
             </div>
           </div>
 
           {/* Contractor rows */}
-          <div className="surface overflow-hidden">
+          <div className="overflow-hidden">
+            {filtered.length === 0 && (
+              <div className="text-center py-10 px-5">
+                <Search size={20} className="mx-auto mb-2 text-muted-foreground/60" />
+                <p className="text-[13px] text-muted-foreground">Keine Handwerker gefunden.</p>
+              </div>
+            )}
             {filtered.map((contractor, idx) => {
               const projCount = projectCounts[contractor.id] || 0;
               return (
@@ -223,20 +249,13 @@ export function ContractorListPage() {
             })}
           </div>
 
-          {filtered.length === 0 && (
-            <div className="empty-state">
-              <div className="w-12 h-12 rounded-xl bg-[#4F6BFF]/10 flex items-center justify-center mb-4">
-                <Search size={22} className="text-[#4F6BFF]" />
-              </div>
-              <p className="text-sm font-semibold mb-1 text-foreground">Keine Handwerker gefunden</p>
-              <p className="text-sm text-muted-foreground-2">Versuche einen anderen Suchbegriff oder Filter.</p>
-            </div>
-          )}
-
-          <div className="mt-3">
-            <p className="text-xs text-muted-foreground">{filtered.length} von {contractors.length} Handwerker</p>
+          {/* Footer counter inside card */}
+          <div className="px-5 sm:px-7 py-3 border-t border-card-divider">
+            <p className="text-[11.5px] text-muted-foreground tabular-nums">
+              {filtered.length} von {contractors.length} {contractors.length === 1 ? 'Handwerker' : 'Handwerker'}
+            </p>
           </div>
-        </>
+        </div>
       )}
 
       {showForm && <ContractorForm onClose={() => setShowForm(false)} />}

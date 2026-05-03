@@ -166,21 +166,19 @@ export function DashboardPage() {
 
   return (
     <div className="page-container">
-      {/* PAGE HEADER */}
-      <div className="page-header">
-        <div className="min-w-0">
-          <h1 className="page-title">Dashboard</h1>
-          <div className="flex items-center flex-wrap gap-x-2 gap-y-1 text-xs sm:text-sm text-muted-foreground mt-1">
-            <span><span className="font-semibold text-foreground">{activeProjects.length} aktive</span> von {projects.length} Projekten</span>
-            <span className="size-[3px] rounded-full bg-muted-foreground/40" />
-            <span>Pipeline-Volumen <span className="font-semibold text-foreground tabular-nums">{formatCurrency(totalStageVolume)}</span></span>
-            <span className="hidden sm:inline-block size-[3px] rounded-full bg-muted-foreground/40" />
-            <span className="hidden sm:inline">{dateFmtLong.format(new Date())}</span>
+      {/* HEADER CARD — matches the rest of the app's card-header pattern */}
+      <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-5 sm:p-7 mb-4 sm:mb-5">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-[24px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight mb-1">
+              Dashboard
+            </h1>
+            <p className="text-[13px] text-muted-foreground max-w-2xl leading-relaxed">
+              Übersicht aller Fix-&amp;-Flip-Projekte mit Status-Pipeline, Budget-Tracking und Gewinn-Projektion auf einen Blick.
+            </p>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => navigate('/projekte')} className="btn btn-md btn-primary">
-            <Plus size={16} />
+          <button onClick={() => navigate('/projekte')} className="btn btn-sm btn-primary shrink-0">
+            <Plus size={14} />
             <span className="hidden sm:inline">Neues Projekt</span>
             <span className="sm:hidden">Neu</span>
           </button>
@@ -254,24 +252,19 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* PIPELINE PANEL */}
-      <div className="bg-card rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-5 sm:p-6 mb-6 sm:mb-8 border border-card-line">
-        <div className="flex items-center justify-between gap-3 mb-4 sm:mb-5">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <h2 className="text-[15px] font-semibold text-foreground tracking-tight">Status-Pipeline</h2>
-            <span className="text-xs text-muted-foreground hidden sm:inline">
-              {projects.length} {projects.length === 1 ? 'Projekt' : 'Projekte'} · {formatCurrency(totalStageVolume)} Gesamt
-            </span>
-          </div>
+      {/* PIPELINE PANEL — einzelne Stage-Cards mit klarem visuellem Gewicht */}
+      <div className="mb-6 sm:mb-8">
+        <div className="flex items-center justify-between gap-3 mb-3 sm:mb-4 px-1">
+          <h2 className="text-[15px] font-semibold text-foreground tracking-tight">Status-Pipeline</h2>
           <button
             onClick={() => navigate('/projekte')}
-            className="text-xs font-medium text-muted-foreground hover:text-foreground inline-flex items-center gap-1 transition-colors"
+            className="text-xs font-medium text-muted-foreground hover:text-foreground inline-flex items-center gap-1 transition-colors shrink-0"
           >
             Alle ansehen <ChevronRight size={12} />
           </button>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {PROJECT_STATUSES.map((status) => {
             const cfg = STATUS_CFG[status];
             const count = stageCounts[status];
@@ -279,39 +272,56 @@ export function DashboardPage() {
             const empty = count === 0;
             const pctOfTotal = totalStageVolume > 0 ? Math.round((volume / totalStageVolume) * 100) : 0;
             return (
-              <div
+              <button
                 key={status}
-                className="p-3 rounded-[9px] hover:bg-layer-hover transition-colors cursor-pointer"
                 onClick={() => navigate('/projekte')}
+                className={cn(
+                  'group relative text-left cursor-pointer overflow-hidden rounded-2xl bg-card border border-card-line p-4 transition-all',
+                  'shadow-[0_1px_2px_rgba(15,23,42,0.04)]',
+                  empty
+                    ? 'opacity-70 hover:opacity-100'
+                    : 'hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(15,23,42,0.06)]',
+                )}
               >
-                <div className="flex items-center justify-between mb-2.5">
+                {/* Top color accent strip */}
+                <div
+                  aria-hidden
+                  className={cn('absolute left-0 right-0 top-0 h-[3px]', empty ? 'bg-muted-foreground/15' : cfg.bar)}
+                />
+
+                <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <span className={cn('size-[7px] rounded-full shrink-0', empty ? 'bg-muted-foreground/30' : cfg.marker)} />
-                    <span className="text-xs font-semibold text-foreground/85 truncate">{cfg.label}</span>
+                    <span className={cn('size-1.5 rounded-full shrink-0', empty ? 'bg-muted-foreground/30' : cfg.marker)} />
+                    <span className="text-[12px] font-semibold text-foreground/80 truncate">{cfg.label}</span>
                   </div>
                   <span className={cn(
-                    'text-[11px] font-semibold tabular-nums px-1.5 py-px rounded-full text-center min-w-[18px]',
-                    empty ? 'text-muted-foreground bg-layer-hover' : 'text-foreground/80 bg-layer-hover',
-                  )}>{count}</span>
+                    'inline-flex items-center justify-center min-w-[20px] h-[18px] px-1.5 rounded-full text-[10.5px] font-bold tabular-nums',
+                    empty
+                      ? 'text-muted-foreground/60 bg-layer-hover'
+                      : cn(cfg.iconBg, cfg.iconColor),
+                  )}>
+                    {count}
+                  </span>
                 </div>
-                {empty ? (
-                  <>
-                    <p className="text-sm text-muted-foreground font-medium leading-[1.1] mb-0.5">Noch leer</p>
-                    <p className="text-[11px] text-muted-foreground/80">—</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-[18px] font-bold text-foreground leading-[1.1] tabular-nums tracking-tight mb-0.5">{formatCurrency(volume)}</p>
-                    <p className="text-[11px] text-muted-foreground tabular-nums">{pctOfTotal}% des Volumens</p>
-                  </>
-                )}
-                <div className="mt-2.5 h-[3px] bg-layer-hover rounded-full overflow-hidden">
+
+                <p className={cn(
+                  'text-[20px] leading-[1.1] tabular-nums tracking-tight font-bold mb-1',
+                  empty ? 'text-muted-foreground/50' : 'text-foreground',
+                )}>
+                  {empty ? '—' : formatCurrency(volume)}
+                </p>
+                <p className="text-[10.5px] text-muted-foreground tabular-nums">
+                  {empty ? 'Keine Projekte' : `${pctOfTotal}% des Volumens`}
+                </p>
+
+                {/* Bottom progress bar */}
+                <div className="mt-3 h-[3px] bg-layer-hover rounded-full overflow-hidden">
                   <div
                     className={cn('h-full rounded-full transition-all duration-700', empty ? 'bg-muted-foreground/20' : cfg.bar)}
-                    style={{ width: empty ? '0%' : `${Math.max(8, pctOfTotal)}%` }}
+                    style={{ width: empty ? '0%' : `${Math.max(10, pctOfTotal)}%` }}
                   />
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>

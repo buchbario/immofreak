@@ -195,18 +195,19 @@ export function CalculatorPage() {
 
   return (
     <div className="page-container">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--accent-dim)' }}>
-              <Calculator size={18} className="text-primary" />
-            </div>
+      {/* Header card */}
+      <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-5 sm:p-7 mb-4 sm:mb-5">
+        <div className="flex items-center gap-3 mb-1">
+          <div className="size-9 rounded-[9px] bg-[#4F6BFF]/10 flex items-center justify-center shrink-0">
+            <Calculator size={17} className="text-[#4F6BFF]" />
+          </div>
+          <h1 className="text-[24px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight">
             Fix &amp; Flip Kalkulator
           </h1>
-          <p className="page-subtitle">
-            Berechne GIK, Marge und Rendite für dein nächstes Projekt
-          </p>
         </div>
+        <p className="text-[13px] text-muted-foreground max-w-2xl leading-relaxed">
+          Berechne GIK, Marge und Rendite für dein nächstes Projekt — inklusive Kaufnebenkosten, Sanierungs-Budget und Verkaufsprognose.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">

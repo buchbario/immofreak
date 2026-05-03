@@ -28,7 +28,7 @@ function setReadIds(ids: string[]) {
   localStorage.setItem('immofreak_notif_read', JSON.stringify(ids));
 }
 
-export function NotificationBell() {
+export function NotificationBell({ variant = 'icon' }: { variant?: 'icon' | 'row' } = {}) {
   const { mode } = useAppMode();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -165,18 +165,33 @@ export function NotificationBell() {
 
   return (
     <div ref={ref}>
-      <button
-        ref={btnRef}
-        onClick={() => setOpen(!open)}
-        className="relative flex items-center justify-center size-9 rounded-xl border border-card-line bg-card hover:bg-muted/50 transition-colors cursor-pointer"
-      >
-        <Bell size={16} className="text-muted-foreground" />
-        {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 size-4.5 flex items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white leading-none">
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
-        )}
-      </button>
+      {variant === 'row' ? (
+        <button
+          ref={btnRef}
+          onClick={() => setOpen(!open)}
+          className="relative w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] font-medium text-foreground/85 hover:text-foreground hover:bg-white/55 transition-colors cursor-pointer"
+        >
+          <Bell size={15} strokeWidth={1.9} className="opacity-90 shrink-0" />
+          <span className="truncate">Benachrichtigungen</span>
+          {unreadCount > 0 && (
+            <span className="ml-auto inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold text-white bg-rose-500 tabular-nums">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+        </button>
+      ) : (
+        <button
+          ref={btnRef}
+          onClick={() => setOpen(!open)}
+          className="relative flex items-center justify-center size-9 rounded-lg text-foreground/65 hover:text-foreground hover:bg-white/55 transition-colors cursor-pointer"
+          aria-label="Benachrichtigungen"
+        >
+          <Bell size={15} strokeWidth={1.9} />
+          {unreadCount > 0 && (
+            <span className="absolute top-1 right-1 size-2 rounded-full bg-rose-500 ring-2 ring-white/80" />
+          )}
+        </button>
+      )}
 
       {open && (
         <div className="fixed w-80 bg-dropdown border border-dropdown-line rounded-xl shadow-xl z-[80] overflow-hidden" style={{ top: pos.top, right: pos.right }}>

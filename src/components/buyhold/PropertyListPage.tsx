@@ -60,65 +60,90 @@ export function PropertyListPage() {
 
   return (
     <div className="page-container">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Mietobjekte</h1>
-          <p className="page-subtitle">{properties.length} Objekte im Portfolio</p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* View Toggle */}
-          <div className="flex items-center bg-card border border-card-line rounded-lg p-0.5">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={cn(
-                'flex items-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-medium transition-all cursor-pointer',
-                viewMode === 'grid'
-                  ? 'bg-[#4F6BFF] text-white'
-                  : 'text-muted-foreground-2 hover:text-foreground'
-              )}
-              title="Kachel-Ansicht"
-            >
-              <LayoutGrid size={14} />
-              Kacheln
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={cn(
-                'flex items-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-medium transition-all cursor-pointer',
-                viewMode === 'list'
-                  ? 'bg-[#4F6BFF] text-white'
-                  : 'text-muted-foreground-2 hover:text-foreground'
-              )}
-              title="Listen-Ansicht"
-            >
-              <List size={14} />
-              Liste
-            </button>
-          </div>
-          <button onClick={() => setShowForm(true)} className="btn btn-md btn-primary">
-            <Plus size={15} /> <span className="hidden sm:inline">Objekt anlegen</span><span className="sm:hidden">Neu</span>
-          </button>
-        </div>
-      </div>
-
-      <div className="mb-6">
-        <div className="relative max-w-sm">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input placeholder="Suchen..." value={search} onChange={(e) => setSearch(e.target.value)} className="input pl-9" />
-        </div>
-      </div>
-
-      {filtered.length === 0 ? (
-        <div className="surface empty-state">
-          <div className="size-14 rounded-2xl flex items-center justify-center mb-4 bg-layer-hover">
-            <Building2 size={22} className="text-muted-foreground" />
-          </div>
-          <p className="text-sm font-semibold mb-1 text-foreground">Keine Objekte</p>
-          <p className="text-sm mb-5 text-muted-foreground-2">Lege dein erstes Mietobjekt an.</p>
-          <button onClick={() => setShowForm(true)} className="btn btn-md btn-primary">Objekt anlegen</button>
-        </div>
-      ) : viewMode === 'grid' ? (
+      {properties.length === 0 ? (
         <>
+          <div className="page-header">
+            <div>
+              <h1 className="page-title">Mietobjekte</h1>
+              <p className="page-subtitle">Lege dein erstes Mietobjekt an.</p>
+            </div>
+            <button onClick={() => setShowForm(true)} className="btn btn-md btn-primary">
+              <Plus size={15} /> Objekt anlegen
+            </button>
+          </div>
+          <div className="surface empty-state">
+            <div className="size-14 rounded-2xl flex items-center justify-center mb-4 bg-layer-hover">
+              <Building2 size={22} className="text-muted-foreground" />
+            </div>
+            <p className="text-sm font-semibold mb-1 text-foreground">Keine Objekte</p>
+            <p className="text-sm mb-5 text-muted-foreground-2">Lege dein erstes Mietobjekt an.</p>
+            <button onClick={() => setShowForm(true)} className="btn btn-md btn-primary">Objekt anlegen</button>
+          </div>
+        </>
+      ) : (
+        <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">
+          {/* Header */}
+          <div className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 border-b border-card-divider">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="min-w-0 flex-1">
+                <h1 className="text-[24px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight mb-1">Mietobjekte</h1>
+                <p className="text-[13px] text-muted-foreground max-w-2xl leading-relaxed">
+                  Dein Buy-&-Hold-Portfolio mit Kaufpreis, Marktwert, Mieteinnahmen und Belegungsrate je Objekt.
+                </p>
+              </div>
+              <button onClick={() => setShowForm(true)} className="btn btn-sm btn-primary shrink-0">
+                <Plus size={14} /> Neues Objekt
+              </button>
+            </div>
+          </div>
+
+          {/* View toggle + Search */}
+          <div className="px-5 sm:px-7 py-3 border-b border-card-divider flex items-center gap-3 flex-wrap">
+            <div className="inline-flex items-center bg-layer-hover rounded-md p-[3px] gap-[2px]">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[5px] text-[12px] font-medium transition-colors cursor-pointer',
+                  viewMode === 'grid'
+                    ? 'bg-card text-foreground shadow-[0_1px_2px_rgba(15,23,42,0.06)]'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                <LayoutGrid size={12} /> Kacheln
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[5px] text-[12px] font-medium transition-colors cursor-pointer',
+                  viewMode === 'list'
+                    ? 'bg-card text-foreground shadow-[0_1px_2px_rgba(15,23,42,0.06)]'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                <List size={12} /> Liste
+              </button>
+            </div>
+
+            <div className="flex-1" />
+
+            <div className="relative">
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Suchen..."
+                className="h-8 pl-7 pr-3 rounded-md bg-layer-hover text-[12px] text-foreground placeholder:text-muted-foreground/70 border border-transparent hover:border-card-line focus:bg-card focus:border-[#4F6BFF]/40 focus:outline-none focus:ring-2 focus:ring-[#4F6BFF]/15 transition-all w-[160px] focus:w-[220px]"
+              />
+            </div>
+          </div>
+
+          {filtered.length === 0 ? (
+            <div className="text-center py-10 px-5">
+              <Search size={20} className="mx-auto mb-2 text-muted-foreground/60" />
+              <p className="text-[13px] text-muted-foreground">Keine Objekte gefunden.</p>
+            </div>
+          ) : viewMode === 'grid' ? (
+            <div className="p-5 sm:p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5" data-tour="property-list">
             {filtered.map((p) => {
               const units = allUnits.filter((u) => u.propertyId === p.id);
@@ -226,15 +251,12 @@ export function PropertyListPage() {
               );
             })}
           </div>
-          <div className="mt-5">
-            <p className="text-xs text-muted-foreground">{filtered.length} von {properties.length} Objekte</p>
-          </div>
-        </>
-      ) : (
-        <>
+            </div>
+          ) : (
+            <>
           {/* ─── LIST VIEW ─── */}
-          <div className="hidden md:block surface overflow-hidden" data-tour="property-list">
-            <div className="grid grid-cols-[56px_minmax(0,2.5fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_160px] gap-4 px-5 py-3 border-b border-card-line bg-muted/30">
+          <div className="hidden md:block overflow-hidden" data-tour="property-list">
+            <div className="grid grid-cols-[56px_minmax(0,2.5fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_160px] gap-4 px-5 sm:px-7 py-2.5 border-b border-card-divider">
               <div />
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Objekt</p>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Adresse</p>
@@ -257,7 +279,7 @@ export function PropertyListPage() {
                   <div
                     key={p.id}
                     onClick={() => navigate(`/bh/objekte/${p.id}`)}
-                    className="grid grid-cols-[56px_minmax(0,2.5fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_160px] gap-4 px-5 py-3 items-center cursor-pointer hover:bg-muted/30 transition-colors group"
+                    className="grid grid-cols-[56px_minmax(0,2.5fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_160px] gap-4 px-5 sm:px-7 py-3.5 items-center cursor-pointer hover:bg-layer-hover transition-colors group"
                   >
                     {/* Thumbnail */}
                     <div className="size-11 rounded-lg overflow-hidden shrink-0 bg-gradient-to-br from-[#4F6BFF] to-[#8B9FFF] flex items-center justify-center">
@@ -328,7 +350,7 @@ export function PropertyListPage() {
           </div>
 
           {/* ─── LIST VIEW · MOBILE (stacked rows) ─── */}
-          <div className="md:hidden space-y-2" data-tour="property-list">
+          <div className="md:hidden divide-y divide-card-divider" data-tour="property-list">
             {filtered.map((p) => {
               const units = allUnits.filter((u) => u.propertyId === p.id);
               const monthlyRent = units.reduce((s, u) => s + u.currentRent, 0);
@@ -341,7 +363,7 @@ export function PropertyListPage() {
                 <div
                   key={p.id}
                   onClick={() => navigate(`/bh/objekte/${p.id}`)}
-                  className="flex items-center gap-3 p-3 bg-card border border-card-line rounded-xl cursor-pointer hover:border-[#4F6BFF]/30 transition-colors"
+                  className="flex items-center gap-3 px-5 py-3.5 cursor-pointer hover:bg-layer-hover transition-colors"
                 >
                   <div className="size-12 rounded-lg overflow-hidden shrink-0 bg-gradient-to-br from-[#4F6BFF] to-[#8B9FFF] flex items-center justify-center">
                     {cover ? (
@@ -375,10 +397,16 @@ export function PropertyListPage() {
             })}
           </div>
 
-          <div className="mt-5">
-            <p className="text-xs text-muted-foreground">{filtered.length} von {properties.length} Objekte</p>
+            </>
+          )}
+
+          {/* Footer */}
+          <div className="px-5 sm:px-7 py-3 border-t border-card-divider">
+            <p className="text-[11.5px] text-muted-foreground tabular-nums">
+              {filtered.length} von {properties.length} {properties.length === 1 ? 'Objekt' : 'Objekte'}
+            </p>
           </div>
-        </>
+        </div>
       )}
 
       {showForm && (

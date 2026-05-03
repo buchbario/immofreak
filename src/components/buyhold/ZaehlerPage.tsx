@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Gauge } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useMeterReadings } from '../../hooks/useMeterReadings';
 import { useRentalProperties } from '../../hooks/useRentalProperties';
 import { useRentalUnits } from '../../hooks/useRentalUnits';
 import type { MeterReading } from '../../types';
 import { NumberInput } from '../ui/NumberInput';
+import { PageCard } from '../ui/PageCard';
 
 export function ZaehlerPage() {
   const { allReadings, createReading } = useMeterReadings();
@@ -96,109 +97,105 @@ export function ZaehlerPage() {
 
   return (
     <div className="page-container">
-      {/* Header */}
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Zählerstände</h1>
-          <p className="page-subtitle">Alle Ablesungen im Überblick</p>
-        </div>
-        <button
-          onClick={() => setShowDialog(true)}
-          className="btn btn-md btn-primary"
-        >
-          <Plus size={14} />
-          Ablesung erfassen
-        </button>
-      </div>
-
-      {/* Readings grouped by property */}
-      {allReadings.length === 0 ? (
-        <div className="surface empty-state">
-          <p className="text-sm text-muted-foreground-2">Keine Zählerstände vorhanden.</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {Array.from(readingsByProperty.entries()).map(([propertyId, readings]) => {
-            const property = properties.find((p) => p.id === propertyId);
-            const latestReadings = getLatestReadings(readings);
-            return (
-              <div key={propertyId} className="surface overflow-hidden">
-                <div className="px-4 py-3 border-b border-card-divider">
-                  <h3 className="section-title">{property?.name || 'Unbekanntes Objekt'}</h3>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full">
-                    <thead>
-                      <tr className="border-b border-card-divider">
-                        <th className="th">Zahler</th>
-                        <th className="th">Einheit</th>
-                        <th className="th text-end">Letzter Stand</th>
-                        <th className="th">Datum</th>
-                        <th className="th">Abgelesen von</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {latestReadings.map((r) => {
-                        const unit = r.unitId ? allUnits.find((u) => u.id === r.unitId) : undefined;
-                        return (
-                          <tr
-                            key={r.id}
-                            className="cursor-pointer transition-colors hover:bg-layer-hover border-b border-card-divider"
-                            onClick={() => setSelectedMeter(r.meterId)}
-                          >
-                            <td className="td font-medium text-foreground">{r.meterId}</td>
-                            <td className="td text-muted-foreground-2">{unit?.name || 'Allgemein'}</td>
-                            <td className="td text-end font-semibold tabular-nums text-foreground">{r.value.toLocaleString('de-DE')}</td>
-                            <td className="td text-muted-foreground-2">{formatDate(r.date)}</td>
-                            <td className="td text-muted-foreground-2">{r.readBy}</td>
+      <PageCard
+        title="Zählerstände"
+        description="Alle Ablesungen im Überblick. Klicke auf eine Zeile, um den Verlauf eines Zählers als Graph zu sehen."
+        meta={
+          <>
+            <Gauge size={11} /> {allReadings.length} {allReadings.length === 1 ? 'Ablesung' : 'Ablesungen'}
+            <span className="size-[3px] rounded-full bg-muted-foreground/40 mx-0.5" />
+            <span>{allMeterIds.length} {allMeterIds.length === 1 ? 'Zähler' : 'Zähler'}</span>
+          </>
+        }
+        actions={
+          <button onClick={() => setShowDialog(true)} className="btn btn-sm btn-primary">
+            <Plus size={14} /> Ablesung erfassen
+          </button>
+        }
+      >
+        {allReadings.length === 0 ? (
+          <div className="text-center py-12 px-5">
+            <Gauge size={28} className="mx-auto mb-3 text-muted-foreground/50" />
+            <p className="text-[13px] font-medium text-foreground mb-1">Keine Zählerstände vorhanden</p>
+            <p className="text-[12px] text-muted-foreground">Erfasse die erste Ablesung um Verbrauchsverläufe zu tracken.</p>
+          </div>
+        ) : (
+          <div className="px-5 sm:px-7 py-4 space-y-5">
+            {Array.from(readingsByProperty.entries()).map(([propertyId, readings]) => {
+              const property = properties.find((p) => p.id === propertyId);
+              const latestReadings = getLatestReadings(readings);
+              return (
+                <div key={propertyId}>
+                  <p className="text-[10.5px] uppercase tracking-wider font-semibold text-muted-foreground/70 mb-2 px-1">
+                    {property?.name || 'Unbekanntes Objekt'}
+                  </p>
+                  <div className="border border-card-line rounded-[10px] overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full">
+                        <thead>
+                          <tr className="border-b border-card-divider">
+                            <th className="th text-[10.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold">Zähler</th>
+                            <th className="th text-[10.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold">Einheit</th>
+                            <th className="th text-end text-[10.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold">Letzter Stand</th>
+                            <th className="th text-[10.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold">Datum</th>
+                            <th className="th text-[10.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold">Abgelesen von</th>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                        </thead>
+                        <tbody>
+                          {latestReadings.map((r, idx) => {
+                            const unit = r.unitId ? allUnits.find((u) => u.id === r.unitId) : undefined;
+                            const isSelected = r.meterId === selectedMeter;
+                            return (
+                              <tr
+                                key={r.id}
+                                className={`cursor-pointer transition-colors hover:bg-layer-hover ${idx < latestReadings.length - 1 ? 'border-b border-card-divider' : ''} ${isSelected ? 'bg-[#4F6BFF]/8' : ''}`}
+                                onClick={() => setSelectedMeter(r.meterId)}
+                              >
+                                <td className="td text-[13px] font-semibold text-foreground tracking-tight">{r.meterId}</td>
+                                <td className="td text-[12.5px] text-muted-foreground">{unit?.name || 'Allgemein'}</td>
+                                <td className="td text-end text-[13px] font-semibold tabular-nums text-foreground">{r.value.toLocaleString('de-DE')}</td>
+                                <td className="td text-[12.5px] text-muted-foreground tabular-nums">{formatDate(r.date)}</td>
+                                <td className="td text-[12.5px] text-muted-foreground">{r.readBy}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </PageCard>
 
       {/* Chart for selected meter */}
       {selectedMeter && chartData.length > 0 && (
-        <div className="surface mt-6">
-          <div className="p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="section-title">Verlauf: {selectedMeter}</h3>
-              <button
-                onClick={() => setSelectedMeter(null)}
-                className="btn btn-sm btn-secondary"
-              >
-                <X size={14} />
-                Schliessen
-              </button>
-            </div>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
-                  <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis dataKey="date" fontSize={12} tickLine={false} axisLine={false} tick={{ fill: 'var(--text-muted)' }} />
-                  <YAxis fontSize={12} tickLine={false} axisLine={false} tick={{ fill: 'var(--text-muted)' }} />
-                  <Tooltip
-                    contentStyle={{ borderRadius: '10px', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.3)', backgroundColor: 'var(--surface)', color: 'var(--text)' }}
-                  />
-                  <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4, fill: '#3b82f6' }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+        <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] mt-4 sm:mt-5 p-5 sm:p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-[15px] font-semibold text-foreground tracking-tight">Verlauf: {selectedMeter}</h3>
+            <button
+              onClick={() => setSelectedMeter(null)}
+              className="btn btn-sm btn-secondary"
+            >
+              <X size={14} /> Schließen
+            </button>
+          </div>
+          <div className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData}>
+                <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="var(--card-line)" />
+                <XAxis dataKey="date" fontSize={11} tickLine={false} axisLine={false} tick={{ fill: 'var(--muted-foreground)' }} />
+                <YAxis fontSize={11} tickLine={false} axisLine={false} tick={{ fill: 'var(--muted-foreground)' }} />
+                <Tooltip
+                  contentStyle={{ borderRadius: '10px', border: '1px solid var(--card-line)', boxShadow: '0 4px 12px rgba(15,23,42,0.08)', backgroundColor: 'var(--card)', color: 'var(--foreground)', fontSize: 12 }}
+                />
+                <Line type="monotone" dataKey="value" stroke="#4F6BFF" strokeWidth={2} dot={{ r: 4, fill: '#4F6BFF' }} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </div>
-      )}
-
-      {/* Meter selection hint */}
-      {allMeterIds.length > 0 && !selectedMeter && (
-        <p className="text-xs mt-4 text-muted-foreground">
-          Klicke auf eine Zeile, um den Verlauf des Zahlers anzuzeigen.
-        </p>
       )}
 
       {/* Add reading dialog */}

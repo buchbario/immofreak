@@ -66,21 +66,31 @@ export function MietvertragDetailPage() {
 
   return (
     <div className="page-container">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => navigate('/bh/mietvertraege')} className="cursor-pointer transition-colors text-muted-foreground hover:text-foreground">
-          <ArrowLeft size={20} />
-        </button>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <h1 className="page-title">Mietvertrag</h1>
-            <span className={`badge ${status.cls}`}>{status.label}</span>
+      {/* Header card */}
+      <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-5 sm:p-6 mb-4 sm:mb-5">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <button
+              onClick={() => navigate('/bh/mietvertraege')}
+              className="size-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-layer-hover transition-colors cursor-pointer shrink-0"
+              aria-label="Zurück"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-[22px] sm:text-[24px] font-bold text-foreground tracking-tight leading-tight">Mietvertrag</h1>
+                <span className={`badge ${status.cls}`}>{status.label}</span>
+              </div>
+              <p className="text-[12.5px] text-muted-foreground truncate mt-0.5">
+                {tenant?.name || '–'} · {unit?.name || '–'} · {property?.name || '–'}
+              </p>
+            </div>
           </div>
-          <p className="page-subtitle mt-0.5">{tenant?.name || '–'} · {unit?.name || '–'} · {property?.name || '–'}</p>
+          <button onClick={() => setConfirmDelete(true)} className="btn btn-sm btn-ghost text-rose-600 dark:text-rose-400 shrink-0">
+            <Trash2 size={13} /> Löschen
+          </button>
         </div>
-        <button onClick={() => setConfirmDelete(true)} className="btn btn-sm btn-ghost text-red-500 hover:bg-red-50">
-          <Trash2 size={14} /> Löschen
-        </button>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">

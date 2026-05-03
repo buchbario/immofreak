@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  FileText, Search, ArrowRight, CalendarClock, CheckCircle2, Clock,
+  FileText, Search, ArrowRight, CalendarClock,
 } from 'lucide-react';
 import { useRentalContracts } from '../../hooks/useRentalContracts';
 import { useTenants } from '../../hooks/useTenants';
@@ -64,152 +64,142 @@ export function MietvertragPage() {
   }, [enriched, search, filter]);
 
   const expiringCount = enriched.filter((c) => c.isExpiring).length;
+  const unbefristetCount = enriched.filter((c) => c.contractType === 'unbefristet').length;
+  const befristetCount = enriched.filter((c) => c.contractType === 'befristet').length;
   const totalRent = enriched.reduce((s, c) => s + c.warmmiete, 0);
 
   return (
     <div className="page-container">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Mietverträge</h1>
-          <p className="page-subtitle">{allContracts.length} {allContracts.length === 1 ? 'Vertrag' : 'Verträge'} · {fmt(totalRent)} € Warmmiete/Monat</p>
-        </div>
-      </div>
-
-      {/* KPI Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-        <div className="bg-card border border-card-line rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-1.5">
-            <FileText size={14} className="text-[#4F6BFF]" />
-            <span className="text-xs font-medium text-muted-foreground">Gesamt</span>
+      {allContracts.length === 0 ? (
+        <>
+          <div className="page-header">
+            <div>
+              <h1 className="page-title">Mietverträge</h1>
+              <p className="page-subtitle">Lege deinen ersten Mietvertrag an.</p>
+            </div>
           </div>
-          <p className="text-lg font-semibold text-foreground tabular-nums">{allContracts.length}</p>
-        </div>
-        <div className="bg-card border border-card-line rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-1.5">
-            <CheckCircle2 size={14} className="text-emerald-500" />
-            <span className="text-xs font-medium text-muted-foreground">Unbefristet</span>
+          <div className="surface empty-state">
+            <div className="size-12 rounded-xl bg-[#4F6BFF]/10 flex items-center justify-center mb-4">
+              <FileText size={22} className="text-[#4F6BFF]" />
+            </div>
+            <p className="text-sm font-semibold mb-1 text-foreground">Noch keine Mietverträge</p>
+            <p className="text-sm text-muted-foreground-2">Verträge erscheinen hier, sobald du sie über die Mieter-Detailseite anlegst.</p>
           </div>
-          <p className="text-lg font-semibold text-foreground tabular-nums">{enriched.filter((c) => c.contractType === 'unbefristet').length}</p>
-        </div>
-        <div className="bg-card border border-card-line rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-1.5">
-            <Clock size={14} className="text-amber-500" />
-            <span className="text-xs font-medium text-muted-foreground">Befristet</span>
-          </div>
-          <p className="text-lg font-semibold text-foreground tabular-nums">{enriched.filter((c) => c.contractType === 'befristet').length}</p>
-        </div>
-        <div className="bg-card border border-card-line rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-1.5">
-            <CalendarClock size={14} className="text-red-500" />
-            <span className="text-xs font-medium text-muted-foreground">Auslaufend</span>
-          </div>
-          <p className="text-lg font-semibold text-foreground tabular-nums">{expiringCount}</p>
-        </div>
-      </div>
-
-      {/* Search + Filter */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <div className="relative flex-1">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Mieter, Einheit oder Objekt suchen..."
-            className="input pl-9 w-full"
-          />
-        </div>
-        <div className="flex gap-1.5">
-          {([
-            { key: 'alle', label: 'Alle' },
-            { key: 'unbefristet', label: 'Unbefristet' },
-            { key: 'befristet', label: 'Befristet' },
-            { key: 'auslaufend', label: `Auslaufend${expiringCount > 0 ? ` (${expiringCount})` : ''}` },
-          ] as const).map((opt) => (
-            <button
-              key={opt.key}
-              onClick={() => setFilter(opt.key)}
-              className={cn(
-                'inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer',
-                filter === opt.key
-                  ? 'bg-[#4F6BFF]/10 text-[#4F6BFF]'
-                  : 'bg-layer-hover text-foreground/80 hover:bg-layer-active'
-              )}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Contract List */}
-      {filtered.length === 0 ? (
-        <div className="surface empty-state p-12 text-center">
-          <FileText size={22} className="mx-auto mb-2 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Keine Verträge gefunden.</p>
-        </div>
+        </>
       ) : (
-        <div className="flex flex-col bg-card border border-card-line rounded-xl shadow-2xs overflow-hidden">
-          {/* Table Header */}
-          <div className="hidden md:grid grid-cols-[1fr_140px_110px_130px_110px_110px_32px] gap-4 px-5 py-3 border-b border-card-divider text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            <span>Mieter / Einheit</span>
-            <span>Objekt</span>
-            <span>Warmmiete</span>
-            <span>Kaution</span>
-            <span>Vertragsbeginn</span>
-            <span>Status</span>
-            <span />
+        <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">
+          {/* Header */}
+          <div className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 border-b border-card-divider">
+            <h1 className="text-[24px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight mb-1">Mietverträge</h1>
+            <p className="text-[13px] text-muted-foreground max-w-2xl leading-relaxed">
+              Übersicht aller aktiven und befristeten Mietverhältnisse mit Warmmiete, Kaution und Vertragslaufzeit.
+            </p>
           </div>
 
-          <div className="divide-y divide-card-divider">
-            {filtered.map((c) => (
-              <div
-                key={c.id}
-                onClick={() => navigate(`/bh/mietvertraege/${c.id}`)}
-                className="grid grid-cols-1 md:grid-cols-[1fr_140px_110px_130px_110px_110px_32px] gap-2 md:gap-4 items-center px-5 py-3.5 cursor-pointer hover:bg-layer-hover transition-colors"
-              >
-                {/* Mieter / Einheit */}
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-foreground truncate">{c.tenant?.name || '–'}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground truncate mt-0.5">{c.unit?.name || '–'}</p>
-                </div>
+          {/* Tabs + Search */}
+          <div className="px-5 sm:px-7 py-3 border-b border-card-divider flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-3 sm:gap-4 -mb-3">
+              {([
+                { key: 'alle', label: 'Alle', cnt: allContracts.length },
+                { key: 'unbefristet', label: 'Unbefristet', cnt: unbefristetCount },
+                { key: 'befristet', label: 'Befristet', cnt: befristetCount },
+                { key: 'auslaufend', label: 'Auslaufend', cnt: expiringCount },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => setFilter(opt.key)}
+                  className={cn(
+                    'group relative inline-flex items-center gap-1.5 pb-2 text-[13px] font-medium transition-colors cursor-pointer',
+                    filter === opt.key ? 'text-[#4F6BFF]' : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {opt.label}
+                  <span className={cn(
+                    'inline-flex items-center justify-center min-w-[20px] h-[18px] px-1.5 rounded-full text-[10.5px] font-semibold tabular-nums',
+                    filter === opt.key ? 'bg-[#4F6BFF]/15 text-[#4F6BFF]' : 'bg-layer-hover text-muted-foreground/80',
+                  )}>
+                    {opt.cnt}
+                  </span>
+                  {filter === opt.key && <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-[#4F6BFF]" />}
+                </button>
+              ))}
+            </div>
 
-                {/* Objekt */}
-                <p className="text-xs text-muted-foreground truncate hidden md:block">{c.property?.name || '–'}</p>
+            <div className="flex-1" />
 
-                {/* Warmmiete */}
-                <p className="text-sm font-medium tabular-nums text-foreground hidden md:block">{fmt(c.warmmiete)} €</p>
+            <div className="relative">
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Suchen..."
+                className="h-8 pl-7 pr-3 rounded-md bg-layer-hover text-[12px] text-foreground placeholder:text-muted-foreground/70 border border-transparent hover:border-card-line focus:bg-card focus:border-[#4F6BFF]/40 focus:outline-none focus:ring-2 focus:ring-[#4F6BFF]/15 transition-all w-[160px] focus:w-[220px]"
+              />
+            </div>
+          </div>
 
-                {/* Kaution mit Status-Punkt */}
-                <div className="hidden md:flex items-center gap-2 whitespace-nowrap">
-                  <span
-                    className={cn('inline-block size-1.5 rounded-full flex-shrink-0', c.depositPaid ? 'bg-emerald-500' : 'bg-red-500')}
-                    title={c.depositPaid ? 'Kaution bezahlt' : 'Kaution offen'}
-                  />
-                  <span className="text-sm font-medium tabular-nums text-foreground">{fmt(c.depositAmount)} €</span>
-                </div>
-
-                {/* Vertragsbeginn */}
-                <p className="text-sm text-foreground tabular-nums hidden md:block">{formatDate(c.startDate)}</p>
-
-                {/* Status Badge */}
-                <span className={`badge ${c.status.cls} hidden md:inline-flex w-fit`}>{c.status.label}</span>
-
-                {/* Arrow */}
-                <ArrowRight size={14} className="text-muted-foreground hidden md:block justify-self-end" />
-
-                {/* Mobile summary */}
-                <div className="flex items-center justify-between md:hidden">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">{c.property?.name}</span>
-                    <span className={`badge ${c.status.cls}`}>{c.status.label}</span>
-                  </div>
-                  <span className="text-sm font-medium tabular-nums text-foreground">{fmt(c.warmmiete)} €</span>
-                </div>
+          {/* Contract list */}
+          {filtered.length === 0 ? (
+            <div className="text-center py-10 px-5">
+              <Search size={20} className="mx-auto mb-2 text-muted-foreground/60" />
+              <p className="text-[13px] text-muted-foreground">Keine Verträge gefunden.</p>
+            </div>
+          ) : (
+            <>
+              {/* Table Header (desktop) */}
+              <div className="hidden md:grid grid-cols-[1fr_140px_110px_130px_110px_110px_32px] gap-4 px-5 sm:px-7 py-2.5 border-b border-card-divider text-[10.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold">
+                <span>Mieter / Einheit</span>
+                <span>Objekt</span>
+                <span>Warmmiete</span>
+                <span>Kaution</span>
+                <span>Vertragsbeginn</span>
+                <span>Status</span>
+                <span />
               </div>
-            ))}
+
+              <div className="divide-y divide-card-divider">
+                {filtered.map((c) => (
+                  <div
+                    key={c.id}
+                    onClick={() => navigate(`/bh/mietvertraege/${c.id}`)}
+                    className="grid grid-cols-1 md:grid-cols-[1fr_140px_110px_130px_110px_110px_32px] gap-2 md:gap-4 items-center px-5 sm:px-7 py-3.5 cursor-pointer hover:bg-layer-hover transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <span className="text-sm font-semibold text-foreground truncate tracking-tight">{c.tenant?.name || '–'}</span>
+                      <p className="text-[11.5px] text-muted-foreground truncate mt-0.5">{c.unit?.name || '–'}</p>
+                    </div>
+                    <p className="text-[12.5px] text-muted-foreground truncate hidden md:block">{c.property?.name || '–'}</p>
+                    <p className="text-[13px] font-semibold tabular-nums text-foreground hidden md:block">{fmt(c.warmmiete)} €</p>
+                    <div className="hidden md:flex items-center gap-2 whitespace-nowrap">
+                      <span
+                        className={cn('inline-block size-1.5 rounded-full flex-shrink-0', c.depositPaid ? 'bg-emerald-500' : 'bg-rose-500')}
+                        title={c.depositPaid ? 'Kaution bezahlt' : 'Kaution offen'}
+                      />
+                      <span className="text-[12.5px] tabular-nums text-foreground">{fmt(c.depositAmount)} €</span>
+                    </div>
+                    <p className="text-[12.5px] text-muted-foreground tabular-nums hidden md:block">{formatDate(c.startDate)}</p>
+                    <span className={`badge ${c.status.cls} hidden md:inline-flex w-fit`}>{c.status.label}</span>
+                    <ArrowRight size={13} className="text-muted-foreground hidden md:block justify-self-end" />
+
+                    {/* Mobile summary */}
+                    <div className="flex items-center justify-between md:hidden">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11.5px] text-muted-foreground truncate">{c.property?.name}</span>
+                        <span className={`badge ${c.status.cls}`}>{c.status.label}</span>
+                      </div>
+                      <span className="text-[13px] font-semibold tabular-nums text-foreground">{fmt(c.warmmiete)} €</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Footer */}
+          <div className="px-5 sm:px-7 py-3 border-t border-card-divider">
+            <p className="text-[11.5px] text-muted-foreground tabular-nums">
+              {filtered.length} von {allContracts.length} {allContracts.length === 1 ? 'Vertrag' : 'Verträge'}
+            </p>
           </div>
         </div>
       )}

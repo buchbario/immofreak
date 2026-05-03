@@ -369,46 +369,68 @@ export function ProjectListPage() {
       ) : viewMode === 'list' ? (
         /* ─── LIST VIEW ──────────────────────────────────────── */
         <div className="page-container">
-          {/* Filters */}
-          <div className="flex flex-wrap gap-3 mb-6">
-            <div className="relative flex-1 max-w-sm">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Projekte suchen..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="input pl-9"
-              />
-            </div>
-            <div className="flex flex-wrap gap-1 items-center">
-              <button
-                onClick={() => setStatusFilter('all')}
-                className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-                  statusFilter === 'all'
-                    ? 'bg-[#4F6BFF]/10 text-[#4F6BFF]'
-                    : 'bg-layer-hover text-foreground/80 hover:bg-layer-active'
-                }`}
-              >
-                Alle
-              </button>
-              {PROJECT_STATUSES.map((status) => (
+          <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">
+            {/* Tabs + Search */}
+            <div className="px-5 sm:px-7 py-3 border-b border-card-divider flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-3 sm:gap-4 -mb-3 flex-wrap">
                 <button
-                  key={status}
-                  onClick={() => setStatusFilter(status)}
-                  className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-                    statusFilter === status
-                      ? 'bg-[#4F6BFF]/10 text-[#4F6BFF]'
-                      : 'bg-layer-hover text-foreground/80 hover:bg-layer-active'
-                  }`}
+                  onClick={() => setStatusFilter('all')}
+                  className={cn(
+                    'group relative inline-flex items-center gap-1.5 pb-2 text-[13px] font-medium transition-colors cursor-pointer',
+                    statusFilter === 'all' ? 'text-[#4F6BFF]' : 'text-muted-foreground hover:text-foreground',
+                  )}
                 >
-                  {status}
+                  Alle
+                  <span className={cn(
+                    'inline-flex items-center justify-center min-w-[20px] h-[18px] px-1.5 rounded-full text-[10.5px] font-semibold tabular-nums',
+                    statusFilter === 'all' ? 'bg-[#4F6BFF]/15 text-[#4F6BFF]' : 'bg-layer-hover text-muted-foreground/80',
+                  )}>
+                    {projects.length}
+                  </span>
+                  {statusFilter === 'all' && <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-[#4F6BFF]" />}
                 </button>
-              ))}
+                {PROJECT_STATUSES.map((status) => {
+                  const cnt = projects.filter((p) => p.status === status).length;
+                  if (cnt === 0) return null;
+                  const isActive = statusFilter === status;
+                  return (
+                    <button
+                      key={status}
+                      onClick={() => setStatusFilter(status)}
+                      className={cn(
+                        'group relative inline-flex items-center gap-1.5 pb-2 text-[13px] font-medium transition-colors cursor-pointer',
+                        isActive ? 'text-[#4F6BFF]' : 'text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      {status}
+                      <span className={cn(
+                        'inline-flex items-center justify-center min-w-[20px] h-[18px] px-1.5 rounded-full text-[10.5px] font-semibold tabular-nums',
+                        isActive ? 'bg-[#4F6BFF]/15 text-[#4F6BFF]' : 'bg-layer-hover text-muted-foreground/80',
+                      )}>
+                        {cnt}
+                      </span>
+                      {isActive && <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-[#4F6BFF]" />}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex-1" />
+
+              <div className="relative">
+                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Suchen..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="h-8 pl-7 pr-3 rounded-md bg-layer-hover text-[12px] text-foreground placeholder:text-muted-foreground/70 border border-transparent hover:border-card-line focus:bg-card focus:border-[#4F6BFF]/40 focus:outline-none focus:ring-2 focus:ring-[#4F6BFF]/15 transition-all w-[160px] focus:w-[220px]"
+                />
+              </div>
             </div>
-          </div>
 
           {/* Project grid */}
+          <div className="p-5 sm:p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
             {filtered.map((project) => {
               const spent = budgetMap[project.id] ?? 0;
@@ -509,15 +531,22 @@ export function ProjectListPage() {
             })}
           </div>
 
+          </div>
+
           {filtered.length === 0 && (
-            <div className="empty-state">
-              <div className="w-12 h-12 rounded-full flex items-center justify-center mb-4" style={{ backgroundColor: 'var(--accent-dim)' }}>
-                <Search size={22} className="text-blue-400" />
-              </div>
-              <p className="text-sm font-semibold mb-1 text-foreground">Keine Projekte gefunden</p>
-              <p className="text-sm text-muted-foreground-2">Versuche einen anderen Suchbegriff.</p>
+            <div className="text-center py-10 px-5">
+              <Search size={20} className="mx-auto mb-2 text-muted-foreground/60" />
+              <p className="text-[13px] text-muted-foreground">Keine Projekte gefunden.</p>
             </div>
           )}
+
+            {/* Footer */}
+            <div className="px-5 sm:px-7 py-3 border-t border-card-divider">
+              <p className="text-[11.5px] text-muted-foreground tabular-nums">
+                {filtered.length} von {projects.length} {projects.length === 1 ? 'Projekt' : 'Projekte'}
+              </p>
+            </div>
+          </div>
         </div>
       ) : (
         /* ─── KANBAN VIEW ────────────────────────────────────── */

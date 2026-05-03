@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogIn, Eye, EyeOff, Zap } from 'lucide-react';
+import { LogIn, Eye, EyeOff, Sparkles } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTour } from '../../context/TourContext';
 
@@ -17,18 +17,14 @@ export function LoginPage() {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
     if (!email || !password) {
       setError('Bitte E-Mail und Passwort eingeben.');
       return;
     }
-
-    // Demo validation
     if (password !== 'demo') {
       setError('Ungültige Zugangsdaten. Tipp: Passwort ist "demo".');
       return;
     }
-
     setLoading(true);
     setTimeout(() => {
       const name = email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -42,142 +38,138 @@ export function LoginPage() {
     setTimeout(() => {
       login('Yan', 'yan@immofreak.de');
       navigate('/');
-      // Slight delay so AppLayout is mounted before the tour starts
       setTimeout(() => startTour(), 200);
     }, 600);
   };
 
   return (
-    <div className="min-h-screen flex bg-background">
-      {/* Left: Branding panel */}
-      <div className="hidden lg:flex lg:w-[45%] relative bg-gradient-to-br from-[#4F6BFF] via-[#6B7FFF] to-[#8B9FFF] items-center justify-center p-12">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-20 left-16 size-64 rounded-full bg-white/20 blur-3xl" />
-          <div className="absolute bottom-32 right-20 size-48 rounded-full bg-white/30 blur-3xl" />
-        </div>
-        <div className="relative z-10 max-w-md">
-          <img src="/logo-white.png" alt="ImmoFreak" className="h-10 mb-8 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-          <h1 className="text-3xl font-bold text-white mb-4 leading-tight">
-            Dein Immobilien-CRM für Fix & Flip und Buy & Hold.
-          </h1>
-          <p className="text-white/70 text-base leading-relaxed">
-            Projekte verwalten, Deals analysieren, Mieter managen – alles an einem Ort.
-          </p>
-          <div className="mt-10 flex gap-4">
-            {['Projekte', 'Deal Analyzer', 'Mietverwaltung', 'Banking'].map(f => (
-              <div key={f} className="px-3 py-1.5 rounded-lg bg-white/15 text-white/90 text-xs font-medium backdrop-blur-sm">
-                {f}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen flex flex-col bg-[#fafbff] relative overflow-hidden">
+      {/* Subtle brand-tinted background — single very light wash, nothing busy */}
+      <div
+        aria-hidden
+        className="absolute inset-0 -z-10 pointer-events-none"
+        style={{
+          background: `
+            radial-gradient(ellipse 60% 50% at 50% 0%, rgba(79, 107, 255, 0.10) 0%, transparent 70%)
+          `,
+        }}
+      />
 
-      {/* Right: Login form */}
-      <div className="flex-1 flex flex-col relative px-6 py-12">
-        {/* Logo top-right */}
-        <div className="absolute top-6 right-6">
-          <img src="/logo.png" alt="ImmoFreak" className="h-9 object-contain" />
-        </div>
+      {/* Top: minimal nav bar (just the logo, no clutter) */}
+      <header className="px-6 sm:px-8 pt-6 sm:pt-8">
+        <a href="/" className="inline-flex items-center">
+          <img src="/logo.png" alt="ImmoFreak" className="h-10 sm:h-12 object-contain" />
+        </a>
+      </header>
 
-        <div className="flex-1 flex items-center justify-center">
-        <div className="w-full max-w-sm">
-          {/* Mobile logo */}
-          <div className="flex justify-center mb-8 lg:hidden">
-            <img src="/logo.png" alt="ImmoFreak" className="h-11 object-contain" />
+      {/* Center: the form is the only thing that matters */}
+      <main className="flex-1 flex items-center justify-center px-5 py-10">
+        <div className="w-full max-w-[400px]">
+
+          {/* Headline */}
+          <div className="text-center mb-8">
+            <h1 className="text-[28px] sm:text-[32px] font-bold text-[#0f1430] tracking-tight leading-[1.1] mb-2.5">
+              Anmelden
+            </h1>
+            <p className="text-[14px] text-[#1e1b4b]/55 leading-relaxed">
+              Dein Immobilien-CRM für Fix &amp; Flip und Buy &amp; Hold.
+            </p>
           </div>
 
-          {/* Desktop header */}
-          <div className="hidden lg:block mb-8 text-center">
-            <h2 className="text-xl font-bold text-foreground">Willkommen zurück</h2>
-            <p className="text-sm text-muted-foreground mt-1">Melde dich an, um fortzufahren.</p>
-          </div>
-
-          {/* Mobile header */}
-          <div className="lg:hidden text-center mb-6">
-            <h2 className="text-xl font-bold text-foreground">Anmelden</h2>
-            <p className="text-sm text-muted-foreground mt-1">Melde dich an, um fortzufahren.</p>
-          </div>
-
-          {/* Demo Button */}
+          {/* Demo button — clearly primary */}
           <button
             onClick={handleDemo}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-2.5 px-4 py-3 mb-6 rounded-xl bg-gradient-to-r from-[#4F6BFF] to-[#6B7FFF] text-white font-semibold text-sm shadow-lg shadow-[#4F6BFF]/25 hover:shadow-xl hover:shadow-[#4F6BFF]/30 hover:-translate-y-0.5 transition-all cursor-pointer disabled:opacity-60"
+            className="group w-full flex items-center justify-center gap-2 px-4 py-3 mb-3 rounded-xl bg-[#4F6BFF] hover:bg-[#3d57e0] text-white font-semibold text-[14px] shadow-[0_6px_16px_-4px_rgba(79,107,255,0.40)] hover:shadow-[0_8px_20px_-4px_rgba(79,107,255,0.50)] hover:-translate-y-px transition-all cursor-pointer disabled:opacity-60"
           >
-            <Zap size={16} />
+            <Sparkles size={15} strokeWidth={2.2} />
             Demo starten
           </button>
 
-          <div className="flex items-center gap-3 mb-6">
-            <div className="flex-1 h-px bg-card-line" />
-            <span className="text-xs text-muted-foreground">oder mit Zugangsdaten</span>
-            <div className="flex-1 h-px bg-card-line" />
+          {/* Divider */}
+          <div className="flex items-center gap-3 my-5">
+            <div className="flex-1 h-px bg-[#1e1b4b]/10" />
+            <span className="text-[10.5px] font-semibold text-[#1e1b4b]/40 uppercase tracking-[0.1em]">
+              oder
+            </span>
+            <div className="flex-1 h-px bg-[#1e1b4b]/10" />
           </div>
 
-          {/* Login Form */}
-          <form onSubmit={handleLogin} className="space-y-4">
+          {/* Login form */}
+          <form onSubmit={handleLogin} className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">E-Mail</label>
+              <label className="block text-[12.5px] font-medium text-[#0f1430] mb-1.5">E-Mail</label>
               <input
                 type="email"
                 value={email}
                 onChange={e => { setEmail(e.target.value); setError(''); }}
                 placeholder="name@beispiel.de"
-                className="input w-full"
+                className="w-full px-3.5 py-2.5 rounded-lg bg-white border border-[#1e1b4b]/12 text-[14px] text-[#0f1430] placeholder:text-[#1e1b4b]/35 focus:outline-none focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15 transition-all"
                 autoComplete="email"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">Passwort</label>
+              <label className="block text-[12.5px] font-medium text-[#0f1430] mb-1.5">Passwort</label>
               <div className="relative">
                 <input
                   type={showPw ? 'text' : 'password'}
                   value={password}
                   onChange={e => { setPassword(e.target.value); setError(''); }}
                   placeholder="••••••••"
-                  className="input w-full pr-10"
+                  className="w-full pl-3.5 pr-10 py-2.5 rounded-lg bg-white border border-[#1e1b4b]/12 text-[14px] text-[#0f1430] placeholder:text-[#1e1b4b]/35 focus:outline-none focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15 transition-all"
                   autoComplete="current-password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPw(!showPw)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#1e1b4b]/45 hover:text-[#0f1430] transition-colors cursor-pointer"
+                  aria-label={showPw ? 'Passwort verbergen' : 'Passwort anzeigen'}
                 >
-                  {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
             </div>
 
             {error && (
-              <div className="px-3 py-2.5 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20">
-                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+              <div className="px-3 py-2 rounded-lg bg-rose-50 border border-rose-200">
+                <p className="text-[12.5px] text-rose-700">{error}</p>
               </div>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-foreground text-background font-semibold text-sm hover:opacity-90 transition-all cursor-pointer disabled:opacity-60"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 mt-1 rounded-lg bg-[#0f1430] text-white font-semibold text-[13.5px] hover:bg-[#1a2050] transition-all cursor-pointer disabled:opacity-60"
             >
               {loading ? (
-                <div className="size-4 border-2 border-background/30 border-t-background rounded-full animate-spin" />
+                <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  <LogIn size={15} />
-                  Anmelden
+                  <LogIn size={14} /> Anmelden
                 </>
               )}
             </button>
           </form>
 
-          <p className="text-center text-xs text-muted-foreground mt-6">
-            Demo-Zugang: beliebige E-Mail + Passwort <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-foreground">demo</span>
+          {/* Demo hint */}
+          <p className="text-center text-[11.5px] text-[#1e1b4b]/55 mt-6">
+            Demo-Zugang: beliebige E-Mail · Passwort{' '}
+            <span className="font-mono bg-white px-1.5 py-0.5 rounded text-[#0f1430] border border-[#1e1b4b]/12">
+              demo
+            </span>
           </p>
         </div>
-        </div>
-      </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="px-6 sm:px-8 pb-6 sm:pb-8 flex items-center justify-between flex-wrap gap-2 text-[11px] text-[#1e1b4b]/45">
+        <span>© {new Date().getFullYear()} ImmoFreak</span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-1.5 rounded-full bg-emerald-500" />
+          100% lokal — deine Daten bleiben bei dir
+        </span>
+      </footer>
     </div>
   );
 }

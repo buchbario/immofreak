@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {
   User, Palette, Database, Info,
   Download, Upload, Trash2, Check, Building2, Landmark, Home, Zap, Wrench, LayoutDashboard,
-  KeyRound, Eye, EyeOff, Lock, AlertCircle,
+  KeyRound, Eye, EyeOff, Lock, AlertCircle, Settings as SettingsIcon,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
@@ -25,17 +25,17 @@ function Section({ title, description, icon: Icon, children }: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-card border border-card-line rounded-xl overflow-hidden">
-      <div className="px-5 py-4 border-b border-card-divider flex items-center gap-3">
-        <div className="size-9 rounded-lg bg-[#4F6BFF]/10 flex items-center justify-center shrink-0">
+    <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">
+      <div className="px-5 sm:px-6 py-4 border-b border-card-divider flex items-center gap-3">
+        <div className="size-9 rounded-[9px] bg-[#4F6BFF]/10 flex items-center justify-center shrink-0">
           <Icon size={16} className="text-[#4F6BFF]" />
         </div>
-        <div>
-          <h2 className="text-sm font-semibold text-foreground">{title}</h2>
-          <p className="text-xs text-muted-foreground">{description}</p>
+        <div className="min-w-0">
+          <h2 className="text-[13.5px] font-semibold text-foreground tracking-tight">{title}</h2>
+          <p className="text-[11.5px] text-muted-foreground leading-relaxed">{description}</p>
         </div>
       </div>
-      <div className="p-5">{children}</div>
+      <div className="p-5 sm:p-6">{children}</div>
     </div>
   );
 }
@@ -273,39 +273,41 @@ export function SettingsPage() {
 
   return (
     <div className="page-container">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Einstellungen</h1>
-          <p className="page-subtitle">Profil, {mode === 'buyhold' ? 'Vermieterdaten' : 'Kalkulations-Defaults'} &amp; Daten — aktueller Modus: <span className="font-semibold text-foreground">{mode === 'buyhold' ? 'Buy & Hold' : 'Fix & Flip'}</span></p>
+      {/* Header card matching the rest of the app */}
+      <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden mb-4 sm:mb-5">
+        <div className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 border-b border-card-divider">
+          <h1 className="text-[24px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight mb-1">
+            Einstellungen
+          </h1>
+          <p className="text-[13px] text-muted-foreground max-w-2xl leading-relaxed">
+            Profil, {mode === 'buyhold' ? 'Vermieterdaten' : 'Kalkulations-Defaults'} und Datenverwaltung — alle Einstellungen pro Modus.
+          </p>
+        </div>
+
+        {/* Underline tabs */}
+        <div className="px-5 sm:px-7 py-3 flex items-center gap-3 sm:gap-4 flex-wrap overflow-x-auto">
+          {TABS.map((t) => {
+            const Icon = t.icon;
+            const isActive = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={cn(
+                  'group relative inline-flex items-center gap-1.5 pb-2 -mb-3 text-[13px] font-medium transition-colors cursor-pointer whitespace-nowrap',
+                  isActive ? 'text-[#4F6BFF]' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                <Icon size={14} className="shrink-0" />
+                {t.label}
+                {isActive && <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-[#4F6BFF]" />}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-1 mb-5 p-1 bg-muted/40 rounded-lg w-fit">
-        {TABS.map((t) => {
-          const Icon = t.icon;
-          const isActive = tab === t.id;
-          return (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={cn(
-                // Always-present border prevents the 1px layout jitter when the
-                // active state toggles — only the border color changes.
-                'flex items-center gap-2 px-3.5 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer border',
-                isActive
-                  ? 'bg-[#4F6BFF] text-white border-[#4F6BFF] shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground border-transparent'
-              )}
-            >
-              <Icon size={14} />
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="space-y-5">
+      <div className="space-y-4 sm:space-y-5">
 
         {tab === 'allgemein' && (
           <>

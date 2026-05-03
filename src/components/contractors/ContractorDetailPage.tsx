@@ -43,37 +43,43 @@ export function ContractorDetailPage() {
 
   return (
     <div className="page-container">
-      <div className="page-header">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/handwerker')} className="cursor-pointer transition-colors text-muted-foreground hover:text-primary">
-            <ArrowLeft size={20} />
-          </button>
-          <div className="flex items-center gap-4">
-            <div
-              className="w-12 h-12 rounded-full flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)' }}
+      {/* Header card */}
+      <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-5 sm:p-6 mb-4 sm:mb-5">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={() => navigate('/handwerker')}
+              className="size-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-layer-hover transition-colors cursor-pointer shrink-0"
+              aria-label="Zurück"
             >
-              <span className="text-white font-bold text-lg">{contractor.name.charAt(0)}</span>
+              <ArrowLeft size={18} />
+            </button>
+            <div
+              className="size-12 rounded-full flex items-center justify-center shrink-0 ring-1 ring-white/40"
+              style={{ background: 'linear-gradient(135deg, #4F6BFF, #3b4eea)' }}
+            >
+              <span className="text-white font-bold text-[15px]">{contractor.name.charAt(0)}</span>
             </div>
-            <div>
-              <h1 className="page-title">{contractor.name}</h1>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="badge badge-blue">
-                  {contractor.trade}
-                </span>
-                {contractor.company && <span className="text-sm text-muted-foreground-2">{contractor.company}</span>}
+            <div className="min-w-0">
+              <h1 className="text-[22px] sm:text-[24px] font-bold text-foreground tracking-tight leading-tight truncate">
+                {contractor.name}
+              </h1>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                <span className="badge badge-blue">{contractor.trade}</span>
+                {contractor.company && (
+                  <span className="text-[12.5px] text-muted-foreground truncate">{contractor.company}</span>
+                )}
               </div>
             </div>
           </div>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => setShowEdit(true)} className="btn btn-md btn-secondary">
-            <Pencil size={14} />
-            Bearbeiten
-          </button>
-          <button onClick={() => setShowDelete(true)} className="btn btn-sm btn-danger">
-            <Trash2 size={14} />
-          </button>
+          <div className="flex gap-2 shrink-0">
+            <button onClick={() => setShowEdit(true)} className="btn btn-sm btn-secondary">
+              <Pencil size={13} /> Bearbeiten
+            </button>
+            <button onClick={() => setShowDelete(true)} className="btn btn-sm btn-ghost text-rose-600 dark:text-rose-400">
+              <Trash2 size={13} />
+            </button>
+          </div>
         </div>
       </div>
 

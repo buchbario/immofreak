@@ -7,7 +7,7 @@ import { MobileBottomNav } from './MobileBottomNav';
 import { TourOverlay } from '../tour/TourOverlay';
 import { useAppMode } from '../../context/AppModeContext';
 import { usePrelineInit } from '../../hooks/usePrelineInit';
-import { Menu, Search } from 'lucide-react';
+import { Menu } from 'lucide-react';
 
 export function AppLayout() {
   const { sidebarOpen, setSidebarOpenTransient } = useAppMode();
@@ -38,8 +38,11 @@ export function AppLayout() {
   }, [sidebarOpen]);
 
   return (
-    <div className="flex h-[100dvh] overflow-hidden bg-background">
-      {/* Mobile overlay — Tap schließt den Drawer transient (Desktop-Präferenz bleibt unberührt) */}
+    <div className="app-shell">
+      {/* Gradient background — soft pastels with blue/violet/rose tints */}
+      <div aria-hidden className="app-gradient-bg" />
+
+      {/* Mobile overlay for sidebar drawer */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/40 z-30 lg:hidden"
@@ -47,37 +50,30 @@ export function AppLayout() {
         />
       )}
 
-      <Sidebar onSearchClick={() => setSearchOpen(true)} />
+      <div className="relative flex h-[100dvh] overflow-hidden p-2 sm:p-3 gap-2 sm:gap-3">
+        <Sidebar onSearchClick={() => setSearchOpen(true)} />
 
-      <div className="flex-1 flex flex-col min-w-0 h-[100dvh] overflow-hidden">
-        {/* Top bar — only visible on mobile (logo centered) */}
-        <div className="relative sticky top-0 z-20 flex items-center h-12 px-2 flex-shrink-0 bg-card/90 backdrop-blur-sm border-b border-card-line lg:hidden">
-          <button
-            onClick={() => setSidebarOpenTransient(!sidebarOpen)}
-            aria-label="Menü"
-            className="size-9 rounded-lg flex items-center justify-center text-foreground hover:bg-layer-hover active:bg-layer-active cursor-pointer"
-          >
-            <Menu size={20} />
-          </button>
-          <img src="/logo.png" alt="ImmoFreak" className="h-6 object-contain absolute left-1/2 -translate-x-1/2 pointer-events-none" />
-          <div className="flex-1" />
-          <button onClick={() => setSearchOpen(true)} aria-label="Suchen" className="size-9 rounded-lg flex items-center justify-center text-foreground hover:bg-layer-hover active:bg-layer-active cursor-pointer">
-            <Search size={18} />
-          </button>
-          <NotificationBell />
+        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-card rounded-2xl border border-card-line shadow-[0_2px_8px_rgba(15,23,42,0.04)]">
+          {/* Mobile-only floating top bar — minimal, just menu + logo + bell */}
+          <div className="lg:hidden relative flex items-center justify-between h-12 px-3 flex-shrink-0 border-b border-card-divider">
+            <button
+              onClick={() => setSidebarOpenTransient(!sidebarOpen)}
+              aria-label="Menü"
+              className="size-9 -ml-1.5 rounded-lg flex items-center justify-center text-foreground hover:bg-layer-hover active:bg-layer-active cursor-pointer"
+            >
+              <Menu size={20} />
+            </button>
+            <img src="/logo.png" alt="ImmoFreak" className="h-6 object-contain absolute left-1/2 -translate-x-1/2 pointer-events-none" />
+            <NotificationBell />
+          </div>
+
+          <main className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
+            <Outlet />
+          </main>
+
+          {/* Mobile bottom navigation */}
+          <MobileBottomNav />
         </div>
-        {/* Desktop top bar */}
-        <div className="hidden lg:flex sticky top-0 z-20 items-center h-12 px-4 flex-shrink-0 bg-card/80 backdrop-blur-sm border-b border-card-line">
-          <div className="flex-1" />
-          <NotificationBell />
-        </div>
-
-        <main className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
-          <Outlet />
-        </main>
-
-        {/* Mobile bottom navigation */}
-        <MobileBottomNav />
       </div>
 
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />

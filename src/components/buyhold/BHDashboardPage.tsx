@@ -93,12 +93,21 @@ export function BHDashboardPage() {
   const lostRent = vacantUnits.reduce((s, u) => s + (u.targetRent || u.currentRent || avgUnitRent), 0);
   const befristeteContracts = allContracts.filter(c => c.contractType === 'befristet').length;
   const unbefristeteContracts = allContracts.filter(c => c.contractType === 'unbefristet').length;
-  const stages: { key: string; label: string; markerClass: string; barClass: string; primary: string; sub: string; empty: boolean }[] = [
+  const stages: {
+    key: string; label: string;
+    markerClass: string; barClass: string;
+    iconBg: string; iconColor: string;
+    Icon: React.ComponentType<{ size?: number; className?: string }>;
+    primary: string; sub: string; empty: boolean;
+  }[] = [
     {
       key: 'vermietet',
       label: 'Vermietet',
       markerClass: 'bg-emerald-500',
       barClass: 'bg-emerald-500',
+      iconBg: 'bg-emerald-100 dark:bg-emerald-500/15',
+      iconColor: 'text-emerald-700 dark:text-emerald-300',
+      Icon: KeyRound,
       primary: `${occupiedUnits.length} ${occupiedUnits.length === 1 ? 'Einheit' : 'Einheiten'}`,
       sub: `${fmtEur(totalMonthlyRent)} / Monat`,
       empty: occupiedUnits.length === 0,
@@ -108,6 +117,9 @@ export function BHDashboardPage() {
       label: 'Frei',
       markerClass: 'bg-rose-500',
       barClass: 'bg-rose-500',
+      iconBg: 'bg-rose-100 dark:bg-rose-500/15',
+      iconColor: 'text-rose-700 dark:text-rose-300',
+      Icon: Home,
       primary: `${vacantUnits.length} ${vacantUnits.length === 1 ? 'Einheit' : 'Einheiten'}`,
       sub: vacantUnits.length > 0 ? `${fmtEur(lostRent)} entgangen / M` : 'Kein Leerstand',
       empty: vacantUnits.length === 0,
@@ -117,6 +129,9 @@ export function BHDashboardPage() {
       label: 'Befristet',
       markerClass: 'bg-amber-500',
       barClass: 'bg-amber-500',
+      iconBg: 'bg-amber-100 dark:bg-amber-500/15',
+      iconColor: 'text-amber-700 dark:text-amber-300',
+      Icon: Clock,
       primary: `${befristeteContracts} ${befristeteContracts === 1 ? 'Vertrag' : 'Verträge'}`,
       sub: 'mit Enddatum',
       empty: befristeteContracts === 0,
@@ -126,6 +141,9 @@ export function BHDashboardPage() {
       label: 'Unbefristet',
       markerClass: 'bg-sky-500',
       barClass: 'bg-sky-500',
+      iconBg: 'bg-sky-100 dark:bg-sky-500/15',
+      iconColor: 'text-sky-700 dark:text-sky-300',
+      Icon: FileText,
       primary: `${unbefristeteContracts} ${unbefristeteContracts === 1 ? 'Vertrag' : 'Verträge'}`,
       sub: 'ohne Enddatum',
       empty: unbefristeteContracts === 0,
@@ -216,21 +234,19 @@ export function BHDashboardPage() {
 
   return (
     <div className="page-container">
-      {/* PAGE HEADER */}
-      <div className="page-header">
-        <div className="min-w-0">
-          <h1 className="page-title">Portfolio</h1>
-          <div className="flex items-center flex-wrap gap-x-2 gap-y-1 text-xs sm:text-sm text-muted-foreground mt-1">
-            <span><span className="font-semibold text-foreground">{properties.length} {properties.length === 1 ? 'Objekt' : 'Objekte'}</span> · {allUnits.length} Einheiten · {allTenants.length} Mieter</span>
-            <span className="size-[3px] rounded-full bg-muted-foreground/40" />
-            <span>Marktwert <span className="font-semibold text-foreground tabular-nums">{fmtEur(totalValue)}</span></span>
-            <span className="hidden sm:inline-block size-[3px] rounded-full bg-muted-foreground/40" />
-            <span className="hidden sm:inline">{dateFmtLong.format(new Date())}</span>
+      {/* HEADER CARD — matches the rest of the app's card-header pattern */}
+      <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-5 sm:p-7 mb-4 sm:mb-5">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-[24px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight mb-1">
+              Portfolio
+            </h1>
+            <p className="text-[13px] text-muted-foreground max-w-2xl leading-relaxed">
+              Übersicht aller Mietobjekte mit Belegung, Mieteinnahmen, Rendite und aktuellen Mieter-Aktivitäten auf einen Blick.
+            </p>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => navigate('/bh/objekte')} className="btn btn-md btn-primary">
-            <Plus size={16} />
+          <button onClick={() => navigate('/bh/objekte')} className="btn btn-sm btn-primary shrink-0">
+            <Plus size={14} />
             <span className="hidden sm:inline">Objekt anlegen</span>
             <span className="sm:hidden">Neu</span>
           </button>
@@ -318,58 +334,62 @@ export function BHDashboardPage() {
         </div>
       </div>
 
-      {/* PIPELINE / Belegungs-Übersicht */}
-      <div className="bg-card rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-5 sm:p-6 mb-6 sm:mb-8 border border-card-line">
-        <div className="flex items-center justify-between gap-3 mb-4 sm:mb-5">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <h2 className="text-[15px] font-semibold text-foreground tracking-tight">Belegungs-Übersicht</h2>
-            <span className="text-xs text-muted-foreground hidden sm:inline">
-              {allUnits.length} Einheiten · {allContracts.length} {allContracts.length === 1 ? 'Vertrag' : 'Verträge'}
-            </span>
-          </div>
+      {/* PIPELINE / Belegungs-Übersicht — Stage-Cards mit Akzent-Strip */}
+      <div className="mb-6 sm:mb-8">
+        <div className="flex items-center justify-between gap-3 mb-3 sm:mb-4 px-1">
+          <h2 className="text-[15px] font-semibold text-foreground tracking-tight">Belegungs-Übersicht</h2>
           <button
             onClick={() => navigate('/bh/mietvertraege')}
-            className="text-xs font-medium text-muted-foreground hover:text-foreground inline-flex items-center gap-1 transition-colors"
+            className="text-xs font-medium text-muted-foreground hover:text-foreground inline-flex items-center gap-1 transition-colors shrink-0"
           >
-            Verträge ansehen <ChevronRight size={12} />
+            Verträge <ChevronRight size={12} />
           </button>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-1">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {stages.map((s) => {
             const widthPct = totalStageVolume > 0 && (s.key === 'vermietet' || s.key === 'frei')
               ? Math.round(((s.key === 'vermietet' ? occupiedUnits.length : vacantUnits.length) / totalStageVolume) * 100)
               : (s.empty ? 0 : 100);
             return (
-              <div
+              <button
                 key={s.key}
-                className="p-3 rounded-[9px] hover:bg-layer-hover transition-colors cursor-pointer"
                 onClick={() => navigate(s.key === 'befristet' || s.key === 'unbefristet' ? '/bh/mietvertraege' : '/bh/objekte')}
-              >
-                <div className="flex items-center justify-between mb-2.5">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className={cn('size-[7px] rounded-full shrink-0', s.empty ? 'bg-muted-foreground/30' : s.markerClass)} />
-                    <span className="text-xs font-semibold text-foreground/85 truncate">{s.label}</span>
-                  </div>
-                </div>
-                {s.empty ? (
-                  <>
-                    <p className="text-sm text-muted-foreground font-medium leading-[1.1] mb-0.5">Noch leer</p>
-                    <p className="text-[11px] text-muted-foreground/80">—</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-[18px] font-bold text-foreground leading-[1.1] tabular-nums tracking-tight mb-0.5">{s.primary}</p>
-                    <p className="text-[11px] text-muted-foreground tabular-nums">{s.sub}</p>
-                  </>
+                className={cn(
+                  'group relative text-left cursor-pointer overflow-hidden rounded-2xl bg-card border border-card-line p-4 transition-all',
+                  'shadow-[0_1px_2px_rgba(15,23,42,0.04)]',
+                  s.empty
+                    ? 'opacity-70 hover:opacity-100'
+                    : 'hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(15,23,42,0.06)]',
                 )}
-                <div className="mt-2.5 h-[3px] bg-layer-hover rounded-full overflow-hidden">
+              >
+                <div
+                  aria-hidden
+                  className={cn('absolute left-0 right-0 top-0 h-[3px]', s.empty ? 'bg-muted-foreground/15' : s.barClass)}
+                />
+
+                <div className="flex items-center gap-1.5 mb-3">
+                  <span className={cn('size-1.5 rounded-full shrink-0', s.empty ? 'bg-muted-foreground/30' : s.markerClass)} />
+                  <span className="text-[12px] font-semibold text-foreground/80 truncate">{s.label}</span>
+                </div>
+
+                <p className={cn(
+                  'text-[20px] leading-[1.1] tabular-nums tracking-tight font-bold mb-1',
+                  s.empty ? 'text-muted-foreground/50' : 'text-foreground',
+                )}>
+                  {s.empty ? '—' : s.primary}
+                </p>
+                <p className="text-[10.5px] text-muted-foreground tabular-nums">
+                  {s.empty ? 'Keine Einträge' : s.sub}
+                </p>
+
+                <div className="mt-3 h-[3px] bg-layer-hover rounded-full overflow-hidden">
                   <div
                     className={cn('h-full rounded-full transition-all duration-700', s.empty ? 'bg-muted-foreground/20' : s.barClass)}
-                    style={{ width: s.empty ? '0%' : `${Math.max(8, widthPct)}%` }}
+                    style={{ width: s.empty ? '0%' : `${Math.max(10, widthPct)}%` }}
                   />
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>

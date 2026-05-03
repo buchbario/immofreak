@@ -72,73 +72,93 @@ export function TenantListPage() {
 
   return (
     <div className="page-container">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Mieter</h1>
-          <p className="page-subtitle">{allTenants.length} Mieter</p>
-        </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="btn btn-md btn-primary"
-        >
-          <Plus size={15} />
-          <span className="hidden sm:inline">Mieter anlegen</span>
-          <span className="sm:hidden">Neu</span>
-        </button>
-      </div>
-
-      {/* Search + Filters */}
-      <div className="space-y-3 mb-6">
-        <div className="relative max-w-sm">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
-            placeholder="Name, E-Mail oder Objekt suchen..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="input pl-9"
-          />
-        </div>
-        <div className="flex gap-1.5">
-          {([
-            { key: 'all', label: 'Alle' },
-            { key: 'expiring', label: `Auslaufend${expiringCount > 0 ? ` (${expiringCount})` : ''}` },
-            { key: 'unbefristet', label: 'Unbefristet' },
-          ] as const).map(f => (
-            <button key={f.key} onClick={() => setFilter(f.key)}
-              className={cn(
-                'inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer',
-                filter === f.key ? 'bg-[#4F6BFF]/10 text-[#4F6BFF]' : 'bg-layer-hover text-foreground/80 hover:bg-layer-active'
-              )}>
-              {f.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {allTenants.length === 0 ? (
-        <div className="surface empty-state">
-          <div className="size-12 rounded-xl bg-[#4F6BFF]/10 flex items-center justify-center mb-4">
-            <Users size={22} className="text-[#4F6BFF]" />
-          </div>
-          <p className="text-sm font-semibold mb-1 text-foreground">Noch keine Mieter</p>
-          <p className="text-sm mb-5 text-muted-foreground-2">Lege deinen ersten Mieter an, um Mietverträge und Zahlungen zu verwalten.</p>
-          <button
-            onClick={() => setShowForm(true)}
-            className="btn btn-md btn-primary"
-          >
-            <Plus size={15} /> Mieter anlegen
-          </button>
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="surface empty-state">
-          <div className="size-12 rounded-xl bg-[#4F6BFF]/10 flex items-center justify-center mb-4">
-            <Search size={22} className="text-[#4F6BFF]" />
-          </div>
-          <p className="text-sm font-semibold mb-1 text-foreground">Keine Mieter gefunden</p>
-          <p className="text-sm text-muted-foreground-2">Versuche einen anderen Suchbegriff oder Filter.</p>
-        </div>
-      ) : (
         <>
+          <div className="page-header">
+            <div>
+              <h1 className="page-title">Mieter</h1>
+              <p className="page-subtitle">Lege deinen ersten Mieter an.</p>
+            </div>
+            <button onClick={() => setShowForm(true)} className="btn btn-md btn-primary">
+              <Plus size={15} /> Mieter anlegen
+            </button>
+          </div>
+          <div className="surface empty-state">
+            <div className="size-12 rounded-xl bg-[#4F6BFF]/10 flex items-center justify-center mb-4">
+              <Users size={22} className="text-[#4F6BFF]" />
+            </div>
+            <p className="text-sm font-semibold mb-1 text-foreground">Noch keine Mieter</p>
+            <p className="text-sm mb-5 text-muted-foreground-2">Lege deinen ersten Mieter an, um Mietverträge und Zahlungen zu verwalten.</p>
+            <button onClick={() => setShowForm(true)} className="btn btn-md btn-primary">
+              <Plus size={15} /> Mieter anlegen
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">
+          {/* Header */}
+          <div className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 border-b border-card-divider">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="min-w-0 flex-1">
+                <h1 className="text-[24px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight mb-1">Mieter</h1>
+                <p className="text-[13px] text-muted-foreground max-w-2xl leading-relaxed">
+                  Alle Mieter mit Mietverträgen, Laufzeiten und Kontaktdaten an einem Ort.
+                </p>
+              </div>
+              <button onClick={() => setShowForm(true)} className="btn btn-sm btn-primary shrink-0">
+                <Plus size={14} /> Neuer Mieter
+              </button>
+            </div>
+          </div>
+
+          {/* Tabs + Search */}
+          <div className="px-5 sm:px-7 py-3 border-b border-card-divider flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-3 sm:gap-4 -mb-3">
+              {([
+                { key: 'all', label: 'Alle', cnt: allTenants.length },
+                { key: 'expiring', label: 'Auslaufend', cnt: expiringCount },
+                { key: 'unbefristet', label: 'Unbefristet', cnt: allTenants.filter((t) => !t.leaseEnd).length },
+              ] as const).map((f) => (
+                <button
+                  key={f.key}
+                  onClick={() => setFilter(f.key)}
+                  className={cn(
+                    'group relative inline-flex items-center gap-1.5 pb-2 text-[13px] font-medium transition-colors cursor-pointer',
+                    filter === f.key ? 'text-[#4F6BFF]' : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {f.label}
+                  <span className={cn(
+                    'inline-flex items-center justify-center min-w-[20px] h-[18px] px-1.5 rounded-full text-[10.5px] font-semibold tabular-nums',
+                    filter === f.key ? 'bg-[#4F6BFF]/15 text-[#4F6BFF]' : 'bg-layer-hover text-muted-foreground/80',
+                  )}>
+                    {f.cnt}
+                  </span>
+                  {filter === f.key && <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-[#4F6BFF]" />}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex-1" />
+
+            <div className="relative">
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Suchen..."
+                className="h-8 pl-7 pr-3 rounded-md bg-layer-hover text-[12px] text-foreground placeholder:text-muted-foreground/70 border border-transparent hover:border-card-line focus:bg-card focus:border-[#4F6BFF]/40 focus:outline-none focus:ring-2 focus:ring-[#4F6BFF]/15 transition-all w-[160px] focus:w-[220px]"
+              />
+            </div>
+          </div>
+
+          {filtered.length === 0 ? (
+            <div className="text-center py-10 px-5">
+              <Search size={20} className="mx-auto mb-2 text-muted-foreground/60" />
+              <p className="text-[13px] text-muted-foreground">Keine Mieter gefunden.</p>
+            </div>
+          ) : (
+            <>
           {/* Desktop: table */}
           <div className="surface overflow-hidden hidden md:block" data-tour="tenant-list">
             <div className="overflow-x-auto">
@@ -198,9 +218,6 @@ export function TenantListPage() {
                 </tbody>
               </table>
             </div>
-            <div className="px-4 py-3 border-t border-card-divider">
-              <p className="text-xs text-muted-foreground">{filtered.length} von {allTenants.length} Mieter</p>
-            </div>
           </div>
 
           {/* Mobile: card rows */}
@@ -249,9 +266,17 @@ export function TenantListPage() {
                 </div>
               );
             })}
-            <p className="text-xs text-muted-foreground text-center pt-2">{filtered.length} von {allTenants.length} Mieter</p>
           </div>
-        </>
+            </>
+          )}
+
+          {/* Footer counter inside card */}
+          <div className="px-5 sm:px-7 py-3 border-t border-card-divider">
+            <p className="text-[11.5px] text-muted-foreground tabular-nums">
+              {filtered.length} von {allTenants.length} {allTenants.length === 1 ? 'Mieter' : 'Mieter'}
+            </p>
+          </div>
+        </div>
       )}
 
       {showForm && (

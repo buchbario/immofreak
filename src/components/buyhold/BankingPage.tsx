@@ -13,6 +13,7 @@ import { useTrash } from '../../hooks/useTrash';
 import { cascadeBankAccountToTrash } from '../../lib/cascadeDelete';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { cn, formatDate } from '../../lib/utils';
+import { PageCard } from '../ui/PageCard';
 import type { BankTransaction } from '../../types';
 
 type Tab = 'konten' | 'transaktionen' | 'mieteingang';
@@ -672,38 +673,36 @@ export function BankingPage() {
     return opts;
   }, []);
 
+  const totalBalance = accounts.reduce((s, a) => s + a.balance, 0);
+
   return (
     <div className="page-container">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Banking</h1>
-          <p className="page-subtitle">
-            {accounts.length} {accounts.length === 1 ? 'Konto' : 'Konten'} verbunden · {transactions.length} Transaktionen
-          </p>
-        </div>
-        <button onClick={() => setShowConnect(true)} className="btn btn-md btn-primary">
-          <Plus size={15} /> Konto verbinden
-        </button>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-1 mb-6 p-1 bg-muted/50 rounded-xl w-fit border border-card-line">
-        {tabs.map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer border',
-              activeTab === tab.key
-                ? 'bg-card text-foreground shadow-sm border-card-line'
-                : 'text-muted-foreground hover:text-foreground border-transparent'
+      <PageCard
+        title="Banking"
+        description="Verbundene Konten, Transaktionen und automatischer Mieteingang-Abgleich an einem Ort."
+        meta={
+          <>
+            <Landmark size={11} /> {accounts.length} {accounts.length === 1 ? 'Konto' : 'Konten'}
+            <span className="size-[3px] rounded-full bg-muted-foreground/40 mx-0.5" />
+            <span>{transactions.length} Transaktionen</span>
+            {accounts.length > 0 && (
+              <>
+                <span className="size-[3px] rounded-full bg-muted-foreground/40 mx-0.5" />
+                <span className="tabular-nums font-medium text-foreground">{totalBalance.toLocaleString('de-DE', { maximumFractionDigits: 0 })} € Saldo</span>
+              </>
             )}
-          >
-            <tab.icon size={15} />
-            {tab.label}
+          </>
+        }
+        actions={
+          <button onClick={() => setShowConnect(true)} className="btn btn-sm btn-primary">
+            <Plus size={14} /> Konto verbinden
           </button>
-        ))}
-      </div>
+        }
+        tabs={tabs.map(tab => ({ key: tab.key, label: tab.label }))}
+        activeTab={activeTab}
+        onTabChange={(k) => setActiveTab(k as Tab)}
+      >
+        <div className="p-5 sm:p-6">
 
       {/* ═══ KONTEN TAB ═══ */}
       {activeTab === 'konten' && (
@@ -1037,6 +1036,9 @@ export function BankingPage() {
           )}
         </div>
       )}
+
+        </div>
+      </PageCard>
 
       {showConnect && (
         <ConnectModal onClose={() => setShowConnect(false)} onConnect={handleConnect} />
