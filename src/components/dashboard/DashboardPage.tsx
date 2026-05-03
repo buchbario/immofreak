@@ -32,10 +32,6 @@ const STATUS_CFG: Record<ProjectStatus, {
   Abgeschlossen: { label: 'Fertig',    marker: 'bg-emerald-500', bar: 'bg-emerald-500', iconBg: 'bg-emerald-100 dark:bg-emerald-500/15', iconColor: 'text-emerald-700 dark:text-emerald-300', tagBg: 'bg-emerald-100 dark:bg-emerald-500/15', tagText: 'text-emerald-700 dark:text-emerald-300', Icon: Check },
 };
 
-const dateFmtLong = new Intl.DateTimeFormat('de-DE', {
-  weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-});
-
 const dateFmtRelativeShort = new Intl.RelativeTimeFormat('de-DE', { numeric: 'auto' });
 
 function formatRelative(iso: string): string {

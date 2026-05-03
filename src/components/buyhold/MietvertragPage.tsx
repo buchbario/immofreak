@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  FileText, Search, ArrowRight, CalendarClock,
+  FileText, Search, ArrowRight,
 } from 'lucide-react';
 import { useRentalContracts } from '../../hooks/useRentalContracts';
 import { useTenants } from '../../hooks/useTenants';
@@ -66,7 +66,6 @@ export function MietvertragPage() {
   const expiringCount = enriched.filter((c) => c.isExpiring).length;
   const unbefristetCount = enriched.filter((c) => c.contractType === 'unbefristet').length;
   const befristetCount = enriched.filter((c) => c.contractType === 'befristet').length;
-  const totalRent = enriched.reduce((s, c) => s + c.warmmiete, 0);
 
   return (
     <div className="page-container">

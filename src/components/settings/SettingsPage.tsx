@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {
   User, Palette, Database, Info,
   Download, Upload, Trash2, Check, Building2, Landmark, Home, Zap, Wrench, LayoutDashboard,
-  KeyRound, Eye, EyeOff, Lock, AlertCircle, Settings as SettingsIcon,
+  KeyRound, Eye, EyeOff, Lock, AlertCircle,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { ConfirmDialog } from '../ui/ConfirmDialog';

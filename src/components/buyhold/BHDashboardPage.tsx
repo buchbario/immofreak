@@ -12,10 +12,6 @@ import { useRentalContracts } from '../../hooks/useRentalContracts';
 import { useTasks } from '../../hooks/useTasks';
 import { cn } from '../../lib/utils';
 
-const dateFmtLong = new Intl.DateTimeFormat('de-DE', {
-  weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-});
-
 const dateFmtRelativeShort = new Intl.RelativeTimeFormat('de-DE', { numeric: 'auto' });
 
 function formatRelative(iso: string): string {
