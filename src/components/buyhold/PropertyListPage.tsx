@@ -97,30 +97,34 @@ export function PropertyListPage() {
             </div>
           </div>
 
-          {/* View toggle + Search */}
+          {/* View toggle + Search — toggle deutlich größer und mit klarer Active-Farbe */}
           <div className="px-5 sm:px-7 py-3 border-b border-card-divider flex items-center gap-3 flex-wrap">
-            <div className="inline-flex items-center bg-layer-hover rounded-md p-[3px] gap-[2px]">
+            <div className="inline-flex items-center bg-layer-hover rounded-lg p-1 gap-1 border border-card-line">
               <button
                 onClick={() => setViewMode('grid')}
                 className={cn(
-                  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[5px] text-[12px] font-medium transition-colors cursor-pointer',
+                  'inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-[13px] font-semibold transition-all cursor-pointer',
                   viewMode === 'grid'
-                    ? 'bg-card text-foreground shadow-[0_1px_2px_rgba(15,23,42,0.06)]'
-                    : 'text-muted-foreground hover:text-foreground',
+                    ? 'bg-[#4F6BFF] text-white shadow-[0_1px_2px_rgba(79,107,255,0.25)]'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-card/50',
                 )}
+                title="Kachel-Ansicht"
               >
-                <LayoutGrid size={12} /> Kacheln
+                <LayoutGrid size={14} strokeWidth={viewMode === 'grid' ? 2.4 : 2} />
+                Kacheln
               </button>
               <button
                 onClick={() => setViewMode('list')}
                 className={cn(
-                  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[5px] text-[12px] font-medium transition-colors cursor-pointer',
+                  'inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-[13px] font-semibold transition-all cursor-pointer',
                   viewMode === 'list'
-                    ? 'bg-card text-foreground shadow-[0_1px_2px_rgba(15,23,42,0.06)]'
-                    : 'text-muted-foreground hover:text-foreground',
+                    ? 'bg-[#4F6BFF] text-white shadow-[0_1px_2px_rgba(79,107,255,0.25)]'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-card/50',
                 )}
+                title="Listen-Ansicht"
               >
-                <List size={12} /> Liste
+                <List size={14} strokeWidth={viewMode === 'list' ? 2.4 : 2} />
+                Liste
               </button>
             </div>
 
@@ -154,96 +158,87 @@ export function PropertyListPage() {
               const occupancyRate = units.length > 0 ? (occupied / units.length) * 100 : 0;
               const cover = getCover(p.id);
 
+              const occState = occupancyRate === 100 ? 'full' : occupancyRate > 0 ? 'partial' : 'empty';
+              const renditeState = rendite >= 4 ? 'good' : rendite >= 2.5 ? 'medium' : 'low';
+
               return (
                 <div
                   key={p.id}
-                  className="group bg-card border border-card-line rounded-2xl overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:border-[#4F6BFF]/30 hover:-translate-y-0.5"
+                  className="group flex flex-col bg-card border border-card-line rounded-2xl overflow-hidden cursor-pointer transition-all hover:shadow-[0_10px_28px_-8px_rgba(15,23,42,0.14)] hover:border-[#4F6BFF]/40 hover:-translate-y-0.5"
                   onClick={() => navigate(`/bh/objekte/${p.id}`)}
                 >
-                  {/* Cover */}
-                  <div className="relative h-40 overflow-hidden">
+                  {/* Cover — clean, with tiny status chip top-left only */}
+                  <div className="relative aspect-[16/9] overflow-hidden bg-card-line/30">
                     {cover ? (
                       <img
                         src={cover}
                         alt={p.name}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
                       />
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-[#4F6BFF] via-[#6B7FFF] to-[#8B9FFF] flex items-center justify-center">
-                        <div className="size-16 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center">
-                          <Building2 size={28} className="text-white/70" />
-                        </div>
+                      <div className="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+                        <Building2 size={32} className="text-slate-400" strokeWidth={1.5} />
                       </div>
                     )}
-                    {/* Gradient overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-
-                    {/* Rendite badge */}
-                    <div className={cn(
-                      'absolute top-3 right-3 px-2.5 py-1 rounded-lg text-xs font-bold backdrop-blur-md',
-                      rendite >= 4
-                        ? 'bg-emerald-500/90 text-white'
-                        : rendite >= 2.5
-                          ? 'bg-amber-500/90 text-white'
-                          : 'bg-red-500/90 text-white'
-                    )}>
-                      <div className="flex items-center gap-1">
-                        <TrendingUp size={11} />
-                        {rendite.toFixed(1)}%
-                      </div>
-                    </div>
-
-                    {/* Title on cover */}
-                    <div className="absolute bottom-0 left-0 right-0 p-4">
-                      <h3 className="text-[15px] font-bold text-white truncate drop-shadow-md">{p.name}</h3>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <MapPin size={11} className="text-white/70" />
-                        <span className="text-xs text-white/80 truncate">{p.address}</span>
-                      </div>
+                    {/* Single subtle status chip (no overlay needed since cover is decoupled from title) */}
+                    <div className="absolute top-3 left-3">
+                      <span className={cn(
+                        'inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[10px] font-semibold backdrop-blur-md',
+                        occState === 'full' && 'bg-emerald-500/90 text-white',
+                        occState === 'partial' && 'bg-amber-500/90 text-white',
+                        occState === 'empty' && 'bg-rose-500/90 text-white',
+                      )}>
+                        <span className="size-1.5 rounded-full bg-white/95" />
+                        {occState === 'full' ? 'Vollbelegt' : occState === 'partial' ? 'Teilbelegt' : 'Leerstand'}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Stats */}
-                  <div className="p-4">
-                    <div className="grid grid-cols-3 gap-3 mb-4">
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Kaufpreis</p>
-                        <p className="text-sm font-bold tabular-nums text-foreground">{fmt(p.purchasePrice)} €</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Marktwert</p>
-                        <p className="text-sm font-bold tabular-nums text-foreground">{fmt(p.currentValue)} €</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Miete/M</p>
-                        <p className="text-sm font-bold tabular-nums text-foreground">{fmt(monthlyRent)} €</p>
+                  {/* Body — clear hierarchy */}
+                  <div className="flex-1 flex flex-col p-4">
+                    {/* Title block */}
+                    <div className="mb-3.5">
+                      <h3 className="text-[15.5px] font-semibold text-foreground leading-snug tracking-tight line-clamp-1 group-hover:text-[#4F6BFF] transition-colors">
+                        {p.name}
+                      </h3>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <MapPin size={12} className="text-muted-foreground shrink-0" />
+                        <span className="text-[12px] text-muted-foreground truncate">{p.address}</span>
                       </div>
                     </div>
 
-                    {/* Footer row */}
-                    <div className="flex items-center justify-between pt-3 border-t border-card-divider">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-1.5">
-                          <Home size={13} className="text-muted-foreground" />
-                          <span className="text-xs font-medium text-muted-foreground">{units.length} Einheiten</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <Users size={13} className="text-muted-foreground" />
-                          <span className="text-xs font-medium text-muted-foreground">{occupied}/{units.length}</span>
-                        </div>
+                    {/* KPI cells — 2x2 grid in a tinted container */}
+                    <div className="grid grid-cols-2 gap-px rounded-xl overflow-hidden bg-card-line/60 mb-3.5">
+                      <KpiCell label="Marktwert" value={`${fmt(p.currentValue)} €`} />
+                      <KpiCell label="Miete / Monat" value={`${fmt(monthlyRent)} €`} />
+                      <KpiCell label="Einheiten" value={`${units.length}`} sub={`${occupied} belegt`} />
+                      <KpiCell
+                        label="Bruttorendite"
+                        value={`${rendite.toFixed(1)} %`}
+                        valueClass={cn(
+                          renditeState === 'good' && 'text-emerald-600',
+                          renditeState === 'medium' && 'text-amber-600',
+                          renditeState === 'low' && 'text-rose-600',
+                        )}
+                      />
+                    </div>
+
+                    {/* Occupancy bar pinned to bottom */}
+                    <div className="mt-auto">
+                      <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground mb-1.5">
+                        <span>Belegung</span>
+                        <span className="tabular-nums">{occupied}/{units.length}</span>
                       </div>
-                      {/* Occupancy bar */}
-                      <div className="flex items-center gap-2">
-                        <div className="w-14 h-1.5 rounded-full overflow-hidden bg-muted/80">
-                          <div
-                            className="h-full rounded-full transition-all"
-                            style={{
-                              width: `${occupancyRate}%`,
-                              background: occupancyRate === 100 ? 'var(--success)' : occupancyRate >= 50 ? 'var(--warning)' : 'var(--danger)',
-                            }}
-                          />
-                        </div>
-                        <span className="text-[10px] font-bold tabular-nums text-muted-foreground">{Math.round(occupancyRate)}%</span>
+                      <div className="h-1.5 w-full rounded-full overflow-hidden bg-card-line/80">
+                        <div
+                          className={cn(
+                            'h-full rounded-full transition-all',
+                            occState === 'full' && 'bg-emerald-500',
+                            occState === 'partial' && 'bg-amber-500',
+                            occState === 'empty' && 'bg-rose-500',
+                          )}
+                          style={{ width: `${Math.max(occupancyRate, occState === 'empty' ? 4 : 0)}%` }}
+                        />
                       </div>
                     </div>
                   </div>
@@ -414,6 +409,36 @@ export function PropertyListPage() {
           onClose={() => setShowForm(false)}
           onSave={(data) => { createProperty(data); setShowForm(false); }}
         />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Kompakte KPI-Zelle fürs neue Property-Card-Layout: Label oben (uppercase tiny),
+ * Value mittig (sm font-semibold), optionaler Sub-Hint darunter (xs muted).
+ * Liegt in einem Grid mit `gap-px` + `bg-card-line/60` auf der Card → ergibt
+ * sauber getrennte Zellen ohne harte Border.
+ */
+function KpiCell({
+  label,
+  value,
+  sub,
+  valueClass,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  valueClass?: string;
+}) {
+  return (
+    <div className="bg-card p-2.5">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground leading-none">{label}</p>
+      <p className={cn('text-[14px] font-semibold tabular-nums text-foreground mt-1.5 leading-tight', valueClass)}>
+        {value}
+      </p>
+      {sub && (
+        <p className="text-[10.5px] text-muted-foreground tabular-nums mt-0.5 leading-tight">{sub}</p>
       )}
     </div>
   );

@@ -394,8 +394,8 @@ export function ProjectDetailPage() {
             </div>
           </div>
 
-          {/* ── Tabs — horizontal scrollable on mobile ── */}
-          <div className="border-b border-card-line mb-5 sm:mb-6 overflow-x-auto scroll-x -mx-4 sm:mx-0 px-4 sm:px-0">
+          {/* ── Tabs — horizontal scrollable on mobile, scrollbar visuell ausgeblendet ── */}
+          <div className="border-b border-card-line mb-5 sm:mb-6 overflow-x-auto no-scrollbar -mx-4 sm:mx-0 px-4 sm:px-0">
             <div className="flex gap-0 w-max sm:w-auto">
               {TABS.map((tab) => (
                 <button

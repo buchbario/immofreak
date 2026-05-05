@@ -1058,17 +1058,17 @@ export function BerichtePage() {
 
   return (
     <div className="page-container">
-      <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">
-        {/* Header */}
-        <div className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 border-b border-card-divider">
-          <h1 className="text-[24px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight mb-1">
-            Berichte
-          </h1>
-          <p className="text-[13px] text-muted-foreground max-w-2xl leading-relaxed">
-            Rechtssichere Auswertungen für Steuer, Mieter, Banken und Behörden — gruppiert nach Anwendungsfall.
-          </p>
-        </div>
+      {/* Flat header */}
+      <div className="mb-5 sm:mb-6 px-1">
+        <h1 className="text-[26px] sm:text-[30px] font-bold text-foreground tracking-tight leading-[1.15] mb-1.5">
+          Berichte
+        </h1>
+        <p className="text-[14px] text-muted-foreground max-w-2xl leading-relaxed">
+          Rechtssichere Auswertungen für Steuer, Mieter, Banken und Behörden — gruppiert nach Anwendungsfall.
+        </p>
+      </div>
 
+      <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">
         {/* Reports grouped by section */}
         <div className="p-5 sm:p-6 space-y-6">
           {SECTIONS.map((sec) => {

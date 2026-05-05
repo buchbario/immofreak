@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Plus, Building2, Search, List, Kanban, MoreHorizontal, GripVertical,
+  MapPin,
 } from 'lucide-react';
 import {
   DndContext,
@@ -312,28 +313,32 @@ export function ProjectListPage() {
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            {/* View Toggle */}
-            <div className="flex items-center bg-card border border-card-line rounded-lg p-0.5">
+            {/* View Toggle — prominent, matches PropertyListPage */}
+            <div className="inline-flex items-center bg-layer-hover rounded-lg p-1 gap-1 border border-card-line">
               <button
                 onClick={() => setViewMode('list')}
-                className={`flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                className={cn(
+                  'inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-[13px] font-semibold transition-all cursor-pointer',
                   viewMode === 'list'
-                    ? 'bg-[#4F6BFF] text-white'
-                    : 'text-muted-foreground-2'
-                }`}
+                    ? 'bg-[#4F6BFF] text-white shadow-[0_1px_2px_rgba(79,107,255,0.25)]'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-card/50',
+                )}
+                title="Listen-Ansicht"
               >
-                <List size={14} />
+                <List size={14} strokeWidth={viewMode === 'list' ? 2.4 : 2} />
                 Liste
               </button>
               <button
                 onClick={() => setViewMode('kanban')}
-                className={`flex items-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                className={cn(
+                  'inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-[13px] font-semibold transition-all cursor-pointer',
                   viewMode === 'kanban'
-                    ? 'bg-[#4F6BFF] text-white'
-                    : 'text-muted-foreground-2'
-                }`}
+                    ? 'bg-[#4F6BFF] text-white shadow-[0_1px_2px_rgba(79,107,255,0.25)]'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-card/50',
+                )}
+                title="Kanban-Ansicht"
               >
-                <Kanban size={14} />
+                <Kanban size={14} strokeWidth={viewMode === 'kanban' ? 2.4 : 2} />
                 Kanban
               </button>
             </div>
@@ -444,85 +449,88 @@ export function ProjectListPage() {
               );
               const cover = projectPhotos.find(p => p.projectId === project.id)?.dataUrl;
 
+              const statusConf = {
+                Akquise:       { dot: 'bg-blue-500',    pill: 'bg-blue-50 text-blue-700 ring-blue-200/60' },
+                Planung:       { dot: 'bg-amber-500',   pill: 'bg-amber-50 text-amber-700 ring-amber-200/60' },
+                Sanierung:     { dot: 'bg-orange-500',  pill: 'bg-orange-50 text-orange-700 ring-orange-200/60' },
+                Verkauf:       { dot: 'bg-emerald-500', pill: 'bg-emerald-50 text-emerald-700 ring-emerald-200/60' },
+                Abgeschlossen: { dot: 'bg-slate-400',   pill: 'bg-slate-50 text-slate-700 ring-slate-200/60' },
+              }[project.status];
+
               return (
                 <div
                   key={project.id}
                   onClick={() => navigate(`/projekte/${project.id}`)}
-                  className="group bg-card border border-card-line rounded-2xl overflow-hidden cursor-pointer transition-all hover:shadow-lg hover:border-[#4F6BFF]/30 hover:-translate-y-0.5"
+                  className="group flex flex-col bg-card border border-card-line rounded-2xl overflow-hidden cursor-pointer transition-all hover:shadow-[0_10px_28px_-8px_rgba(15,23,42,0.14)] hover:border-[#4F6BFF]/40 hover:-translate-y-0.5"
                 >
-                  {/* Cover */}
-                  <div className="relative h-36 overflow-hidden">
+                  {/* Cover — clean image, no overlay or title */}
+                  <div className="relative aspect-[16/9] overflow-hidden bg-card-line/30">
                     {cover ? (
-                      <img src={cover} alt={project.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      <img
+                        src={cover}
+                        alt={project.name}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                      />
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-[#4F6BFF] via-[#6B7FFF] to-[#8B9FFF] flex items-center justify-center">
-                        <div className="size-14 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center">
-                          <Building2 size={24} className="text-white/70" />
-                        </div>
+                      <div className="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+                        <Building2 size={32} className="text-slate-400" strokeWidth={1.5} />
                       </div>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                  </div>
 
-                    {/* Status badge */}
-                    <div className="absolute top-3 right-3">
+                  {/* Body — clear hierarchy */}
+                  <div className="flex-1 flex flex-col p-4">
+                    {/* Title + status pill */}
+                    <div className="flex items-start justify-between gap-3 mb-1">
+                      <h3 className="text-[15.5px] font-semibold text-foreground leading-snug tracking-tight line-clamp-1 group-hover:text-[#4F6BFF] transition-colors">
+                        {project.name}
+                      </h3>
                       <span className={cn(
-                        'px-2.5 py-1 rounded-lg text-[11px] font-bold backdrop-blur-md flex items-center gap-1.5',
-                        project.status === 'Akquise' && 'bg-blue-500/90 text-white',
-                        project.status === 'Planung' && 'bg-amber-500/90 text-white',
-                        project.status === 'Sanierung' && 'bg-orange-500/90 text-white',
-                        project.status === 'Verkauf' && 'bg-emerald-500/90 text-white',
-                        project.status === 'Abgeschlossen' && 'bg-gray-500/90 text-white',
+                        'shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-semibold ring-1 ring-inset',
+                        statusConf.pill,
                       )}>
-                        <span className="size-1.5 rounded-full bg-white/80" />
+                        <span className={cn('size-1.5 rounded-full', statusConf.dot)} />
                         {project.status}
                       </span>
                     </div>
-
-                    {/* Title on cover */}
-                    <div className="absolute bottom-0 left-0 right-0 p-4">
-                      <h3 className="text-[15px] font-bold text-white truncate drop-shadow-md">{project.name}</h3>
-                      {project.address && (
-                        <p className="text-xs text-white/80 truncate mt-0.5">{project.address}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Body */}
-                  <div className="p-4">
-                    {/* Budget bar */}
-                    <div className="mb-4">
-                      <div className="flex justify-between text-xs mb-1.5">
-                        <span className="text-muted-foreground font-medium">Budget</span>
-                        <span className="tabular-nums text-muted-foreground">{formatCurrency(spent)} / {formatCurrency(project.renovationBudget)}</span>
+                    {project.address && (
+                      <div className="flex items-center gap-1 mb-3.5">
+                        <MapPin size={12} className="text-muted-foreground shrink-0" />
+                        <span className="text-[12px] text-muted-foreground truncate">{project.address}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-muted/80">
-                          <div
-                            className={cn('h-full rounded-full transition-all', percentage > 90 ? 'bg-red-500' : 'bg-[#4F6BFF]')}
-                            style={{ width: `${Math.min(percentage, 100)}%` }}
-                          />
-                        </div>
-                        <span className={cn('text-[10px] font-bold tabular-nums', percentage > 90 ? 'text-red-500' : 'text-muted-foreground')}>
-                          {percentage}%
-                        </span>
-                      </div>
+                    )}
+
+                    {/* KPI cells — 2x2 grid in a tinted container */}
+                    <div className="grid grid-cols-2 gap-px rounded-xl overflow-hidden bg-card-line/60 mb-3.5">
+                      <ProjectKpiCell label="Kaufpreis" value={formatCurrency(project.purchasePrice)} />
+                      <ProjectKpiCell label="Verkaufsziel" value={formatCurrency(project.targetSellPrice)} />
+                      <ProjectKpiCell
+                        label="Erw. Gewinn"
+                        value={`${profit >= 0 ? '+' : ''}${formatCurrency(profit)}`}
+                        valueClass={profit >= 0 ? 'text-emerald-600' : 'text-rose-600'}
+                      />
+                      <ProjectKpiCell
+                        label="Budget"
+                        value={`${percentage}%`}
+                        sub={`${formatCurrency(spent)} / ${formatCurrency(project.renovationBudget)}`}
+                        valueClass={percentage > 90 ? 'text-rose-600' : undefined}
+                      />
                     </div>
 
-                    {/* Stats */}
-                    <div className="grid grid-cols-3 gap-3 pt-3 border-t border-card-divider">
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Kaufpreis</p>
-                        <p className="text-sm font-bold tabular-nums text-foreground">{formatCurrency(project.purchasePrice)}</p>
+                    {/* Budget bar pinned to bottom */}
+                    <div className="mt-auto">
+                      <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground mb-1.5">
+                        <span>Budget-Auslastung</span>
+                        <span className="tabular-nums">{percentage}%</span>
                       </div>
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Verkaufsziel</p>
-                        <p className="text-sm font-bold tabular-nums text-foreground">{formatCurrency(project.targetSellPrice)}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Gewinn</p>
-                        <p className={cn('text-sm font-bold tabular-nums', profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500')}>
-                          {profit >= 0 ? '+' : ''}{formatCurrency(profit)}
-                        </p>
+                      <div className="h-1.5 w-full rounded-full overflow-hidden bg-card-line/80">
+                        <div
+                          className={cn(
+                            'h-full rounded-full transition-all',
+                            percentage > 90 ? 'bg-rose-500' : percentage > 70 ? 'bg-amber-500' : 'bg-[#4F6BFF]',
+                          )}
+                          style={{ width: `${Math.min(percentage, 100)}%` }}
+                        />
                       </div>
                     </div>
                   </div>
@@ -583,6 +591,36 @@ export function ProjectListPage() {
       )}
 
       {showForm && <ProjectForm onClose={() => { setShowForm(false); setPrefill(undefined); }} prefill={prefill} />}
+    </div>
+  );
+}
+
+/**
+ * Kompakte KPI-Zelle fürs neue Projekt-Card-Layout — gleicher Aufbau wie
+ * `KpiCell` in `PropertyListPage.tsx`. Bewusst dupliziert, weil beide Pages
+ * unabhängige Card-Identitäten haben sollen; bei einer dritten Verwendung
+ * sollte man das in `components/ui/` extrahieren.
+ */
+function ProjectKpiCell({
+  label,
+  value,
+  sub,
+  valueClass,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  valueClass?: string;
+}) {
+  return (
+    <div className="bg-card p-2.5">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground leading-none">{label}</p>
+      <p className={cn('text-[14px] font-semibold tabular-nums text-foreground mt-1.5 leading-tight', valueClass)}>
+        {value}
+      </p>
+      {sub && (
+        <p className="text-[10.5px] text-muted-foreground tabular-nums mt-0.5 leading-tight truncate">{sub}</p>
+      )}
     </div>
   );
 }

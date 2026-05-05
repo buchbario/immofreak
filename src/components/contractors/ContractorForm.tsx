@@ -4,6 +4,7 @@ import { useContractors } from '../../hooks/useContractors';
 import { TRADES } from '../../types';
 import type { Contractor, Trade } from '../../types';
 import { NumberInput } from '../ui/NumberInput';
+import { Modal, Field, FormSection, FormRow } from '../ui/Modal';
 
 interface ContractorFormProps {
   onClose: () => void;
@@ -26,8 +27,10 @@ export function ContractorForm({ onClose, contractor }: ContractorFormProps) {
     notes: contractor?.notes || '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const valid = form.name.trim().length > 0;
+
+  const handleSubmit = () => {
+    if (!valid) return;
     const data = {
       name: form.name,
       company: form.company,
@@ -40,92 +43,85 @@ export function ContractorForm({ onClose, contractor }: ContractorFormProps) {
       notes: form.notes,
     };
 
-    if (isEdit) {
-      updateContractor(contractor.id, data);
-    } else {
-      createContractor(data);
-    }
+    if (isEdit) updateContractor(contractor.id, data);
+    else createContractor(data);
     onClose();
   };
 
   const update = (field: string, value: string | number) => setForm((f) => ({ ...f, [field]: value }));
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-overlay" />
-      <div className="modal-content max-w-lg" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3 className="text-sm font-semibold text-foreground">{isEdit ? 'Handwerker bearbeiten' : 'Neuer Handwerker'}</h3>
-          <button className="btn btn-sm btn-ghost" onClick={onClose}>&#10005;</button>
-        </div>
-        <form onSubmit={handleSubmit}>
-          <div className="modal-body space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="input-label">Name *</label>
-                <input required value={form.name} onChange={(e) => update('name', e.target.value)} placeholder="Max Mustermann" className="input" />
-              </div>
-              <div>
-                <label className="input-label">Firma</label>
-                <input value={form.company} onChange={(e) => update('company', e.target.value)} placeholder="Firma GmbH" className="input" />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="input-label">Gewerk</label>
-                <select value={form.trade} onChange={(e) => update('trade', e.target.value)} className="input">
-                  {TRADES.map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="input-label">Stundensatz</label>
-                <NumberInput
-                  value={form.hourlyRate}
-                  onChange={(v) => update('hourlyRate', v === '' ? '' : String(v))}
-                  placeholder="0"
-                  suffix="€/h"
-                  decimals={2}
-                  className="input"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="input-label">Telefon</label>
-                <input type="tel" value={form.phone} onChange={(e) => update('phone', e.target.value)} placeholder="+49 170 1234567" className="input" />
-              </div>
-              <div>
-                <label className="input-label">E-Mail</label>
-                <input type="email" value={form.email} onChange={(e) => update('email', e.target.value)} placeholder="mail@example.com" className="input" />
-              </div>
-            </div>
-            <div>
-              <label className="input-label">Adresse</label>
-              <input value={form.address} onChange={(e) => update('address', e.target.value)} placeholder="Straße, PLZ Ort" className="input" />
-            </div>
-            <div>
-              <label className="input-label">Bewertung</label>
-              <StarRating rating={form.rating} onChange={(r) => update('rating', r)} size={24} />
-            </div>
-            <div>
-              <label className="input-label">Notizen</label>
-              <textarea
-                value={form.notes}
-                onChange={(e) => update('notes', e.target.value)}
-                rows={3}
-                className="input"
-                placeholder="Optionale Notizen..."
-              />
-            </div>
-          </div>
-          <div className="modal-footer">
-            <button type="button" onClick={onClose} className="btn btn-md btn-secondary">Abbrechen</button>
-            <button type="submit" className="btn btn-md btn-primary">{isEdit ? 'Speichern' : 'Handwerker anlegen'}</button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <Modal
+      open
+      onClose={onClose}
+      size="lg"
+      title={isEdit ? 'Handwerker bearbeiten' : 'Neuer Handwerker'}
+      description="Kontakt, Gewerk und Bewertung — verfügbar in jedem Projekt."
+      footer={
+        <>
+          <button onClick={onClose} className="btn btn-md btn-secondary">Abbrechen</button>
+          <button onClick={handleSubmit} disabled={!valid} className="btn btn-md btn-primary">
+            {isEdit ? 'Speichern' : 'Handwerker anlegen'}
+          </button>
+        </>
+      }
+    >
+      <FormSection title="Stammdaten">
+        <FormRow cols={2}>
+          <Field label="Name" required htmlFor="c-name">
+            <input id="c-name" required value={form.name} onChange={(e) => update('name', e.target.value)} placeholder="Max Mustermann" className="input" />
+          </Field>
+          <Field label="Firma">
+            <input value={form.company} onChange={(e) => update('company', e.target.value)} placeholder="Firma GmbH" className="input" />
+          </Field>
+        </FormRow>
+        <FormRow cols={2}>
+          <Field label="Gewerk">
+            <select value={form.trade} onChange={(e) => update('trade', e.target.value)} className="input">
+              {TRADES.map((t) => (<option key={t} value={t}>{t}</option>))}
+            </select>
+          </Field>
+          <Field label="Stundensatz">
+            <NumberInput
+              value={form.hourlyRate}
+              onChange={(v) => update('hourlyRate', v === '' ? '' : String(v))}
+              placeholder="0"
+              suffix="€/h"
+              decimals={2}
+              className="input"
+            />
+          </Field>
+        </FormRow>
+      </FormSection>
+
+      <FormSection title="Kontakt">
+        <FormRow cols={2}>
+          <Field label="Telefon">
+            <input type="tel" value={form.phone} onChange={(e) => update('phone', e.target.value)} placeholder="+49 170 1234567" className="input" />
+          </Field>
+          <Field label="E-Mail">
+            <input type="email" value={form.email} onChange={(e) => update('email', e.target.value)} placeholder="mail@example.com" className="input" />
+          </Field>
+        </FormRow>
+        <Field label="Adresse">
+          <input value={form.address} onChange={(e) => update('address', e.target.value)} placeholder="Straße, PLZ Ort" className="input" />
+        </Field>
+      </FormSection>
+
+      <FormSection title="Bewertung & Notizen">
+        <Field label="Bewertung">
+          <StarRating rating={form.rating} onChange={(r) => update('rating', r)} size={24} />
+        </Field>
+        <Field label="Notizen">
+          <textarea
+            value={form.notes}
+            onChange={(e) => update('notes', e.target.value)}
+            rows={3}
+            className="input"
+            placeholder="Erfahrung, Empfehlung, Sonderkonditionen…"
+          />
+        </Field>
+      </FormSection>
+    </Modal>
   );
 }

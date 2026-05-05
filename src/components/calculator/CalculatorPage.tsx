@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Building2, TrendingUp, Calculator, X, Sparkles, MapPin } from 'lucide-react';
+import { ArrowRight, Building2, TrendingUp, X, Sparkles, MapPin } from 'lucide-react';
 import { cn, formatCurrency } from '../../lib/utils';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import {
@@ -195,17 +195,12 @@ export function CalculatorPage() {
 
   return (
     <div className="page-container">
-      {/* Header card */}
-      <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-5 sm:p-7 mb-4 sm:mb-5">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="size-9 rounded-[9px] bg-[#4F6BFF]/10 flex items-center justify-center shrink-0">
-            <Calculator size={17} className="text-[#4F6BFF]" />
-          </div>
-          <h1 className="text-[24px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight">
-            Fix &amp; Flip Kalkulator
-          </h1>
-        </div>
-        <p className="text-[13px] text-muted-foreground max-w-2xl leading-relaxed">
+      {/* Flat header */}
+      <div className="mb-5 sm:mb-6 px-1">
+        <h1 className="text-[26px] sm:text-[30px] font-bold text-foreground tracking-tight leading-[1.15] mb-1.5">
+          Kalkulator
+        </h1>
+        <p className="text-[14px] text-muted-foreground max-w-2xl leading-relaxed">
           Berechne GIK, Marge und Rendite für dein nächstes Projekt — inklusive Kaufnebenkosten, Sanierungs-Budget und Verkaufsprognose.
         </p>
       </div>

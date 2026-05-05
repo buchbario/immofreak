@@ -270,12 +270,12 @@ export function NebenkostenPage() {
 
   return (
     <div className="page-container">
-      {/* Header card */}
-      <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-5 sm:p-7 mb-4 sm:mb-5">
-        <h1 className="text-[24px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight mb-1">
+      {/* Flat header */}
+      <div className="mb-5 sm:mb-6 px-1">
+        <h1 className="text-[26px] sm:text-[30px] font-bold text-foreground tracking-tight leading-[1.15] mb-1.5">
           Nebenkostenabrechnung
         </h1>
-        <p className="text-[13px] text-muted-foreground max-w-2xl leading-relaxed mb-5">
+        <p className="text-[14px] text-muted-foreground max-w-2xl leading-relaxed mb-5">
           Erstelle rechtssichere Betriebskostenabrechnungen — Schritt für Schritt vom Objekt bis zum Versand.
         </p>
 

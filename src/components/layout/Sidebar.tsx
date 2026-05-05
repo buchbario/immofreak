@@ -4,20 +4,23 @@ import {
   LayoutDashboard, Building2, HardHat, Calculator, Settings, Zap,
   Home, Users, Plug, FileText, ChevronDown, LogOut,
   PanelLeftOpen, PanelLeftClose, Receipt, Wallet, BarChart3, Gauge, X,
-  SlidersHorizontal,
-  CreditCard, ChevronRight, SearchCheck, Search, Landmark, Trash2,
+  ArrowLeftRight,
+  CreditCard, SearchCheck, Search, Landmark, Trash2,
   Sparkles, ListTodo, FolderArchive,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAppMode } from '../../context/AppModeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTour } from '../../context/TourContext';
+import { usePrivateBoards } from '../../hooks/usePrivateBoards';
 import { NotificationBell } from './NotificationBell';
 
 interface NavItem {
   to: string;
   icon: typeof LayoutDashboard;
   label: string;
+  /** Optional emoji shown instead of the Lucide icon (used by pinned private boards) */
+  emoji?: string;
 }
 
 interface NavSection {
@@ -25,59 +28,88 @@ interface NavSection {
   items: NavItem[];
 }
 
+/* Workflow-oriented categorization:
+   F&F: Start (Dashboard) → was ich tue (Projekte, Handwerker) → Tools → System
+   BH:  Start → Was ich verwalte (Immobilien) → Geld → Aufgaben & Kommunikation → Reports & Archiv */
+
 const fixFlipSections: NavSection[] = [
   {
-    title: 'ÜBERSICHT',
+    title: 'Übersicht',
     items: [
       { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
     ],
   },
   {
-    title: 'VERWALTUNG',
+    title: 'Verwaltung',
     items: [
       { to: '/projekte', icon: Building2, label: 'Projekte' },
       { to: '/handwerker', icon: HardHat, label: 'Handwerker' },
     ],
   },
   {
-    title: 'WERKZEUGE',
+    title: 'Werkzeuge',
     items: [
       { to: '/kalkulator', icon: Calculator, label: 'Kalkulator' },
       { to: '/deal-analyzer', icon: SearchCheck, label: 'Deal Analyzer' },
+    ],
+  },
+  {
+    title: 'System',
+    items: [
       { to: '/papierkorb', icon: Trash2, label: 'Papierkorb' },
+    ],
+  },
+];
+
+const privateSectionsBase: NavSection[] = [
+  {
+    title: 'Übersicht',
+    items: [
+      { to: '/privat', icon: LayoutDashboard, label: 'Dashboard' },
+      { to: '/privat/boards', icon: ListTodo, label: 'Alle Boards' },
     ],
   },
 ];
 
 const buyHoldSections: NavSection[] = [
   {
-    title: 'ÜBERSICHT',
+    title: 'Übersicht',
     items: [
       { to: '/bh', icon: LayoutDashboard, label: 'Dashboard' },
+    ],
+  },
+  {
+    title: 'Immobilien',
+    items: [
+      { to: '/bh/objekte', icon: Home, label: 'Objekte' },
+      { to: '/bh/mieter', icon: Users, label: 'Mieter' },
+      { to: '/bh/mietvertraege', icon: FileText, label: 'Mietverträge' },
+      { to: '/bh/versorger', icon: Plug, label: 'Versorger' },
+      { to: '/bh/zaehler', icon: Gauge, label: 'Zähler' },
+    ],
+  },
+  {
+    title: 'Finanzen',
+    items: [
       { to: '/bh/banking', icon: Landmark, label: 'Banking' },
       { to: '/bh/transaktionen', icon: Receipt, label: 'Transaktionen' },
+      { to: '/bh/ausgaben', icon: CreditCard, label: 'Ausgaben' },
       { to: '/bh/finanzen', icon: Wallet, label: 'Finanzen' },
     ],
   },
   {
-    title: 'VERWALTUNG',
+    title: 'Aufgaben & Kommunikation',
     items: [
-      { to: '/bh/objekte', icon: Home, label: 'Objekte' },
-      { to: '/bh/mieter', icon: Users, label: 'Mieter' },
-      { to: '/bh/versorger', icon: Plug, label: 'Versorger' },
-      { to: '/bh/mietvertraege', icon: FileText, label: 'Mietverträge' },
-      { to: '/bh/zaehler', icon: Gauge, label: 'Zähler' },
-      { to: '/bh/ausgaben', icon: CreditCard, label: 'Ausgaben' },
       { to: '/bh/vorgaenge', icon: ListTodo, label: 'Vorgänge' },
-      { to: '/bh/dokumente', icon: FolderArchive, label: 'Archiv' },
+      { to: '/bh/schreiben', icon: FileText, label: 'Schreiben' },
+      { to: '/bh/nebenkosten', icon: Receipt, label: 'Nebenkosten' },
     ],
   },
   {
-    title: 'WERKZEUGE',
+    title: 'Reports & Archiv',
     items: [
-      { to: '/bh/schreiben', icon: FileText, label: 'Schreiben' },
-      { to: '/bh/nebenkosten', icon: Receipt, label: 'Nebenkosten' },
       { to: '/bh/berichte', icon: BarChart3, label: 'Berichte' },
+      { to: '/bh/dokumente', icon: FolderArchive, label: 'Archiv' },
       { to: '/bh/papierkorb', icon: Trash2, label: 'Papierkorb' },
     ],
   },
@@ -98,11 +130,11 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
   const { mode, setMode, sidebarOpen, setSidebarOpen, setSidebarOpenTransient } = useAppMode();
   const { userName, userEmail, logout } = useAuth();
   const { startTour } = useTour();
+  const { pinnedBoards } = usePrivateBoards();
   const navigate = useNavigate();
   const location = useLocation();
   const [profileOpen, setProfileOpen] = useState(false);
   const [modeOpen, setModeOpen] = useState(false);
-  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const profileRef = useRef<HTMLDivElement>(null);
   const modeRef = useRef<HTMLDivElement>(null);
 
@@ -112,8 +144,9 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
     const isShared = path === '/' || path.startsWith('/einstellungen');
     if (isShared) return;
     const isBH = path.startsWith('/bh');
-    if (isBH && mode !== 'buyhold') setMode('buyhold');
-    if (!isBH && mode !== 'fixflip') setMode('fixflip');
+    const isPrivate = path.startsWith('/privat');
+    const target: typeof mode = isPrivate ? 'private' : isBH ? 'buyhold' : 'fixflip';
+    if (mode !== target) setMode(target);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -131,20 +164,45 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
     if (window.matchMedia('(max-width: 1023px)').matches) setSidebarOpenTransient(false);
   }, [location.pathname]);
 
-  const sections = mode === 'fixflip' ? fixFlipSections : buyHoldSections;
-  const ModeIcon = mode === 'fixflip' ? Zap : Home;
-  const modeLabel = mode === 'fixflip' ? 'Fix & Flip' : 'Buy & Hold';
-  const modeDesc = mode === 'fixflip' ? 'Projekte verwalten' : 'Mietobjekte verwalten';
+  // Privat-Sections dynamisch zusammensetzen: Pinned Boards bekommen eine eigene
+  // Sektion „Angepinnt", damit man sie ohne Umweg über die Board-Übersicht erreicht.
+  const privateSections: NavSection[] = mode === 'private'
+    ? [
+        ...privateSectionsBase,
+        ...(pinnedBoards.length > 0 ? [{
+          title: 'Angepinnt',
+          items: pinnedBoards.map((b) => ({
+            to: `/privat/boards/${b.id}`,
+            icon: ListTodo,
+            label: b.name,
+            emoji: b.icon,
+          })),
+        }] : []),
+      ]
+    : privateSectionsBase;
+
+  const sections =
+    mode === 'fixflip' ? fixFlipSections :
+    mode === 'private' ? privateSections :
+    buyHoldSections;
+  const allItems = sections.flatMap(s => s.items);
+  const ModeIcon = mode === 'fixflip' ? Zap : mode === 'private' ? Sparkles : Home;
+  const modeLabel = mode === 'fixflip' ? 'Fix & Flip' : mode === 'private' ? 'Privat' : 'Buy & Hold';
+  const modeGradient =
+    mode === 'fixflip' ? 'from-amber-400 via-orange-500 to-orange-600' :
+    mode === 'private' ? 'from-violet-400 via-fuchsia-500 to-rose-500' :
+    'from-emerald-400 via-emerald-500 to-teal-600';
   const open = sidebarOpen;
 
-  const toggleSection = (title: string) => {
-    setCollapsedSections(prev => ({ ...prev, [title]: !prev[title] }));
-  };
+  const nextModeLabel =
+    mode === 'fixflip' ? 'Buy & Hold' :
+    mode === 'buyhold' ? 'Privat' :
+    'Fix & Flip';
 
-  const switchMode = (m: 'fixflip' | 'buyhold') => {
+  const switchMode = (m: 'fixflip' | 'buyhold' | 'private') => {
     if (m === mode) { setModeOpen(false); return; }
     setMode(m); setModeOpen(false);
-    navigate(m === 'fixflip' ? '/' : '/bh');
+    navigate(m === 'fixflip' ? '/' : m === 'private' ? '/privat' : '/bh');
   };
 
   const handleStartTour = () => {
@@ -234,50 +292,39 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
         )}
       </div>
 
-      {/* ── Navigation ── */}
+      {/* ── Navigation — workflow-categorized sections, all items always visible ── */}
       <nav className={cn('flex-1 pb-2', open ? 'px-3 overflow-y-auto overflow-x-hidden' : 'px-2.5 overflow-visible')}>
         {open ? (
-          <div className="flex flex-col">
-            {sections.map((section, sectionIdx) => (
-              <div key={section.title} className={cn(sectionIdx === 0 ? 'mb-3' : 'mb-3 mt-1')}>
-                <button
-                  onClick={() => toggleSection(section.title)}
-                  className="sidebar-section-label flex items-center gap-1 py-1 w-full text-left cursor-pointer hover:opacity-100 opacity-90"
-                >
-                  <span className="capitalize">{section.title.toLowerCase()}</span>
-                  <ChevronRight
-                    size={9}
-                    className={cn(
-                      'opacity-50 transition-transform ml-0.5',
-                      !collapsedSections[section.title] && 'rotate-90'
-                    )}
-                    strokeWidth={2.5}
-                  />
-                </button>
-                {!collapsedSections[section.title] && (
-                  <div className="flex flex-col gap-0.5 mt-1.5">
-                    {section.items.map(item => (
-                      <NavLink key={item.to} to={item.to} end={item.to === '/' || item.to === '/bh'}>
-                        {({ isActive }) => (
-                          <div className={cn('sidebar-nav-item', isActive && 'is-active')}>
+          <div className="flex flex-col gap-3">
+            {sections.map((section) => (
+              <div key={section.title}>
+                <div className="sidebar-section-label py-1 mb-0.5">{section.title}</div>
+                <div className="flex flex-col gap-0.5">
+                  {section.items.map(item => (
+                    <NavLink key={item.to} to={item.to} end={item.to === '/' || item.to === '/bh'}>
+                      {({ isActive }) => (
+                        <div className={cn('sidebar-nav-item', isActive && 'is-active')}>
+                          {item.emoji ? (
+                            <span className="size-[17px] flex-shrink-0 inline-flex items-center justify-center text-base leading-none" aria-hidden>{item.emoji}</span>
+                          ) : (
                             <item.icon
-                              size={15}
+                              size={17}
                               className="flex-shrink-0 opacity-90"
-                              strokeWidth={isActive ? 2.2 : 1.9}
+                              strokeWidth={isActive ? 2.2 : 1.85}
                             />
-                            <span className="truncate">{item.label}</span>
-                          </div>
-                        )}
-                      </NavLink>
-                    ))}
-                  </div>
-                )}
+                          )}
+                          <span className="truncate">{item.label}</span>
+                        </div>
+                      )}
+                    </NavLink>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
         ) : (
           <div className="flex flex-col gap-1">
-            {sections.flatMap(s => s.items).map(item => (
+            {allItems.map(item => (
               <NavLink key={item.to} to={item.to} end={item.to === '/' || item.to === '/bh'}>
                 {({ isActive }) => (
                   <Tip label={item.label}>
@@ -285,11 +332,15 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
                       className={cn(
                         'flex items-center justify-center py-2 rounded-md transition-colors duration-100',
                         isActive
-                          ? 'bg-white/85 text-[#4F6BFF] shadow-[0_1px_2px_rgba(15,23,42,0.06)]'
-                          : 'text-foreground/65 hover:bg-white/40 hover:text-foreground'
+                          ? 'bg-[#f0f4ff] text-[#4F6BFF] shadow-[0_1px_2px_rgba(15,23,42,0.06)]'
+                          : 'text-foreground/65 hover:bg-layer-hover hover:text-foreground'
                       )}
                     >
-                      <item.icon size={18} className="flex-shrink-0" strokeWidth={isActive ? 2.2 : 1.9} />
+                      {item.emoji ? (
+                        <span className="text-[17px] leading-none" aria-hidden>{item.emoji}</span>
+                      ) : (
+                        <item.icon size={18} className="flex-shrink-0" strokeWidth={isActive ? 2.2 : 1.9} />
+                      )}
                     </div>
                   </Tip>
                 )}
@@ -349,41 +400,46 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
           </div>
         )}
 
-        {/* Mode Switch — glass-friendly, with subtle brand-blue framing */}
+        {/* Mode Switch — bold gradient background, signals it's a switchable control */}
         <div className="relative mb-2" ref={modeRef} data-tour="mode-switch">
           {open ? (
             <button
               onClick={() => setModeOpen(!modeOpen)}
-              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-white/55 hover:bg-white/75 transition-colors cursor-pointer text-left border border-white/60"
+              aria-label={`Modus wechseln — aktuell ${modeLabel}`}
+              className={cn(
+                'group w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer text-left transition-all duration-200',
+                'shadow-[0_4px_12px_-2px_rgba(15,23,42,0.18)] hover:shadow-[0_6px_16px_-2px_rgba(15,23,42,0.24)]',
+                'ring-1 ring-white/40 hover:ring-white/60',
+                'bg-gradient-to-br',
+                modeGradient,
+              )}
             >
-              <div className={cn(
-                'size-7 rounded-md flex items-center justify-center flex-shrink-0 ring-1 ring-white/60',
-                mode === 'fixflip'
-                  ? 'bg-gradient-to-br from-amber-400 to-orange-500'
-                  : 'bg-gradient-to-br from-emerald-400 to-teal-600',
-              )}>
-                <ModeIcon size={13} className="text-white" strokeWidth={2.2} />
+              <div className="size-7 rounded-md flex items-center justify-center flex-shrink-0 bg-white/25 ring-1 ring-white/40 backdrop-blur-sm">
+                <ModeIcon size={14} className="text-white drop-shadow-sm" strokeWidth={2.4} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[12.5px] font-semibold text-foreground leading-[1.15]">{modeLabel}</p>
-                <p className="text-[10.5px] text-foreground/55 truncate leading-[1.2] mt-0.5">{modeDesc}</p>
+                <p className="text-[12.5px] font-semibold text-white leading-[1.15] drop-shadow-sm">{modeLabel}</p>
+                <p className="text-[10.5px] text-white/85 truncate leading-[1.2] mt-0.5">Wechseln zu {nextModeLabel}</p>
               </div>
-              <SlidersHorizontal size={12} className="text-foreground/55 flex-shrink-0" strokeWidth={2} />
+              <div className="size-6 rounded-md bg-white/20 ring-1 ring-white/30 flex items-center justify-center flex-shrink-0 group-hover:bg-white/30 transition-colors">
+                <ArrowLeftRight size={11} className="text-white" strokeWidth={2.4} />
+              </div>
             </button>
           ) : (
-            <Tip label={modeLabel}>
+            <Tip label={`Wechseln — ${modeLabel}`}>
               <button
                 onClick={() => setModeOpen(!modeOpen)}
                 aria-label={`Modus wechseln — aktuell ${modeLabel}`}
                 className="w-full flex items-center justify-center py-2 rounded-md cursor-pointer hover:bg-white/40 transition-colors"
               >
                 <div className={cn(
-                  'size-8 rounded-md flex items-center justify-center ring-1 ring-white/60',
-                  mode === 'fixflip'
-                    ? 'bg-gradient-to-br from-amber-400 to-orange-500'
-                    : 'bg-gradient-to-br from-emerald-400 to-teal-600',
+                  'relative size-9 rounded-lg flex items-center justify-center ring-1 ring-white/40 shadow-[0_3px_10px_-2px_rgba(15,23,42,0.22)] bg-gradient-to-br',
+                  modeGradient,
                 )}>
-                  <ModeIcon size={15} className="text-white" strokeWidth={2.2} />
+                  <ModeIcon size={15} className="text-white drop-shadow-sm" strokeWidth={2.4} />
+                  <div className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full bg-white flex items-center justify-center ring-1 ring-card-line">
+                    <ArrowLeftRight size={7} className="text-foreground/70" strokeWidth={2.6} />
+                  </div>
                 </div>
               </button>
             </Tip>
@@ -393,27 +449,36 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
               'absolute z-[70] bottom-full mb-1 bg-dropdown border border-dropdown-line rounded-lg shadow-lg p-1',
               open ? 'left-0 right-0' : 'left-0 w-[220px]'
             )}>
-              {(['buyhold', 'fixflip'] as const).map(m => (
-                <button
-                  key={m}
-                  onClick={() => switchMode(m)}
-                  className={cn(
-                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors cursor-pointer text-sm',
-                    mode === m ? 'bg-primary/10 text-primary font-medium' : 'text-dropdown-item-foreground hover:bg-dropdown-item-hover'
-                  )}
-                >
-                  <div className={cn(
-                    'size-8 rounded-lg flex items-center justify-center',
-                    m === 'fixflip' ? 'bg-amber-500' : 'bg-emerald-500'
-                  )}>
-                    {m === 'fixflip' ? <Zap size={14} className="text-white" /> : <Home size={14} className="text-white" />}
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium">{m === 'fixflip' ? 'Fix & Flip' : 'Buy & Hold'}</p>
-                    <p className="text-xs text-muted-foreground">{m === 'fixflip' ? 'Projekte verwalten' : 'Mietobjekte verwalten'}</p>
-                  </div>
-                </button>
-              ))}
+              {(['buyhold', 'fixflip', 'private'] as const).map(m => {
+                const ItemIcon = m === 'fixflip' ? Zap : m === 'private' ? Sparkles : Home;
+                const itemTint =
+                  m === 'fixflip' ? 'bg-gradient-to-br from-amber-400 to-orange-500' :
+                  m === 'private' ? 'bg-gradient-to-br from-violet-400 to-fuchsia-500' :
+                  'bg-gradient-to-br from-emerald-400 to-teal-600';
+                const itemLabel = m === 'fixflip' ? 'Fix & Flip' : m === 'private' ? 'Privat' : 'Buy & Hold';
+                const itemDesc =
+                  m === 'fixflip' ? 'Projekte verwalten' :
+                  m === 'private' ? 'Persönliche To-dos' :
+                  'Mietobjekte verwalten';
+                return (
+                  <button
+                    key={m}
+                    onClick={() => switchMode(m)}
+                    className={cn(
+                      'w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors cursor-pointer text-sm',
+                      mode === m ? 'bg-primary/10 text-primary font-medium' : 'text-dropdown-item-foreground hover:bg-dropdown-item-hover'
+                    )}
+                  >
+                    <div className={cn('size-8 rounded-lg flex items-center justify-center ring-1 ring-white/40', itemTint)}>
+                      <ItemIcon size={14} className="text-white" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-medium">{itemLabel}</p>
+                      <p className="text-xs text-muted-foreground">{itemDesc}</p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
@@ -423,16 +488,16 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
           {open ? (
             <button
               onClick={() => setProfileOpen(!profileOpen)}
-              className="flex items-center gap-2.5 w-full px-2 py-2 rounded-lg transition-colors cursor-pointer hover:bg-white/45 group"
+              className="flex items-center gap-3 w-full px-2.5 py-2.5 rounded-xl transition-colors cursor-pointer hover:bg-white/55 group"
             >
-              <div className="size-9 rounded-full bg-gradient-to-br from-[#4F6BFF] to-[#6B5BFF] flex items-center justify-center flex-shrink-0 ring-2 ring-white/70 shadow-sm">
-                <span className="text-[12px] font-bold text-white">{(userName || 'U').charAt(0).toUpperCase()}</span>
+              <div className="size-10 rounded-full bg-gradient-to-br from-[#4F6BFF] to-[#6B5BFF] flex items-center justify-center flex-shrink-0 ring-2 ring-white/80 shadow-[0_2px_6px_rgba(79,107,255,0.20)]">
+                <span className="text-[14px] font-bold text-white">{(userName || 'U').charAt(0).toUpperCase()}</span>
               </div>
               <div className="min-w-0 flex-1 text-left">
-                <p className="text-[12.5px] font-semibold text-foreground truncate leading-[1.2]">{userName || 'User'}</p>
-                <p className="text-[10.5px] text-foreground/55 truncate leading-[1.2] mt-0.5">{userEmail || ''}</p>
+                <p className="text-[13.5px] font-semibold text-foreground truncate leading-[1.2]">{userName || 'User'}</p>
+                <p className="text-[11px] text-foreground/55 truncate leading-[1.2] mt-0.5">{userEmail || ''}</p>
               </div>
-              <ChevronDown size={12} className={cn('transition-transform text-foreground/55 flex-shrink-0', profileOpen && 'rotate-180')} strokeWidth={2.2} />
+              <ChevronDown size={13} className={cn('transition-transform text-foreground/55 flex-shrink-0', profileOpen && 'rotate-180')} strokeWidth={2.2} />
             </button>
           ) : (
             <Tip label={userName || 'Profil'}>

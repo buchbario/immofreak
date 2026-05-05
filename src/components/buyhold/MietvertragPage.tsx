@@ -1,13 +1,15 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  FileText, Search, ArrowRight,
+  FileText, Search, ArrowRight, Eye,
 } from 'lucide-react';
 import { useRentalContracts } from '../../hooks/useRentalContracts';
 import { useTenants } from '../../hooks/useTenants';
 import { useRentalUnits } from '../../hooks/useRentalUnits';
 import { useRentalProperties } from '../../hooks/useRentalProperties';
 import { cn } from '../../lib/utils';
+import { ContractPreviewModal } from './ContractPreviewModal';
+import type { RentalContract } from '../../types';
 
 type Filter = 'alle' | 'unbefristet' | 'befristet' | 'auslaufend';
 
@@ -30,6 +32,7 @@ export function MietvertragPage() {
   const { properties } = useRentalProperties();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('alle');
+  const [previewContract, setPreviewContract] = useState<RentalContract | null>(null);
 
   const fmt = (n: number) => n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -146,14 +149,14 @@ export function MietvertragPage() {
           ) : (
             <>
               {/* Table Header (desktop) */}
-              <div className="hidden md:grid grid-cols-[1fr_140px_110px_130px_110px_110px_32px] gap-4 px-5 sm:px-7 py-2.5 border-b border-card-divider text-[10.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold">
+              <div className="hidden md:grid grid-cols-[1fr_140px_110px_130px_110px_110px_72px] gap-4 px-5 sm:px-7 py-2.5 border-b border-card-divider text-[10.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold">
                 <span>Mieter / Einheit</span>
                 <span>Objekt</span>
                 <span>Warmmiete</span>
                 <span>Kaution</span>
                 <span>Vertragsbeginn</span>
                 <span>Status</span>
-                <span />
+                <span className="text-right">Vertrag</span>
               </div>
 
               <div className="divide-y divide-card-divider">
@@ -161,7 +164,7 @@ export function MietvertragPage() {
                   <div
                     key={c.id}
                     onClick={() => navigate(`/bh/mietvertraege/${c.id}`)}
-                    className="grid grid-cols-1 md:grid-cols-[1fr_140px_110px_130px_110px_110px_32px] gap-2 md:gap-4 items-center px-5 sm:px-7 py-3.5 cursor-pointer hover:bg-layer-hover transition-colors"
+                    className="grid grid-cols-1 md:grid-cols-[1fr_140px_110px_130px_110px_110px_72px] gap-2 md:gap-4 items-center px-5 sm:px-7 py-3.5 cursor-pointer hover:bg-layer-hover transition-colors"
                   >
                     <div className="min-w-0">
                       <span className="text-sm font-semibold text-foreground truncate tracking-tight">{c.tenant?.name || '–'}</span>
@@ -178,15 +181,34 @@ export function MietvertragPage() {
                     </div>
                     <p className="text-[12.5px] text-muted-foreground tabular-nums hidden md:block">{formatDate(c.startDate)}</p>
                     <span className={`badge ${c.status.cls} hidden md:inline-flex w-fit`}>{c.status.label}</span>
-                    <ArrowRight size={13} className="text-muted-foreground hidden md:block justify-self-end" />
+                    <div className="hidden md:flex items-center justify-end gap-1">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setPreviewContract(c); }}
+                        className="size-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-[#4F6BFF] hover:bg-[#4F6BFF]/10 transition-colors cursor-pointer"
+                        aria-label="Vertrag ansehen"
+                        title="Vertrag ansehen"
+                      >
+                        <Eye size={15} />
+                      </button>
+                      <ArrowRight size={13} className="text-muted-foreground" />
+                    </div>
 
                     {/* Mobile summary */}
-                    <div className="flex items-center justify-between md:hidden">
-                      <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between gap-2 md:hidden">
+                      <div className="flex items-center gap-2 min-w-0">
                         <span className="text-[11.5px] text-muted-foreground truncate">{c.property?.name}</span>
-                        <span className={`badge ${c.status.cls}`}>{c.status.label}</span>
+                        <span className={`badge ${c.status.cls} flex-shrink-0`}>{c.status.label}</span>
                       </div>
-                      <span className="text-[13px] font-semibold tabular-nums text-foreground">{fmt(c.warmmiete)} €</span>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-[13px] font-semibold tabular-nums text-foreground">{fmt(c.warmmiete)} €</span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setPreviewContract(c); }}
+                          className="size-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-[#4F6BFF] hover:bg-[#4F6BFF]/10 transition-colors cursor-pointer"
+                          aria-label="Vertrag ansehen"
+                        >
+                          <Eye size={14} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -201,6 +223,17 @@ export function MietvertragPage() {
             </p>
           </div>
         </div>
+      )}
+
+      {previewContract && (
+        <ContractPreviewModal
+          open
+          onClose={() => setPreviewContract(null)}
+          contract={previewContract}
+          tenant={allTenants.find((t) => t.id === previewContract.tenantId)}
+          unit={allUnits.find((u) => u.id === previewContract.unitId)}
+          property={properties.find((p) => p.id === previewContract.propertyId)}
+        />
       )}
     </div>
   );

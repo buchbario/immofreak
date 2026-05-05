@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Task, RentalProperty, RentalUnit, Tenant } from '../../types';
 import { TASK_STATUSES, TASK_PRIORITIES, TASK_CATEGORIES } from '../../types';
+import { Modal, Field, FormSection, FormRow } from '../ui/Modal';
 
 type TaskData = Omit<Task, 'id' | 'createdAt' | 'updatedAt'>;
 
@@ -37,167 +38,156 @@ export function TaskForm({ initial, properties, units, tenants, onClose, onSave,
   const availableTenants = form.propertyId ? tenants.filter((t) => t.propertyId === form.propertyId) : tenants;
 
   const canSave = form.title.trim().length > 0;
+  const isEdit = !!initial?.id;
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-overlay" />
-      <div className="modal-content max-w-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3 className="text-sm font-semibold text-foreground">
-            {initial?.id ? 'Vorgang bearbeiten' : 'Neuer Vorgang'}
-          </h3>
-          <button className="btn btn-sm btn-ghost" onClick={onClose}>&#10005;</button>
-        </div>
-        <div className="modal-body space-y-4">
-          <div>
-            <label className="input-label">Titel *</label>
-            <input
-              value={form.title}
-              onChange={(e) => set('title', e.target.value)}
-              placeholder="z.B. Heizungswartung beauftragen"
-              className="input"
-              autoFocus
-            />
-          </div>
-
-          <div>
-            <label className="input-label">Beschreibung</label>
-            <textarea
-              className="input"
-              rows={3}
-              value={form.description}
-              onChange={(e) => set('description', e.target.value)}
-              placeholder="Details, Gesetzesreferenzen, Fristen..."
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="input-label">Kategorie</label>
-              <select
-                value={form.category}
-                onChange={(e) => set('category', e.target.value as TaskData['category'])}
-                className="input"
-              >
-                {TASK_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="input-label">Priorität</label>
-              <select
-                value={form.priority}
-                onChange={(e) => set('priority', e.target.value as TaskData['priority'])}
-                className="input"
-              >
-                {TASK_PRIORITIES.map((p) => (
-                  <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="input-label">Status</label>
-              <select
-                value={form.status}
-                onChange={(e) => set('status', e.target.value as TaskData['status'])}
-                className="input"
-              >
-                {TASK_STATUSES.map((s) => (
-                  <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="input-label">Fälligkeitsdatum</label>
-              <input
-                type="date"
-                value={form.dueDate || ''}
-                onChange={(e) => set('dueDate', e.target.value)}
-                className="input"
-              />
-            </div>
-            <div>
-              <label className="input-label">Zuständig</label>
-              <input
-                value={form.assignedTo || ''}
-                onChange={(e) => set('assignedTo', e.target.value)}
-                placeholder="z.B. Eigentümer, Hausverwaltung"
-                className="input"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="input-label">Objekt</label>
-              <select
-                value={form.propertyId || ''}
-                onChange={(e) => {
-                  set('propertyId', e.target.value || undefined);
-                  set('unitId', undefined);
-                  set('tenantId', undefined);
-                }}
-                className="input"
-              >
-                <option value="">Kein Objekt</option>
-                {properties.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="input-label">Einheit</label>
-              <select
-                value={form.unitId || ''}
-                onChange={(e) => set('unitId', e.target.value || undefined)}
-                className="input"
-                disabled={!form.propertyId}
-              >
-                <option value="">Keine Einheit</option>
-                {availableUnits.map((u) => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="input-label">Mieter</label>
-              <select
-                value={form.tenantId || ''}
-                onChange={(e) => set('tenantId', e.target.value || undefined)}
-                className="input"
-              >
-                <option value="">Kein Mieter</option>
-                {availableTenants.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div className="modal-footer">
-          {onDelete && initial?.id ? (
-            <button
-              onClick={onDelete}
-              className="btn btn-md btn-ghost text-red-500 mr-auto"
-            >
-              Löschen
-            </button>
-          ) : null}
-          <button onClick={onClose} className="btn btn-md btn-secondary">Abbrechen</button>
-          <button
-            onClick={() => onSave(form)}
-            disabled={!canSave}
-            className="btn btn-md btn-primary"
-          >
-            Speichern
+    <Modal
+      open
+      onClose={onClose}
+      size="xl"
+      title={isEdit ? 'Vorgang bearbeiten' : 'Neuer Vorgang'}
+      description="Halte fest, was zu tun ist — verknüpft mit Objekt, Einheit oder Mieter."
+      footerLeft={
+        onDelete && isEdit ? (
+          <button onClick={onDelete} className="btn btn-md btn-ghost text-red-600 hover:bg-red-50">
+            Löschen
           </button>
-        </div>
-      </div>
-    </div>
+        ) : null
+      }
+      footer={
+        <>
+          <button onClick={onClose} className="btn btn-md btn-secondary">Abbrechen</button>
+          <button onClick={() => onSave(form)} disabled={!canSave} className="btn btn-md btn-primary">
+            {isEdit ? 'Speichern' : 'Vorgang anlegen'}
+          </button>
+        </>
+      }
+    >
+      <FormSection title="Vorgang">
+        <Field label="Titel" required htmlFor="task-title">
+          <input
+            id="task-title"
+            value={form.title}
+            onChange={(e) => set('title', e.target.value)}
+            placeholder="z.B. Heizungswartung beauftragen"
+            className="input"
+            autoFocus
+          />
+        </Field>
+
+        <Field label="Beschreibung">
+          <textarea
+            className="input"
+            rows={3}
+            value={form.description}
+            onChange={(e) => set('description', e.target.value)}
+            placeholder="Details, Gesetzesreferenzen, Fristen…"
+          />
+        </Field>
+
+        <FormRow cols={3}>
+          <Field label="Kategorie">
+            <select
+              value={form.category}
+              onChange={(e) => set('category', e.target.value as TaskData['category'])}
+              className="input"
+            >
+              {TASK_CATEGORIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Priorität">
+            <select
+              value={form.priority}
+              onChange={(e) => set('priority', e.target.value as TaskData['priority'])}
+              className="input"
+            >
+              {TASK_PRIORITIES.map((p) => (
+                <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Status">
+            <select
+              value={form.status}
+              onChange={(e) => set('status', e.target.value as TaskData['status'])}
+              className="input"
+            >
+              {TASK_STATUSES.map((s) => (
+                <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+              ))}
+            </select>
+          </Field>
+        </FormRow>
+      </FormSection>
+
+      <FormSection title="Termin & Zuständigkeit">
+        <FormRow cols={2}>
+          <Field label="Fälligkeitsdatum">
+            <input
+              type="date"
+              value={form.dueDate || ''}
+              onChange={(e) => set('dueDate', e.target.value)}
+              className="input"
+            />
+          </Field>
+          <Field label="Zuständig">
+            <input
+              value={form.assignedTo || ''}
+              onChange={(e) => set('assignedTo', e.target.value)}
+              placeholder="z.B. Eigentümer, Hausverwaltung"
+              className="input"
+            />
+          </Field>
+        </FormRow>
+      </FormSection>
+
+      <FormSection title="Verknüpfung" description="Optional — verknüpfe den Vorgang mit einem Objekt oder Mieter.">
+        <FormRow cols={3}>
+          <Field label="Objekt">
+            <select
+              value={form.propertyId || ''}
+              onChange={(e) => {
+                set('propertyId', e.target.value || undefined);
+                set('unitId', undefined);
+                set('tenantId', undefined);
+              }}
+              className="input"
+            >
+              <option value="">— kein Objekt —</option>
+              {properties.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Einheit">
+            <select
+              value={form.unitId || ''}
+              onChange={(e) => set('unitId', e.target.value || undefined)}
+              className="input"
+              disabled={!form.propertyId}
+            >
+              <option value="">— keine Einheit —</option>
+              {availableUnits.map((u) => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Mieter">
+            <select
+              value={form.tenantId || ''}
+              onChange={(e) => set('tenantId', e.target.value || undefined)}
+              className="input"
+            >
+              <option value="">— kein Mieter —</option>
+              {availableTenants.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          </Field>
+        </FormRow>
+      </FormSection>
+    </Modal>
   );
 }

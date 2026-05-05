@@ -7,12 +7,16 @@ import { MobileBottomNav } from './MobileBottomNav';
 import { TourOverlay } from '../tour/TourOverlay';
 import { useAppMode } from '../../context/AppModeContext';
 import { usePrelineInit } from '../../hooks/usePrelineInit';
+import { useEnsureContractTemplates } from '../../hooks/useEnsureContractTemplates';
 import { Menu } from 'lucide-react';
 
 export function AppLayout() {
   const { sidebarOpen, setSidebarOpenTransient } = useAppMode();
   const [searchOpen, setSearchOpen] = useState(false);
   usePrelineInit();
+  // Stellt sicher, dass jeder Mieter auch einen Mietvertrag hat — legt fehlende
+  // Vertrags-Vorlagen automatisch im Hintergrund an. Idempotent.
+  useEnsureContractTemplates();
 
   // Cmd+K / Ctrl+K shortcut
   useEffect(() => {
@@ -50,10 +54,10 @@ export function AppLayout() {
         />
       )}
 
-      <div className="relative flex h-[100dvh] overflow-hidden p-2 sm:p-3 gap-2 sm:gap-3">
+      <div className="relative flex h-[100dvh] overflow-hidden p-0 sm:p-3 gap-0 sm:gap-3">
         <Sidebar onSearchClick={() => setSearchOpen(true)} />
 
-        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-card rounded-2xl border border-card-line shadow-[0_2px_8px_rgba(15,23,42,0.04)]">
+        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-card sm:rounded-2xl sm:border sm:border-card-line sm:shadow-[0_2px_8px_rgba(15,23,42,0.04)]">
           {/* Mobile-only floating top bar — minimal, just menu + logo + bell */}
           <div className="lg:hidden relative flex items-center justify-between h-12 px-3 flex-shrink-0 border-b border-card-divider">
             <button

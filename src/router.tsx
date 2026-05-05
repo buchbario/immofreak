@@ -32,6 +32,8 @@ import { DokumenteArchivPage } from './components/buyhold/DokumenteArchivPage';
 import { TrashPage } from './components/buyhold/TrashPage';
 import { SettingsPage } from './components/settings/SettingsPage';
 import { PropertySharePage } from './components/shared/PropertySharePage';
+import { PrivateDashboardPage } from './components/private/PrivateDashboardPage';
+import { PrivateBoardPage } from './components/private/PrivateBoardPage';
 
 // Modul-Singleton: zeigt, ob `RootRedirect` innerhalb dieser Page-Session bereits
 // einmal die Default-Dashboard-Präferenz angewendet hat. Überlebt In-App-Navigation,
@@ -127,6 +129,10 @@ export const router = createBrowserRouter([
       { path: 'bh/vorgaenge', element: <TaskListPage /> },
       { path: 'bh/dokumente', element: <DokumenteArchivPage /> },
       { path: 'bh/papierkorb', element: <TrashPage /> },
+      // Privat (Trello-style personal todos)
+      { path: 'privat', element: <PrivateDashboardPage /> },
+      { path: 'privat/boards', element: <PrivateDashboardPage /> },
+      { path: 'privat/boards/:id', element: <PrivateBoardPage /> },
       // Shared
       { path: 'einstellungen', element: <SettingsPage /> },
       // 404: fängt alle unbekannten Pfade innerhalb des AppLayouts ab

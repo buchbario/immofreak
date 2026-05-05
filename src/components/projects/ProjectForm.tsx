@@ -3,6 +3,7 @@ import { useProjects } from '../../hooks/useProjects';
 import { PROJECT_STATUSES } from '../../types';
 import type { Project, ProjectStatus } from '../../types';
 import { NumberInput } from '../ui/NumberInput';
+import { Modal, Field, FormSection, FormRow } from '../ui/Modal';
 
 interface ProjectFormProps {
   onClose: () => void;
@@ -26,8 +27,11 @@ export function ProjectForm({ onClose, project, prefill }: ProjectFormProps) {
     notes: project?.notes || '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const valid = form.name.trim() && form.address.trim();
+
+  const handleSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!valid) return;
     const data = {
       name: form.name,
       address: form.address,
@@ -39,109 +43,130 @@ export function ProjectForm({ onClose, project, prefill }: ProjectFormProps) {
       notes: form.notes,
     };
 
-    if (isEdit) {
-      updateProject(project.id, data);
-    } else {
-      createProject(data);
-    }
+    if (isEdit) updateProject(project.id, data);
+    else createProject(data);
     onClose();
   };
 
   const update = (field: string, value: string) => setForm((f) => ({ ...f, [field]: value }));
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-overlay" />
-      <div className="modal-content max-w-lg" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3 className="section-title">{isEdit ? 'Projekt bearbeiten' : 'Neues Projekt'}</h3>
-          <button className="btn btn-sm btn-ghost rounded-lg" onClick={onClose}>&#10005;</button>
-        </div>
-        <form onSubmit={handleSubmit}>
-          <div className="modal-body space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="input-label">Projektname *</label>
-                <input required value={form.name} onChange={(e) => update('name', e.target.value)} placeholder="z.B. Altbauwohnung Berlin" className="input" />
-              </div>
-              <div>
-                <label className="input-label">Adresse *</label>
-                <input required value={form.address} onChange={(e) => update('address', e.target.value)} placeholder="Strasse, PLZ Ort" className="input" />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="input-label">Kaufpreis</label>
-                <NumberInput
-                  value={form.purchasePrice}
-                  onChange={(v) => update('purchasePrice', v === '' ? '' : String(v))}
-                  placeholder="0"
-                  suffix="€"
-                  decimals={2}
-                  className="input"
-                />
-              </div>
-              <div>
-                <label className="input-label">Verkaufsziel</label>
-                <NumberInput
-                  value={form.targetSellPrice}
-                  onChange={(v) => update('targetSellPrice', v === '' ? '' : String(v))}
-                  placeholder="0"
-                  suffix="€"
-                  decimals={2}
-                  className="input"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="input-label">ARV (After Repair Value)</label>
-                <NumberInput
-                  value={form.arv}
-                  onChange={(v) => update('arv', v === '' ? '' : String(v))}
-                  placeholder="0"
-                  suffix="€"
-                  decimals={2}
-                  className="input"
-                />
-              </div>
-              <div>
-                <label className="input-label">Sanierungsbudget</label>
-                <NumberInput
-                  value={form.renovationBudget}
-                  onChange={(v) => update('renovationBudget', v === '' ? '' : String(v))}
-                  placeholder="0"
-                  suffix="€"
-                  decimals={2}
-                  className="input"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="input-label">Status</label>
-              <select value={form.status} onChange={(e) => update('status', e.target.value)} className="input">
-                {PROJECT_STATUSES.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="input-label">Notizen</label>
-              <textarea
-                value={form.notes}
-                onChange={(e) => update('notes', e.target.value)}
-                rows={3}
+    <Modal
+      open
+      onClose={onClose}
+      size="lg"
+      title={isEdit ? 'Projekt bearbeiten' : 'Neues Projekt'}
+      description={isEdit ? 'Aktualisiere die Eckdaten des Projekts.' : 'Lege ein neues Fix-&-Flip-Projekt an. Pflichtfelder sind mit * markiert.'}
+      footer={
+        <>
+          <button type="button" onClick={onClose} className="btn btn-md btn-secondary">Abbrechen</button>
+          <button type="button" onClick={() => handleSubmit()} disabled={!valid} className="btn btn-md btn-primary">
+            {isEdit ? 'Speichern' : 'Projekt anlegen'}
+          </button>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit}>
+        <FormSection title="Stammdaten">
+          <FormRow cols={2}>
+            <Field label="Projektname" required htmlFor="proj-name">
+              <input
+                id="proj-name"
+                required
+                value={form.name}
+                onChange={(e) => update('name', e.target.value)}
+                placeholder="z.B. Altbauwohnung Berlin"
                 className="input"
-                placeholder="Optionale Notizen zum Projekt..."
               />
-            </div>
-          </div>
-          <div className="modal-footer">
-            <button type="button" onClick={onClose} className="btn btn-md btn-secondary">Abbrechen</button>
-            <button type="submit" className="btn btn-md btn-primary">{isEdit ? 'Speichern' : 'Projekt anlegen'}</button>
-          </div>
-        </form>
-      </div>
-    </div>
+            </Field>
+            <Field label="Adresse" required htmlFor="proj-addr">
+              <input
+                id="proj-addr"
+                required
+                value={form.address}
+                onChange={(e) => update('address', e.target.value)}
+                placeholder="Strasse, PLZ Ort"
+                className="input"
+              />
+            </Field>
+          </FormRow>
+
+          <Field label="Status" htmlFor="proj-status">
+            <select
+              id="proj-status"
+              value={form.status}
+              onChange={(e) => update('status', e.target.value)}
+              className="input"
+            >
+              {PROJECT_STATUSES.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </Field>
+        </FormSection>
+
+        <FormSection title="Finanzen" description="Werte können nachträglich jederzeit angepasst werden.">
+          <FormRow cols={2}>
+            <Field label="Kaufpreis">
+              <NumberInput
+                value={form.purchasePrice}
+                onChange={(v) => update('purchasePrice', v === '' ? '' : String(v))}
+                placeholder="0"
+                suffix="€"
+                decimals={2}
+                className="input"
+              />
+            </Field>
+            <Field label="Verkaufsziel">
+              <NumberInput
+                value={form.targetSellPrice}
+                onChange={(v) => update('targetSellPrice', v === '' ? '' : String(v))}
+                placeholder="0"
+                suffix="€"
+                decimals={2}
+                className="input"
+              />
+            </Field>
+          </FormRow>
+          <FormRow cols={2}>
+            <Field label="ARV" help="After Repair Value — geschätzter Marktwert nach Sanierung">
+              <NumberInput
+                value={form.arv}
+                onChange={(v) => update('arv', v === '' ? '' : String(v))}
+                placeholder="0"
+                suffix="€"
+                decimals={2}
+                className="input"
+              />
+            </Field>
+            <Field label="Sanierungsbudget">
+              <NumberInput
+                value={form.renovationBudget}
+                onChange={(v) => update('renovationBudget', v === '' ? '' : String(v))}
+                placeholder="0"
+                suffix="€"
+                decimals={2}
+                className="input"
+              />
+            </Field>
+          </FormRow>
+        </FormSection>
+
+        <FormSection title="Notizen">
+          <Field>
+            <textarea
+              value={form.notes}
+              onChange={(e) => update('notes', e.target.value)}
+              rows={4}
+              className="input"
+              placeholder="Optionale Notizen zum Projekt…"
+            />
+          </Field>
+        </FormSection>
+
+        {/* Hidden submit so Enter still triggers form submission */}
+        <button type="submit" className="hidden" aria-hidden tabIndex={-1} />
+      </form>
+    </Modal>
   );
 }

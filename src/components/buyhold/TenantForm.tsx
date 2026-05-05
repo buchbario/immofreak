@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Tenant, RentalProperty, RentalUnit } from '../../types';
 import { NumberInput } from '../ui/NumberInput';
+import { Modal, Field, FormSection, FormRow } from '../ui/Modal';
 
 type TenantData = Omit<Tenant, 'id' | 'createdAt'>;
 
@@ -26,100 +27,145 @@ export function TenantForm({ initial, properties, units, onClose, onSave }: Prop
     notes: initial?.notes || '',
   });
 
-  const set = (key: keyof TenantData, value: string | number) => setForm((f) => ({ ...f, [key]: value }));
+  const set = (key: keyof TenantData, value: string | number) =>
+    setForm((f) => ({ ...f, [key]: value }));
 
   const availableUnits = units.filter((u) => u.propertyId === form.propertyId && !u.tenantId);
+  const valid = !!form.name && !!form.propertyId;
+  const isEdit = !!initial;
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-overlay" />
-      <div className="modal-content max-w-lg" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3 className="text-sm font-semibold text-foreground">{initial ? 'Mieter bearbeiten' : 'Neuer Mieter'}</h3>
-          <button className="btn btn-sm btn-ghost" onClick={onClose}>&#10005;</button>
-        </div>
-        <div className="modal-body space-y-4">
-          <div>
-            <label className="input-label">Name</label>
-            <input value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Max Mustermann" className="input" />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="input-label">E-Mail</label>
-              <input value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="mail@beispiel.de" className="input" />
-            </div>
-            <div>
-              <label className="input-label">Telefon</label>
-              <input value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="+49 ..." className="input" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="input-label">Objekt</label>
-              <select
-                value={form.propertyId || ''}
-                onChange={(e) => { set('propertyId', e.target.value); set('unitId', ''); }}
-                className="input"
-              >
-                <option value="">Bitte wählen...</option>
-                {properties.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="input-label">Einheit</label>
-              <select
-                value={form.unitId || ''}
-                onChange={(e) => set('unitId', e.target.value)}
-                className="input"
-              >
-                <option value="">Bitte wählen...</option>
-                {availableUnits.map((u) => (
-                  <option key={u.id} value={u.id}>{`${u.name} (${u.area} m2)`}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <label className="input-label">Einzug</label>
-              <input type="date" value={form.moveInDate} onChange={(e) => set('moveInDate', e.target.value)} className="input" />
-            </div>
-            <div>
-              <label className="input-label">Mietbeginn</label>
-              <input type="date" value={form.leaseStart} onChange={(e) => set('leaseStart', e.target.value)} className="input" />
-            </div>
-            <div>
-              <label className="input-label">Mietende</label>
-              <input type="date" value={form.leaseEnd || ''} onChange={(e) => set('leaseEnd', e.target.value)} className="input" />
-            </div>
-          </div>
-          <div>
-            <label className="input-label">Kaution</label>
-            <NumberInput
-              value={form.deposit || ''}
-              onChange={(v) => set('deposit', v === '' ? 0 : v)}
-              suffix="€"
-              decimals={2}
-              className="input"
-            />
-          </div>
-          <div>
-            <label className="input-label">Notizen</label>
-            <textarea
-              className="input"
-              rows={2}
-              value={form.notes}
-              onChange={(e) => set('notes', e.target.value)}
-            />
-          </div>
-        </div>
-        <div className="modal-footer">
+    <Modal
+      open
+      onClose={onClose}
+      size="lg"
+      title={isEdit ? 'Mieter bearbeiten' : 'Neuer Mieter'}
+      description="Stammdaten, Objekt-Zuordnung und Mietbeginn / -ende."
+      footer={
+        <>
           <button onClick={onClose} className="btn btn-md btn-secondary">Abbrechen</button>
-          <button onClick={() => onSave(form)} disabled={!form.name || !form.propertyId} className="btn btn-md btn-primary">Speichern</button>
-        </div>
-      </div>
-    </div>
+          <button onClick={() => onSave(form)} disabled={!valid} className="btn btn-md btn-primary">
+            {isEdit ? 'Speichern' : 'Mieter anlegen'}
+          </button>
+        </>
+      }
+    >
+      <FormSection title="Kontakt">
+        <Field label="Name" required htmlFor="t-name">
+          <input
+            id="t-name"
+            value={form.name}
+            onChange={(e) => set('name', e.target.value)}
+            placeholder="Max Mustermann"
+            className="input"
+          />
+        </Field>
+        <FormRow cols={2}>
+          <Field label="E-Mail" htmlFor="t-mail">
+            <input
+              id="t-mail"
+              type="email"
+              value={form.email}
+              onChange={(e) => set('email', e.target.value)}
+              placeholder="mail@beispiel.de"
+              className="input"
+            />
+          </Field>
+          <Field label="Telefon" htmlFor="t-phone">
+            <input
+              id="t-phone"
+              type="tel"
+              value={form.phone}
+              onChange={(e) => set('phone', e.target.value)}
+              placeholder="+49 …"
+              className="input"
+            />
+          </Field>
+        </FormRow>
+      </FormSection>
+
+      <FormSection title="Objekt & Einheit">
+        <FormRow cols={2}>
+          <Field label="Objekt" required>
+            <select
+              value={form.propertyId || ''}
+              onChange={(e) => { set('propertyId', e.target.value); set('unitId', ''); }}
+              className="input"
+            >
+              <option value="">— bitte wählen —</option>
+              {properties.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </Field>
+          <Field
+            label="Einheit"
+            help={form.propertyId && availableUnits.length === 0 ? 'Keine freien Einheiten in diesem Objekt' : undefined}
+          >
+            <select
+              value={form.unitId || ''}
+              onChange={(e) => set('unitId', e.target.value)}
+              className="input"
+              disabled={!form.propertyId}
+            >
+              <option value="">— bitte wählen —</option>
+              {availableUnits.map((u) => (
+                <option key={u.id} value={u.id}>{`${u.name} (${u.area} m²)`}</option>
+              ))}
+            </select>
+          </Field>
+        </FormRow>
+      </FormSection>
+
+      <FormSection title="Mietverhältnis">
+        <FormRow cols={3}>
+          <Field label="Einzug">
+            <input
+              type="date"
+              value={form.moveInDate}
+              onChange={(e) => set('moveInDate', e.target.value)}
+              className="input"
+            />
+          </Field>
+          <Field label="Mietbeginn">
+            <input
+              type="date"
+              value={form.leaseStart}
+              onChange={(e) => set('leaseStart', e.target.value)}
+              className="input"
+            />
+          </Field>
+          <Field label="Mietende" help="Leer lassen für unbefristet">
+            <input
+              type="date"
+              value={form.leaseEnd || ''}
+              onChange={(e) => set('leaseEnd', e.target.value)}
+              className="input"
+            />
+          </Field>
+        </FormRow>
+        <Field label="Kaution">
+          <NumberInput
+            value={form.deposit || ''}
+            onChange={(v) => set('deposit', v === '' ? 0 : v)}
+            suffix="€"
+            decimals={2}
+            className="input"
+          />
+        </Field>
+      </FormSection>
+
+      <FormSection title="Notizen">
+        <Field>
+          <textarea
+            className="input"
+            rows={3}
+            value={form.notes}
+            onChange={(e) => set('notes', e.target.value)}
+            placeholder="Bemerkungen, Vereinbarungen, Sonderkonditionen…"
+          />
+        </Field>
+      </FormSection>
+    </Modal>
   );
 }

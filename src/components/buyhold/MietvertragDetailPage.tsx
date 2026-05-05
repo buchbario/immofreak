@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Wallet, CalendarClock, Home, User,
-  CheckCircle2, XCircle, Edit2, Trash2,
+  CheckCircle2, XCircle, Edit2, Trash2, FileText,
 } from 'lucide-react';
 import { useRentalContracts } from '../../hooks/useRentalContracts';
 import { useTenants } from '../../hooks/useTenants';
@@ -13,6 +13,7 @@ import { useTrash } from '../../hooks/useTrash';
 import { cascadeContractToTrash } from '../../lib/cascadeDelete';
 import { DocumentList } from '../shared/DocumentList';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { ContractPreviewModal } from './ContractPreviewModal';
 import { cn } from '../../lib/utils';
 
 export function MietvertragDetailPage() {
@@ -27,6 +28,7 @@ export function MietvertragDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editNotes, setEditNotes] = useState(false);
   const [notesVal, setNotesVal] = useState('');
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const contract = allContracts.find((c) => c.id === id);
   if (!contract) {
@@ -66,28 +68,31 @@ export function MietvertragDetailPage() {
 
   return (
     <div className="page-container">
-      {/* Header card */}
-      <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-5 sm:p-6 mb-4 sm:mb-5">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <button
-              onClick={() => navigate('/bh/mietvertraege')}
-              className="size-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-layer-hover transition-colors cursor-pointer shrink-0"
-              aria-label="Zurück"
-            >
-              <ArrowLeft size={18} />
-            </button>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-[22px] sm:text-[24px] font-bold text-foreground tracking-tight leading-tight">Mietvertrag</h1>
-                <span className={`badge ${status.cls}`}>{status.label}</span>
-              </div>
-              <p className="text-[12.5px] text-muted-foreground truncate mt-0.5">
-                {tenant?.name || '–'} · {unit?.name || '–'} · {property?.name || '–'}
-              </p>
+      {/* Flat header */}
+      <div className="flex items-start justify-between gap-3 flex-wrap mb-5 sm:mb-6 px-1">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <button
+            onClick={() => navigate('/bh/mietvertraege')}
+            className="size-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-layer-hover transition-colors cursor-pointer shrink-0"
+            aria-label="Zurück"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-[24px] sm:text-[28px] font-bold text-foreground tracking-tight leading-[1.15]">Mietvertrag</h1>
+              <span className={`badge ${status.cls}`}>{status.label}</span>
             </div>
+            <p className="text-[13px] text-muted-foreground truncate mt-0.5">
+              {tenant?.name || '–'} · {unit?.name || '–'} · {property?.name || '–'}
+            </p>
           </div>
-          <button onClick={() => setConfirmDelete(true)} className="btn btn-sm btn-ghost text-rose-600 dark:text-rose-400 shrink-0">
+        </div>
+        <div className="flex items-center gap-2 shrink-0 mt-1">
+          <button onClick={() => setPreviewOpen(true)} className="btn btn-sm btn-primary">
+            <FileText size={13} /> Vertrag ansehen
+          </button>
+          <button onClick={() => setConfirmDelete(true)} className="btn btn-sm btn-ghost text-rose-600 dark:text-rose-400">
             <Trash2 size={13} /> Löschen
           </button>
         </div>
@@ -211,7 +216,7 @@ export function MietvertragDetailPage() {
                   {tenant.phone && <p className="text-xs text-muted-foreground mt-0.5">{tenant.phone}</p>}
                   <button
                     onClick={() => navigate(`/bh/mieter/${tenant.id}`)}
-                    className="btn btn-sm btn-ghost !px-0 mt-3 text-[#4F6BFF]"
+                    className="mt-3 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-[#4F6BFF]/10 hover:bg-[#4F6BFF]/15 text-[#4F6BFF] text-xs font-semibold transition-colors cursor-pointer"
                   >
                     Mieter ansehen <ArrowLeft size={12} className="rotate-180" />
                   </button>
@@ -235,7 +240,7 @@ export function MietvertragDetailPage() {
                   <p className="text-xs text-muted-foreground mt-0.5">{property.address}</p>
                   <button
                     onClick={() => navigate(`/bh/objekte/${property.id}`)}
-                    className="btn btn-sm btn-ghost !px-0 mt-2 text-[#4F6BFF]"
+                    className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-[#4F6BFF]/10 hover:bg-[#4F6BFF]/15 text-[#4F6BFF] text-xs font-semibold transition-colors cursor-pointer"
                   >
                     Objekt ansehen <ArrowLeft size={12} className="rotate-180" />
                   </button>
@@ -300,6 +305,15 @@ export function MietvertragDetailPage() {
           onCancel={() => setConfirmDelete(false)}
         />
       )}
+
+      <ContractPreviewModal
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        contract={contract}
+        tenant={tenant}
+        unit={unit}
+        property={property}
+      />
     </div>
   );
 }

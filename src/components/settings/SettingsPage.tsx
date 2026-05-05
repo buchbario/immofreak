@@ -273,38 +273,36 @@ export function SettingsPage() {
 
   return (
     <div className="page-container">
-      {/* Header card matching the rest of the app */}
-      <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden mb-4 sm:mb-5">
-        <div className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 border-b border-card-divider">
-          <h1 className="text-[24px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight mb-1">
-            Einstellungen
-          </h1>
-          <p className="text-[13px] text-muted-foreground max-w-2xl leading-relaxed">
-            Profil, {mode === 'buyhold' ? 'Vermieterdaten' : 'Kalkulations-Defaults'} und Datenverwaltung — alle Einstellungen pro Modus.
-          </p>
-        </div>
+      {/* Flat header */}
+      <div className="mb-4 sm:mb-5 px-1">
+        <h1 className="text-[26px] sm:text-[30px] font-bold text-foreground tracking-tight leading-[1.15] mb-1.5">
+          Einstellungen
+        </h1>
+        <p className="text-[14px] text-muted-foreground max-w-2xl leading-relaxed">
+          Profil, {mode === 'buyhold' ? 'Vermieterdaten' : 'Kalkulations-Defaults'} und Datenverwaltung — alle Einstellungen pro Modus.
+        </p>
+      </div>
 
-        {/* Underline tabs */}
-        <div className="px-5 sm:px-7 py-3 flex items-center gap-3 sm:gap-4 flex-wrap overflow-x-auto">
-          {TABS.map((t) => {
-            const Icon = t.icon;
-            const isActive = tab === t.id;
-            return (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={cn(
-                  'group relative inline-flex items-center gap-1.5 pb-2 -mb-3 text-[13px] font-medium transition-colors cursor-pointer whitespace-nowrap',
-                  isActive ? 'text-[#4F6BFF]' : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                <Icon size={14} className="shrink-0" />
-                {t.label}
-                {isActive && <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-[#4F6BFF]" />}
-              </button>
-            );
-          })}
-        </div>
+      {/* Underline tabs — flat, with bottom border */}
+      <div className="flex items-center gap-3 sm:gap-4 flex-wrap mb-5 pb-3 border-b border-card-line px-1 overflow-x-auto">
+        {TABS.map((t) => {
+          const Icon = t.icon;
+          const isActive = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={cn(
+                'group relative inline-flex items-center gap-1.5 pb-3 text-[13.5px] font-medium transition-colors cursor-pointer whitespace-nowrap',
+                isActive ? 'text-[#4F6BFF]' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <Icon size={14} className="shrink-0" />
+              {t.label}
+              {isActive && <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-[#4F6BFF]" />}
+            </button>
+          );
+        })}
       </div>
 
       <div className="space-y-4 sm:space-y-5">

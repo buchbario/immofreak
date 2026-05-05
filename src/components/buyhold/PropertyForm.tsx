@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { RentalProperty } from '../../types';
 import { NumberInput } from '../ui/NumberInput';
+import { Modal, Field, FormSection, FormRow } from '../ui/Modal';
 
 type PropertyData = Omit<RentalProperty, 'id' | 'createdAt' | 'updatedAt'>;
 
@@ -21,88 +22,113 @@ export function PropertyForm({ initial, onClose, onSave }: Props) {
     totalArea: initial?.totalArea || 0,
     notes: initial?.notes || '',
   });
+  const set = (key: keyof PropertyData, value: string | number) =>
+    setForm((f) => ({ ...f, [key]: value }));
 
-  const set = (key: keyof PropertyData, value: string | number) => setForm((f) => ({ ...f, [key]: value }));
+  const valid = !!form.name && !!form.address;
+  const isEdit = !!initial;
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-overlay" />
-      <div className="modal-content max-w-lg" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3 className="text-sm font-semibold text-foreground">{initial ? 'Objekt bearbeiten' : 'Neues Objekt'}</h3>
-          <button className="btn btn-sm btn-ghost" onClick={onClose}>&#10005;</button>
-        </div>
-        <div className="modal-body space-y-4">
-          <div>
-            <label className="input-label">Name</label>
-            <input value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="z.B. MFH Berliner Str. 5" className="input" />
-          </div>
-          <div>
-            <label className="input-label">Adresse</label>
-            <input value={form.address} onChange={(e) => set('address', e.target.value)} placeholder="Strasse, PLZ Ort" className="input" />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="input-label">Kaufpreis</label>
-              <NumberInput
-                value={form.purchasePrice || ''}
-                onChange={(v) => set('purchasePrice', v === '' ? 0 : v)}
-                suffix="€"
-                decimals={2}
-                className="input"
-              />
-            </div>
-            <div>
-              <label className="input-label">Marktwert</label>
-              <NumberInput
-                value={form.currentValue || ''}
-                onChange={(v) => set('currentValue', v === '' ? 0 : v)}
-                suffix="€"
-                decimals={2}
-                className="input"
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="input-label">Kaufdatum</label>
-              <input type="date" value={form.purchaseDate} onChange={(e) => set('purchaseDate', e.target.value)} className="input" />
-            </div>
-            <div>
-              <label className="input-label">Einheiten</label>
-              <NumberInput
-                value={form.units || ''}
-                onChange={(v) => set('units', v === '' ? 0 : v)}
-                decimals={0}
-                className="input"
-              />
-            </div>
-            <div>
-              <label className="input-label">Fläche</label>
-              <NumberInput
-                value={form.totalArea || ''}
-                onChange={(v) => set('totalArea', v === '' ? 0 : v)}
-                suffix="m²"
-                decimals={2}
-                className="input"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="input-label">Notizen</label>
-            <textarea
-              className="input"
-              rows={3}
-              value={form.notes}
-              onChange={(e) => set('notes', e.target.value)}
-            />
-          </div>
-        </div>
-        <div className="modal-footer">
+    <Modal
+      open
+      onClose={onClose}
+      size="lg"
+      title={isEdit ? 'Objekt bearbeiten' : 'Neues Objekt'}
+      description={isEdit ? 'Aktualisiere die Stammdaten dieses Objekts.' : 'Lege ein neues Mietobjekt an. Einheiten kannst du später detailliert pflegen.'}
+      footer={
+        <>
           <button onClick={onClose} className="btn btn-md btn-secondary">Abbrechen</button>
-          <button onClick={() => onSave(form)} disabled={!form.name || !form.address} className="btn btn-md btn-primary">Speichern</button>
-        </div>
-      </div>
-    </div>
+          <button onClick={() => onSave(form)} disabled={!valid} className="btn btn-md btn-primary">
+            {isEdit ? 'Speichern' : 'Objekt anlegen'}
+          </button>
+        </>
+      }
+    >
+      <FormSection title="Stammdaten">
+        <Field label="Name" required htmlFor="prop-name">
+          <input
+            id="prop-name"
+            value={form.name}
+            onChange={(e) => set('name', e.target.value)}
+            placeholder="z.B. MFH Berliner Str. 5"
+            className="input"
+          />
+        </Field>
+        <Field label="Adresse" required htmlFor="prop-addr">
+          <input
+            id="prop-addr"
+            value={form.address}
+            onChange={(e) => set('address', e.target.value)}
+            placeholder="Strasse, PLZ Ort"
+            className="input"
+          />
+        </Field>
+      </FormSection>
+
+      <FormSection title="Finanzen">
+        <FormRow cols={2}>
+          <Field label="Kaufpreis">
+            <NumberInput
+              value={form.purchasePrice || ''}
+              onChange={(v) => set('purchasePrice', v === '' ? 0 : v)}
+              suffix="€"
+              decimals={2}
+              className="input"
+            />
+          </Field>
+          <Field label="Marktwert">
+            <NumberInput
+              value={form.currentValue || ''}
+              onChange={(v) => set('currentValue', v === '' ? 0 : v)}
+              suffix="€"
+              decimals={2}
+              className="input"
+            />
+          </Field>
+        </FormRow>
+      </FormSection>
+
+      <FormSection title="Objekt-Details">
+        <FormRow cols={3}>
+          <Field label="Kaufdatum">
+            <input
+              type="date"
+              value={form.purchaseDate}
+              onChange={(e) => set('purchaseDate', e.target.value)}
+              className="input"
+            />
+          </Field>
+          <Field label="Einheiten">
+            <NumberInput
+              value={form.units || ''}
+              onChange={(v) => set('units', v === '' ? 0 : v)}
+              decimals={0}
+              className="input"
+            />
+          </Field>
+          <Field label="Fläche">
+            <NumberInput
+              value={form.totalArea || ''}
+              onChange={(v) => set('totalArea', v === '' ? 0 : v)}
+              suffix="m²"
+              decimals={2}
+              className="input"
+            />
+          </Field>
+        </FormRow>
+      </FormSection>
+
+      <FormSection title="Notizen">
+        <Field>
+          <textarea
+            className="input"
+            rows={3}
+            value={form.notes}
+            onChange={(e) => set('notes', e.target.value)}
+            placeholder="Optionale Notizen, Auffälligkeiten, Vereinbarungen…"
+          />
+        </Field>
+      </FormSection>
+    </Modal>
   );
 }

@@ -3,6 +3,7 @@ import { useContractors } from '../../hooks/useContractors';
 import { BUDGET_ITEM_STATUSES } from '../../types';
 import type { BudgetItem, BudgetItemStatus } from '../../types';
 import { NumberInput } from '../ui/NumberInput';
+import { Modal, Field, FormSection, FormRow } from '../ui/Modal';
 
 interface BudgetItemFormProps {
   onClose: () => void;
@@ -12,22 +13,10 @@ interface BudgetItemFormProps {
 }
 
 const CATEGORIES = [
-  'Malerarbeiten',
-  'Elektrik',
-  'Sanitär',
-  'Bodenbeläge',
-  'Fliesen',
-  'Trockenbau',
-  'Dach',
-  'Fenster & Türen',
-  'Küche',
-  'Bad',
-  'Heizung',
-  'Außenanlage',
-  'Home Staging',
-  'Planung & Genehmigung',
-  'Abriss & Entsorgung',
-  'Sonstiges',
+  'Malerarbeiten', 'Elektrik', 'Sanitär', 'Bodenbeläge', 'Fliesen',
+  'Trockenbau', 'Dach', 'Fenster & Türen', 'Küche', 'Bad',
+  'Heizung', 'Außenanlage', 'Home Staging', 'Planung & Genehmigung',
+  'Abriss & Entsorgung', 'Sonstiges',
 ];
 
 export function BudgetItemForm({ onClose, onSubmit, projectId, item }: BudgetItemFormProps) {
@@ -43,8 +32,10 @@ export function BudgetItemForm({ onClose, onSubmit, projectId, item }: BudgetIte
     contractorId: item?.contractorId || '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const valid = form.description.trim().length > 0;
+
+  const handleSubmit = () => {
+    if (!valid) return;
     onSubmit({
       projectId,
       category: form.category,
@@ -60,83 +51,79 @@ export function BudgetItemForm({ onClose, onSubmit, projectId, item }: BudgetIte
   const update = (field: string, value: string) => setForm((f) => ({ ...f, [field]: value }));
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-overlay" />
-      <div className="modal-content max-w-md" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3 className="section-title">{isEdit ? 'Position bearbeiten' : 'Neue Budgetposition'}</h3>
-          <button className="btn btn-xs btn-ghost" onClick={onClose}>&#10005;</button>
-        </div>
-        <form onSubmit={handleSubmit}>
-          <div className="modal-body space-y-4">
-            <div>
-              <label className="input-label">Kategorie</label>
-              <select value={form.category} onChange={(e) => update('category', e.target.value)} className="input">
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="input-label">Beschreibung *</label>
-              <input
-                required
-                value={form.description}
-                onChange={(e) => update('description', e.target.value)}
-                placeholder="z.B. Wände streichen Wohnung EG"
-                className="input"
-              />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="input-label">Geschätzte Kosten</label>
-                <NumberInput
-                  value={form.estimatedCost}
-                  onChange={(v) => update('estimatedCost', v === '' ? '' : String(v))}
-                  placeholder="0"
-                  suffix="€"
-                  decimals={2}
-                  className="input"
-                />
-              </div>
-              <div>
-                <label className="input-label">Tatsächliche Kosten</label>
-                <NumberInput
-                  value={form.actualCost}
-                  onChange={(v) => update('actualCost', v === '' ? '' : String(v))}
-                  placeholder="0"
-                  suffix="€"
-                  decimals={2}
-                  className="input"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="input-label">Status</label>
-                <select value={form.status} onChange={(e) => update('status', e.target.value)} className="input">
-                  {BUDGET_ITEM_STATUSES.map((s) => (
-                    <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="input-label">Handwerker (optional)</label>
-                <select value={form.contractorId || ''} onChange={(e) => update('contractorId', e.target.value)} className="input">
-                  <option value="">-- Kein Handwerker --</option>
-                  {contractors.map((c) => (
-                    <option key={c.id} value={c.id}>{`${c.name} (${c.trade})`}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-          <div className="modal-footer">
-            <button type="button" onClick={onClose} className="btn btn-md btn-secondary">Abbrechen</button>
-            <button type="submit" className="btn btn-md btn-primary">{isEdit ? 'Speichern' : 'Hinzufügen'}</button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <Modal
+      open
+      onClose={onClose}
+      size="md"
+      title={isEdit ? 'Position bearbeiten' : 'Neue Budgetposition'}
+      description="Eine einzelne Gewerk-Position innerhalb des Sanierungsbudgets."
+      footer={
+        <>
+          <button onClick={onClose} className="btn btn-md btn-secondary">Abbrechen</button>
+          <button onClick={handleSubmit} disabled={!valid} className="btn btn-md btn-primary">
+            {isEdit ? 'Speichern' : 'Hinzufügen'}
+          </button>
+        </>
+      }
+    >
+      <FormSection title="Position">
+        <FormRow cols={2}>
+          <Field label="Kategorie">
+            <select value={form.category} onChange={(e) => update('category', e.target.value)} className="input">
+              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </Field>
+          <Field label="Status">
+            <select value={form.status} onChange={(e) => update('status', e.target.value)} className="input">
+              {BUDGET_ITEM_STATUSES.map((s) => (
+                <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+              ))}
+            </select>
+          </Field>
+        </FormRow>
+        <Field label="Beschreibung" required>
+          <input
+            required
+            value={form.description}
+            onChange={(e) => update('description', e.target.value)}
+            placeholder="z.B. Wände streichen Wohnung EG"
+            className="input"
+          />
+        </Field>
+      </FormSection>
+
+      <FormSection title="Kosten">
+        <FormRow cols={2}>
+          <Field label="Geschätzte Kosten">
+            <NumberInput
+              value={form.estimatedCost}
+              onChange={(v) => update('estimatedCost', v === '' ? '' : String(v))}
+              placeholder="0"
+              suffix="€"
+              decimals={2}
+              className="input"
+            />
+          </Field>
+          <Field label="Tatsächliche Kosten">
+            <NumberInput
+              value={form.actualCost}
+              onChange={(v) => update('actualCost', v === '' ? '' : String(v))}
+              placeholder="0"
+              suffix="€"
+              decimals={2}
+              className="input"
+            />
+          </Field>
+        </FormRow>
+        <Field label="Handwerker" help="Optional">
+          <select value={form.contractorId || ''} onChange={(e) => update('contractorId', e.target.value)} className="input">
+            <option value="">— kein Handwerker —</option>
+            {contractors.map((c) => (
+              <option key={c.id} value={c.id}>{`${c.name} (${c.trade})`}</option>
+            ))}
+          </select>
+        </Field>
+      </FormSection>
+    </Modal>
   );
 }

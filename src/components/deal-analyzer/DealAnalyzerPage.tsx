@@ -356,18 +356,17 @@ export function DealAnalyzerPage() {
 
   return (
     <div className="page-container">
-      {/* Header card */}
-      <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-5 sm:p-6 mb-4 sm:mb-5" data-tour="deal-analyzer">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div className="min-w-0 flex-1">
-            <h1 className="text-[24px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight mb-1">
-              Deal Analyzer
-            </h1>
-            <p className="text-[13px] text-muted-foreground max-w-2xl leading-relaxed">
-              Analysiere Deals bevor du kaufst — GIK, Sanierungskosten, ARV und Cashflow-Projektion in einem Tool.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
+      {/* Flat header */}
+      <div className="flex items-start justify-between gap-3 flex-wrap mb-5 sm:mb-6 px-1" data-tour="deal-analyzer">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-[26px] sm:text-[30px] font-bold text-foreground tracking-tight leading-[1.15] mb-1.5">
+            Deal Analyzer
+          </h1>
+          <p className="text-[14px] text-muted-foreground max-w-2xl leading-relaxed">
+            Analysiere Deals bevor du kaufst — GIK, Sanierungskosten, ARV und Cashflow-Projektion in einem Tool.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 mt-1">
           {/* Saved analyses dropdown */}
           <div className="relative" ref={savedRef}>
             <button
@@ -410,7 +409,6 @@ export function DealAnalyzerPage() {
           <button onClick={handleNew} className="btn btn-sm btn-primary">
             <Plus size={14} /> Neue Analyse
           </button>
-        </div>
         </div>
       </div>
 

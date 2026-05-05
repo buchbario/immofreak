@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { X } from 'lucide-react';
 import type { MeterReading } from '../../types';
 import { NumberInput } from '../ui/NumberInput';
+import { Modal, Field, FormRow } from '../ui/Modal';
 
 interface Props {
   propertyId: string;
@@ -19,8 +19,7 @@ export function MeterReadingForm({ propertyId, onClose, onSave }: Props) {
   const parsedValue = parseFloat(value);
   const canSubmit = meterId.trim().length > 0 && !isNaN(parsedValue);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = () => {
     if (!canSubmit) return;
     onSave({
       propertyId,
@@ -33,51 +32,45 @@ export function MeterReadingForm({ propertyId, onClose, onSave }: Props) {
   };
 
   return (
-    <div className="modal-backdrop">
-      <div className="modal-overlay" onClick={onClose} />
-      <div className="modal-content max-w-md">
-        <div className="modal-header">
-          <h3 className="text-sm font-semibold text-foreground">Zählerstand erfassen</h3>
-          <button onClick={onClose} className="cursor-pointer text-muted-foreground"><X size={18} /></button>
-        </div>
-        <form onSubmit={handleSubmit} className="modal-body space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="input-label">Zähler-Nr. *</label>
-              <input value={meterId} onChange={(e) => setMeterId(e.target.value)} className="input" placeholder="z.B. S-12345" required />
-            </div>
-            <div>
-              <label className="input-label">Wert *</label>
-              <NumberInput
-                value={value}
-                onChange={(v) => setValue(v === '' ? '' : String(v))}
-                decimals={2}
-                placeholder="0"
-                required
-                className="input"
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="input-label">Datum</label>
-              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input" />
-            </div>
-            <div>
-              <label className="input-label">Abgelesen von</label>
-              <input value={readBy} onChange={(e) => setReadBy(e.target.value)} className="input" placeholder="Name" />
-            </div>
-          </div>
-          <div>
-            <label className="input-label">Notiz</label>
-            <input value={notes} onChange={(e) => setNotes(e.target.value)} className="input" placeholder="Optional" />
-          </div>
-          <div className="modal-footer px-0 pb-0 border-t-0">
-            <button type="button" onClick={onClose} className="btn btn-md btn-secondary">Abbrechen</button>
-            <button type="submit" disabled={!canSubmit} className="btn btn-md btn-primary">Speichern</button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <Modal
+      open
+      onClose={onClose}
+      size="md"
+      title="Zählerstand erfassen"
+      description="Strom, Wasser, Gas — manuelle Ablesung dokumentieren."
+      footer={
+        <>
+          <button onClick={onClose} className="btn btn-md btn-secondary">Abbrechen</button>
+          <button onClick={handleSubmit} disabled={!canSubmit} className="btn btn-md btn-primary">Speichern</button>
+        </>
+      }
+    >
+      <FormRow cols={2}>
+        <Field label="Zähler-Nr." required>
+          <input value={meterId} onChange={(e) => setMeterId(e.target.value)} className="input" placeholder="z.B. S-12345" required />
+        </Field>
+        <Field label="Wert" required>
+          <NumberInput
+            value={value}
+            onChange={(v) => setValue(v === '' ? '' : String(v))}
+            decimals={2}
+            placeholder="0"
+            required
+            className="input"
+          />
+        </Field>
+      </FormRow>
+      <FormRow cols={2}>
+        <Field label="Datum">
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input" />
+        </Field>
+        <Field label="Abgelesen von">
+          <input value={readBy} onChange={(e) => setReadBy(e.target.value)} className="input" placeholder="Name" />
+        </Field>
+      </FormRow>
+      <Field label="Notiz" help="Optional">
+        <input value={notes} onChange={(e) => setNotes(e.target.value)} className="input" placeholder="z.B. außerordentliche Ablesung" />
+      </Field>
+    </Modal>
   );
 }

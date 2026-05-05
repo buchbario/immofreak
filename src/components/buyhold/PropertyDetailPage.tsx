@@ -82,62 +82,54 @@ export function PropertyDetailPage() {
 
   return (
     <div className="page-container">
-      {/* Hero */}
-      <div className="relative rounded-2xl overflow-hidden mb-5 sm:mb-6">
-        {/* Cover image or gradient */}
-        <div className="h-36 sm:h-52">
-          {cover ? (
-            <img src={cover} alt={property.name} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-[#4F6BFF] via-[#6B7FFF] to-[#8B9FFF]" />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10" />
+      {/* Flat header — Back + Cover-Thumb + Title/Address + Actions */}
+      <div className="flex items-start justify-between gap-3 flex-wrap mb-5 sm:mb-6 px-1">
+        <div className="flex items-start gap-3 min-w-0 flex-1">
+          <button
+            onClick={() => navigate('/bh/objekte')}
+            className="size-8 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-layer-hover transition-colors cursor-pointer shrink-0 mt-1"
+            aria-label="Zurück"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          {/* Cover thumbnail */}
+          <div className="size-14 sm:size-16 rounded-xl overflow-hidden shrink-0 ring-1 ring-card-line">
+            {cover ? (
+              <img src={cover} alt={property.name} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-[#4F6BFF] to-[#6B7FFF] flex items-center justify-center">
+                <Building2 size={22} className="text-white/85" strokeWidth={1.6} />
+              </div>
+            )}
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-[24px] sm:text-[28px] font-bold text-foreground tracking-tight leading-[1.15] truncate">
+              {property.name}
+            </h1>
+            <div className="flex items-center gap-1.5 mt-1">
+              <MapPin size={13} className="text-muted-foreground shrink-0" />
+              <span className="text-[13px] text-muted-foreground truncate">{property.address}</span>
+            </div>
+          </div>
         </div>
-
-        {/* Back button */}
-        <button
-          onClick={() => navigate('/bh/objekte')}
-          className="absolute top-4 left-4 size-9 rounded-xl bg-white/15 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/25 transition-colors cursor-pointer"
-        >
-          <ArrowLeft size={18} />
-        </button>
-
-        {/* Actions */}
-        <div className="absolute top-4 right-4 flex items-center gap-1.5 sm:gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 mt-1">
           <button
             onClick={handleCopyLink}
             aria-label={linkCopied ? 'Kopiert' : 'Teilen'}
             className={cn(
-              'size-9 sm:size-auto sm:px-3 sm:py-2 rounded-xl text-xs font-semibold backdrop-blur-md flex items-center justify-center sm:gap-1.5 transition-all cursor-pointer',
-              linkCopied ? 'bg-emerald-500/90 text-white' : 'bg-white/15 text-white hover:bg-white/25'
+              'btn btn-sm transition-colors',
+              linkCopied ? 'bg-emerald-500 text-white border-emerald-500 hover:bg-emerald-600' : 'btn-secondary'
             )}
           >
             {linkCopied ? <Check size={13} /> : <Share2 size={13} />}
             <span className="hidden sm:inline">{linkCopied ? 'Kopiert!' : 'Teilen'}</span>
           </button>
-          <button
-            onClick={() => setShowEditForm(true)}
-            aria-label="Bearbeiten"
-            className="size-9 sm:size-auto sm:px-3 sm:py-2 rounded-xl text-xs font-semibold bg-white/15 backdrop-blur-md text-white hover:bg-white/25 transition-colors cursor-pointer flex items-center justify-center sm:gap-1.5"
-          >
+          <button onClick={() => setShowEditForm(true)} className="btn btn-sm btn-secondary">
             <Edit2 size={13} /> <span className="hidden sm:inline">Bearbeiten</span>
           </button>
-          <button
-            onClick={() => setConfirmDelete(true)}
-            aria-label="Löschen"
-            className="size-9 rounded-xl bg-white/15 backdrop-blur-md flex items-center justify-center text-white/70 hover:bg-red-500/80 hover:text-white transition-all cursor-pointer"
-          >
-            <Trash2 size={14} />
+          <button onClick={() => setConfirmDelete(true)} className="btn btn-sm btn-ghost text-rose-600 dark:text-rose-400" aria-label="Löschen">
+            <Trash2 size={13} />
           </button>
-        </div>
-
-        {/* Title overlay */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6">
-          <h1 className="text-lg sm:text-2xl font-bold text-white drop-shadow-md">{property.name}</h1>
-          <div className="flex items-start gap-1.5 mt-1">
-            <MapPin size={13} className="text-white/70 mt-0.5 shrink-0" />
-            <span className="text-xs sm:text-sm text-white/80">{property.address}</span>
-          </div>
         </div>
       </div>
 

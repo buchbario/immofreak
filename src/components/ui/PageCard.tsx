@@ -39,9 +39,9 @@ interface PageCardProps<K extends string = string> {
 }
 
 /**
- * Floating page-card shell used across list pages — matches the design of
- * /bh/vorgaenge: rounded-2xl card with title block, underline-tabs row,
- * search trigger, body, and a thin footer.
+ * Flat page shell — Bloggo/Stratify style: title + description floats freely,
+ * filters row sits below (no card border), content renders unwrapped.
+ * Consumers wrap tables/lists in their own card if needed.
  */
 export function PageCard<K extends string = string>({
   title,
@@ -59,28 +59,26 @@ export function PageCard<K extends string = string>({
   bodyPadding = 'flush',
   children,
 }: PageCardProps<K>) {
+  const hasFiltersRow = !!(tabs?.length || onSearchChange || tabExtras);
   return (
-    <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">
-      {/* Header — Title + Description on the left, optional Actions on the right */}
-      <div className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 border-b border-card-divider">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div className="min-w-0 flex-1">
-            <h1 className="text-[24px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight mb-1">
-              {title}
-            </h1>
-            {description && (
-              <p className="text-[13px] text-muted-foreground max-w-2xl leading-relaxed">{description}</p>
-            )}
-          </div>
-          {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
+    <div>
+      {/* Header — flat, no card wrap. Title/description left, actions right */}
+      <div className="flex items-start justify-between gap-3 flex-wrap mb-5 sm:mb-6 px-1">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-[26px] sm:text-[30px] font-bold text-foreground tracking-tight leading-[1.15] mb-1.5">
+            {title}
+          </h1>
+          {description && (
+            <p className="text-[14px] text-muted-foreground max-w-2xl leading-relaxed">{description}</p>
+          )}
         </div>
-        {/* meta intentionally not rendered — kept as a no-op prop for backwards compat */}
-        {meta ? <span className="hidden">{meta}</span> : null}
+        {actions && <div className="flex items-center gap-2 shrink-0 mt-1">{actions}</div>}
       </div>
+      {meta ? <span className="hidden">{meta}</span> : null}
 
-      {/* Tabs + Search */}
-      {(tabs?.length || onSearchChange || tabExtras) && (
-        <div className="px-5 sm:px-7 py-3 border-b border-card-divider flex items-center gap-3 flex-wrap">
+      {/* Filters row — flat, sits below the header with bottom border */}
+      {hasFiltersRow && (
+        <div className="flex items-center gap-3 flex-wrap mb-4 pb-3 border-b border-card-line px-1">
           {tabs?.length ? (
             <div className="flex items-center gap-3 sm:gap-4 -mb-3 flex-wrap min-w-0">
               {tabs.map((t) => {
@@ -91,7 +89,7 @@ export function PageCard<K extends string = string>({
                     key={t.key}
                     onClick={() => onTabChange?.(t.key)}
                     className={cn(
-                      'group relative inline-flex items-center gap-1.5 pb-2 text-[13px] font-medium transition-colors cursor-pointer',
+                      'group relative inline-flex items-center gap-1.5 pb-3 text-[13.5px] font-medium transition-colors cursor-pointer',
                       isActive ? 'text-[#4F6BFF]' : 'text-muted-foreground hover:text-foreground',
                     )}
                   >
@@ -133,17 +131,18 @@ export function PageCard<K extends string = string>({
         </div>
       )}
 
-      {/* Body */}
-      <div className={bodyPadding === 'comfortable' ? 'p-5 sm:p-6' : ''}>
+      {/* Body — content renders inside a clean white card so tables/rows have a frame */}
+      <div className={cn(
+        'bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden',
+        bodyPadding === 'comfortable' && 'p-5 sm:p-6',
+      )}>
         {children}
+        {footer && (
+          <div className="px-5 sm:px-7 py-3 border-t border-card-divider">
+            <p className="text-[11.5px] text-muted-foreground tabular-nums">{footer}</p>
+          </div>
+        )}
       </div>
-
-      {/* Footer */}
-      {footer && (
-        <div className="px-5 sm:px-7 py-3 border-t border-card-divider">
-          <p className="text-[11.5px] text-muted-foreground tabular-nums">{footer}</p>
-        </div>
-      )}
     </div>
   );
 }

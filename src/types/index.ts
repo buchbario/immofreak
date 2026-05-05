@@ -1,5 +1,56 @@
 // ============= App Mode =============
-export type AppMode = 'fixflip' | 'buyhold';
+export type AppMode = 'fixflip' | 'buyhold' | 'private';
+
+// ============= Private Boards (Trello-style personal todos) =============
+export interface PrivateBoard {
+  id: string;
+  name: string;
+  /** Optional emoji or short prefix shown in the sidebar/header */
+  icon?: string;
+  /** Tailwind gradient classes, e.g. 'from-violet-400 to-fuchsia-500' */
+  accent?: string;
+  /** Sort order in the boards list (lower = earlier) */
+  order: number;
+  /** Pinned to sidebar — shows as a quick-access nav entry */
+  pinned?: boolean;
+  /** Sort order among pinned boards in the sidebar (lower = earlier) */
+  pinOrder?: number;
+  createdAt: string;
+}
+
+export interface PrivateList {
+  id: string;
+  boardId: string;
+  name: string;
+  order: number;
+  createdAt: string;
+}
+
+export type PrivateCardPriority = 'low' | 'normal' | 'high';
+
+export interface PrivateChecklistItem {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
+export interface PrivateCard {
+  id: string;
+  listId: string;
+  boardId: string;
+  title: string;
+  description?: string;
+  /** ISO date string */
+  dueDate?: string;
+  priority?: PrivateCardPriority;
+  /** Free-form labels (chips) */
+  labels?: string[];
+  checklist?: PrivateChecklistItem[];
+  order: number;
+  createdAt: string;
+  /** ISO date when it was completed (Done column) — for stats */
+  completedAt?: string;
+}
 
 // ============= Fix & Flip Types =============
 export type ProjectStatus = 'Akquise' | 'Planung' | 'Sanierung' | 'Verkauf' | 'Abgeschlossen';

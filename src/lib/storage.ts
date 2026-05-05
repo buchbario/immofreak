@@ -114,3 +114,8 @@ export const taskStore = new LocalStorageAdapter<import('../types').Task>('immof
 
 // Trash / Papierkorb
 export const trashStore = new LocalStorageAdapter<import('../types').TrashItem>('immofreak_trash');
+
+// Private Boards (Trello-style personal todos)
+export const privateBoardStore = new LocalStorageAdapter<import('../types').PrivateBoard>('immofreak_private_boards');
+export const privateListStore = new LocalStorageAdapter<import('../types').PrivateList>('immofreak_private_lists');
+export const privateCardStore = new LocalStorageAdapter<import('../types').PrivateCard>('immofreak_private_cards');

@@ -1,6 +1,6 @@
 import {
   Building2, ArrowRight, Home, Users, Wallet, Percent, Plus,
-  UserPlus, Receipt, BarChart3, ChevronRight, Check, Clock,
+  UserPlus, Receipt, BarChart3, Check, Clock,
   FileText, KeyRound,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -10,6 +10,7 @@ import { useTenants } from '../../hooks/useTenants';
 import { useUtilities } from '../../hooks/useUtilities';
 import { useRentalContracts } from '../../hooks/useRentalContracts';
 import { useTasks } from '../../hooks/useTasks';
+import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../lib/utils';
 
 const dateFmtRelativeShort = new Intl.RelativeTimeFormat('de-DE', { numeric: 'auto' });
@@ -60,6 +61,10 @@ function classifyOccupancy(occupiedCount: number, totalCount: number): Occupancy
 
 export function BHDashboardPage() {
   const navigate = useNavigate();
+  const { userName } = useAuth();
+  const firstName = (userName || 'da').split(' ')[0];
+  const hour = new Date().getHours();
+  const greeting = hour < 11 ? 'Guten Morgen' : hour < 18 ? 'Hallo' : 'Guten Abend';
   const { properties } = useRentalProperties();
   const { allUnits, totalMonthlyRent, vacancyRate, occupiedUnits } = useRentalUnits();
   const { allTenants } = useTenants();
@@ -83,69 +88,7 @@ export function BHDashboardPage() {
   const valueGrowth = totalPurchase > 0 ? ((totalValue - totalPurchase) / totalPurchase) * 100 : 0;
   const valueGrowthCapped = Math.max(0, Math.min(100, 50 + valueGrowth)); // 0% growth = 50% bar
 
-  // Belegungs-Pipeline-Stufen (4 Spalten)
-  const vacantUnits = allUnits.filter(u => !allTenants.some(t => t.unitId === u.id));
-  const avgUnitRent = allUnits.length > 0 ? totalMonthlyRent / Math.max(1, occupiedUnits.length) : 0;
-  const lostRent = vacantUnits.reduce((s, u) => s + (u.targetRent || u.currentRent || avgUnitRent), 0);
-  const befristeteContracts = allContracts.filter(c => c.contractType === 'befristet').length;
-  const unbefristeteContracts = allContracts.filter(c => c.contractType === 'unbefristet').length;
-  const stages: {
-    key: string; label: string;
-    markerClass: string; barClass: string;
-    iconBg: string; iconColor: string;
-    Icon: React.ComponentType<{ size?: number; className?: string }>;
-    primary: string; sub: string; empty: boolean;
-  }[] = [
-    {
-      key: 'vermietet',
-      label: 'Vermietet',
-      markerClass: 'bg-emerald-500',
-      barClass: 'bg-emerald-500',
-      iconBg: 'bg-emerald-100 dark:bg-emerald-500/15',
-      iconColor: 'text-emerald-700 dark:text-emerald-300',
-      Icon: KeyRound,
-      primary: `${occupiedUnits.length} ${occupiedUnits.length === 1 ? 'Einheit' : 'Einheiten'}`,
-      sub: `${fmtEur(totalMonthlyRent)} / Monat`,
-      empty: occupiedUnits.length === 0,
-    },
-    {
-      key: 'frei',
-      label: 'Frei',
-      markerClass: 'bg-rose-500',
-      barClass: 'bg-rose-500',
-      iconBg: 'bg-rose-100 dark:bg-rose-500/15',
-      iconColor: 'text-rose-700 dark:text-rose-300',
-      Icon: Home,
-      primary: `${vacantUnits.length} ${vacantUnits.length === 1 ? 'Einheit' : 'Einheiten'}`,
-      sub: vacantUnits.length > 0 ? `${fmtEur(lostRent)} entgangen / M` : 'Kein Leerstand',
-      empty: vacantUnits.length === 0,
-    },
-    {
-      key: 'befristet',
-      label: 'Befristet',
-      markerClass: 'bg-amber-500',
-      barClass: 'bg-amber-500',
-      iconBg: 'bg-amber-100 dark:bg-amber-500/15',
-      iconColor: 'text-amber-700 dark:text-amber-300',
-      Icon: Clock,
-      primary: `${befristeteContracts} ${befristeteContracts === 1 ? 'Vertrag' : 'Verträge'}`,
-      sub: 'mit Enddatum',
-      empty: befristeteContracts === 0,
-    },
-    {
-      key: 'unbefristet',
-      label: 'Unbefristet',
-      markerClass: 'bg-sky-500',
-      barClass: 'bg-sky-500',
-      iconBg: 'bg-sky-100 dark:bg-sky-500/15',
-      iconColor: 'text-sky-700 dark:text-sky-300',
-      Icon: FileText,
-      primary: `${unbefristeteContracts} ${unbefristeteContracts === 1 ? 'Vertrag' : 'Verträge'}`,
-      sub: 'ohne Enddatum',
-      empty: unbefristeteContracts === 0,
-    },
-  ];
-  const totalStageVolume = occupiedUnits.length + vacantUnits.length;
+  // (Belegungs-Pipeline-Stufen wurden im aktuellen Layout entfernt.)
 
   // Occupancy classification for filter chips
   const propertyOccupancy = properties.map(p => {
@@ -230,23 +173,26 @@ export function BHDashboardPage() {
 
   return (
     <div className="page-container">
-      {/* HEADER CARD — matches the rest of the app's card-header pattern */}
-      <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-5 sm:p-7 mb-4 sm:mb-5">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div className="min-w-0 flex-1">
-            <h1 className="text-[24px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight mb-1">
-              Portfolio
-            </h1>
-            <p className="text-[13px] text-muted-foreground max-w-2xl leading-relaxed">
-              Übersicht aller Mietobjekte mit Belegung, Mieteinnahmen, Rendite und aktuellen Mieter-Aktivitäten auf einen Blick.
-            </p>
-          </div>
-          <button onClick={() => navigate('/bh/objekte')} className="btn btn-sm btn-primary shrink-0">
-            <Plus size={14} />
-            <span className="hidden sm:inline">Objekt anlegen</span>
-            <span className="sm:hidden">Neu</span>
-          </button>
+      {/* WELCOME GREETING — Stratify-style */}
+      <div className="flex items-start justify-between gap-3 flex-wrap mb-7 sm:mb-9 px-1">
+        <div className="min-w-0">
+          <h1 className="text-[34px] sm:text-[42px] font-bold text-[#0f172a] tracking-tight leading-[1.1] mb-2 inline-flex items-center gap-3 flex-wrap">
+            <span className="bg-[#dbe5ff] px-3 py-1 rounded-lg inline-block">
+              {greeting}, {firstName}!
+            </span>
+            <span className="text-[30px] sm:text-[36px]" role="img" aria-label="wave">👋</span>
+          </h1>
+          <p className="text-[18px] sm:text-[22px] text-muted-foreground/80 leading-relaxed font-light">
+            {properties.length === 0
+              ? 'Bereit für dein erstes Mietobjekt?'
+              : `Du verwaltest ${properties.length} ${properties.length === 1 ? 'Objekt' : 'Objekte'} – was möchtest du heute tun?`}
+          </p>
         </div>
+        <button onClick={() => navigate('/bh/objekte')} className="btn btn-md btn-primary shrink-0 mt-2">
+          <Plus size={15} />
+          <span className="hidden sm:inline">Objekt anlegen</span>
+          <span className="sm:hidden">Neu</span>
+        </button>
       </div>
 
       {/* KPI GRID */}
@@ -308,112 +254,35 @@ export function BHDashboardPage() {
           </div>
         </KpiCard>
 
-        {/* Rendite — featured */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#4F6BFF] to-[#6B5BFF] text-white rounded-2xl p-4 sm:p-5 shadow-[0_6px_20px_rgba(79,107,255,0.22)] hover:shadow-[0_8px_24px_rgba(79,107,255,0.28)] transition-all hover:-translate-y-px cursor-default">
-          <div className="absolute -top-1/2 -right-1/4 w-[220px] h-[220px] rounded-full pointer-events-none"
-            style={{ background: 'radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 70%)' }} />
-          <div className="relative">
-            <div className="flex items-center gap-2 mb-3 sm:mb-4">
-              <span className="shrink-0 inline-flex justify-center items-center size-7 rounded-lg bg-white/20">
-                <Percent size={14} />
-              </span>
-              <span className="text-xs sm:text-sm font-medium text-white/85">Rendite</span>
-            </div>
-            <p className="text-2xl sm:text-[28px] leading-[1.1] font-bold tabular-nums tracking-tight">{bruttoRendite.toFixed(1)}%</p>
-            <div className="flex items-center justify-between text-xs text-white/70 mt-1.5">
-              <span>Netto <span className="font-semibold tabular-nums text-white">{nettoRendite.toFixed(1)}%</span></span>
-              <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold bg-white/20 px-2 py-0.5 rounded-full">
-                brutto
-              </span>
-            </div>
-          </div>
-        </div>
+        {/* Rendite — uniform style */}
+        <KpiCard
+          icon={<Percent size={14} />}
+          iconClass="bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+          label="Rendite"
+        >
+          <p className="text-2xl sm:text-[28px] leading-[1.1] font-bold text-foreground tabular-nums tracking-tight">{bruttoRendite.toFixed(1)}%</p>
+          <p className="text-xs text-muted-foreground mt-1.5">Netto {nettoRendite.toFixed(1)}%</p>
+        </KpiCard>
       </div>
 
-      {/* PIPELINE / Belegungs-Übersicht — Stage-Cards mit Akzent-Strip */}
-      <div className="mb-6 sm:mb-8">
-        <div className="flex items-center justify-between gap-3 mb-3 sm:mb-4 px-1">
-          <h2 className="text-[15px] font-semibold text-foreground tracking-tight">Belegungs-Übersicht</h2>
-          <button
-            onClick={() => navigate('/bh/mietvertraege')}
-            className="text-xs font-medium text-muted-foreground hover:text-foreground inline-flex items-center gap-1 transition-colors shrink-0"
-          >
-            Verträge <ChevronRight size={12} />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {stages.map((s) => {
-            const widthPct = totalStageVolume > 0 && (s.key === 'vermietet' || s.key === 'frei')
-              ? Math.round(((s.key === 'vermietet' ? occupiedUnits.length : vacantUnits.length) / totalStageVolume) * 100)
-              : (s.empty ? 0 : 100);
-            return (
-              <button
-                key={s.key}
-                onClick={() => navigate(s.key === 'befristet' || s.key === 'unbefristet' ? '/bh/mietvertraege' : '/bh/objekte')}
-                className={cn(
-                  'group relative text-left cursor-pointer overflow-hidden rounded-2xl bg-card border border-card-line p-4 transition-all',
-                  'shadow-[0_1px_2px_rgba(15,23,42,0.04)]',
-                  s.empty
-                    ? 'opacity-70 hover:opacity-100'
-                    : 'hover:-translate-y-px hover:shadow-[0_4px_12px_rgba(15,23,42,0.06)]',
-                )}
-              >
-                <div
-                  aria-hidden
-                  className={cn('absolute left-0 right-0 top-0 h-[3px]', s.empty ? 'bg-muted-foreground/15' : s.barClass)}
-                />
-
-                <div className="flex items-center gap-1.5 mb-3">
-                  <span className={cn('size-1.5 rounded-full shrink-0', s.empty ? 'bg-muted-foreground/30' : s.markerClass)} />
-                  <span className="text-[12px] font-semibold text-foreground/80 truncate">{s.label}</span>
-                </div>
-
-                <p className={cn(
-                  'text-[20px] leading-[1.1] tabular-nums tracking-tight font-bold mb-1',
-                  s.empty ? 'text-muted-foreground/50' : 'text-foreground',
-                )}>
-                  {s.empty ? '—' : s.primary}
-                </p>
-                <p className="text-[10.5px] text-muted-foreground tabular-nums">
-                  {s.empty ? 'Keine Einträge' : s.sub}
-                </p>
-
-                <div className="mt-3 h-[3px] bg-layer-hover rounded-full overflow-hidden">
-                  <div
-                    className={cn('h-full rounded-full transition-all duration-700', s.empty ? 'bg-muted-foreground/20' : s.barClass)}
-                    style={{ width: s.empty ? '0%' : `${Math.max(10, widthPct)}%` }}
-                  />
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* QUICK ACTIONS */}
-      <div className="flex items-baseline justify-between mx-1 mb-3.5">
-        <h3 className="text-[12px] font-semibold uppercase tracking-[0.04em] text-muted-foreground">Schnellzugriff</h3>
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-6 sm:mb-8">
+      {/* SUGGESTED ACTIONS — Stratify-style: 4 prominent cards with icon, title, content */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
         {[
-          { icon: Plus,      title: 'Objekt anlegen',  sub: `${properties.length} ${properties.length === 1 ? 'Objekt' : 'Objekte'}`, to: '/bh/objekte' },
-          { icon: UserPlus,  title: 'Mieter anlegen',  sub: `${allTenants.length} ${allTenants.length === 1 ? 'Mieter' : 'Mieter'}`,  to: '/bh/mieter' },
-          { icon: Receipt,   title: 'Transaktionen',   sub: 'Banking & Buchungen',                                                    to: '/bh/transaktionen' },
-          { icon: BarChart3, title: 'Berichte',        sub: 'Auswertungen',                                                           to: '/bh/berichte' },
+          { icon: Plus,      title: 'Neues Objekt', sub: `${properties.length} ${properties.length === 1 ? 'Objekt' : 'Objekte'} im Portfolio`, to: '/bh/objekte', tint: 'bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400' },
+          { icon: UserPlus,  title: 'Neuer Mieter', sub: `${allTenants.length} ${allTenants.length === 1 ? 'Mieter' : 'Mieter'} verwaltet`, to: '/bh/mieter', tint: 'bg-violet-50 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400' },
+          { icon: Receipt,   title: 'Transaktionen', sub: 'Banking & Mieteingänge tracken', to: '/bh/transaktionen', tint: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400' },
+          { icon: BarChart3, title: 'Berichte', sub: 'Auswertungen & Renditeanalyse', to: '/bh/berichte', tint: 'bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400' },
         ].map(a => (
           <button
             key={a.to}
             onClick={() => navigate(a.to)}
-            className="group flex items-center gap-3 px-4 py-3.5 bg-card border border-card-line rounded-[10px] text-left hover:-translate-y-px transition-all cursor-pointer hover:shadow-[0_4px_12px_rgba(79,107,255,0.12)]"
+            className="group flex flex-col items-start text-left p-4 sm:p-5 bg-card border border-card-line rounded-2xl hover:-translate-y-px transition-all cursor-pointer hover:border-[#4F6BFF]/25 hover:shadow-[0_4px_16px_rgba(15,23,42,0.06)] min-h-[124px]"
           >
-            <div className="size-8 rounded-lg bg-layer-hover text-foreground/70 group-hover:bg-[#4F6BFF]/10 group-hover:text-[#4F6BFF] flex items-center justify-center shrink-0 transition-colors">
-              <a.icon size={15} />
+            <div className={cn('size-10 rounded-xl flex items-center justify-center mb-3 transition-colors', a.tint)}>
+              <a.icon size={18} />
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-semibold text-foreground leading-tight truncate">{a.title}</p>
-              <p className="text-[11.5px] text-muted-foreground mt-0.5 truncate">{a.sub}</p>
-            </div>
+            <p className="text-[14px] font-semibold text-foreground leading-tight mb-1">{a.title}</p>
+            <p className="text-[12px] text-muted-foreground leading-relaxed">{a.sub}</p>
           </button>
         ))}
       </div>
