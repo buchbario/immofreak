@@ -10,6 +10,7 @@ import { useBudgetItems } from '../../hooks/useBudgetItems';
 import { useTasks } from '../../hooks/useTasks';
 import { useContractors } from '../../hooks/useContractors';
 import { useAuth } from '../../context/AuthContext';
+import { useTranslation } from '../../context/LocaleContext';
 import { EmptyState } from '../ui/EmptyState';
 import { formatCurrency, cn, effectiveRenovationCost, calculateProjectedProfit } from '../../lib/utils';
 import { PROJECT_STATUSES } from '../../types';
@@ -64,9 +65,10 @@ function formatDueDate(iso: string): { label: string; tone: 'overdue' | 'today' 
 export function DashboardPage() {
   const navigate = useNavigate();
   const { userName } = useAuth();
+  const { t } = useTranslation();
   const firstName = (userName || 'da').split(' ')[0];
   const hour = new Date().getHours();
-  const greeting = hour < 11 ? 'Guten Morgen' : hour < 18 ? 'Hallo' : 'Guten Abend';
+  const greeting = hour < 11 ? t('greeting.morning') : hour < 18 ? t('greeting.day') : t('greeting.evening');
   const { projects } = useProjects();
   const { allBudgetItems } = useBudgetItems();
   const { allTasks, toggleStatus } = useTasks();
@@ -152,9 +154,9 @@ export function DashboardPage() {
 
         <EmptyState
           icon={<Building2 size={32} />}
-          title="Noch keine Projekte"
-          description="Erstelle dein erstes Fix & Flip Projekt um loszulegen."
-          action={<button onClick={() => navigate('/projekte')} className="btn btn-md btn-primary"><Plus size={16} /> Projekt anlegen</button>}
+          title={t('property.empty.title') === 'Keine Objekte' ? 'Noch keine Projekte' : 'No projects yet'}
+          description={t('dashboard.greeting.subtitle.fixflip.empty')}
+          action={<button onClick={() => navigate('/projekte')} className="btn btn-md btn-primary"><Plus size={16} /> {t('dashboard.action.newProject')}</button>}
         />
       </div>
     );
@@ -173,14 +175,17 @@ export function DashboardPage() {
           </h1>
           <p className="text-[18px] sm:text-[22px] text-muted-foreground/80 leading-relaxed font-light">
             {activeProjects.length === 0
-              ? 'Bereit für dein erstes Fix-&-Flip-Projekt?'
-              : `Du hast ${activeProjects.length} aktive ${activeProjects.length === 1 ? 'Projekt' : 'Projekte'} – was möchtest du heute tun?`}
+              ? t('dashboard.greeting.subtitle.fixflip.empty')
+              : t('dashboard.greeting.subtitle.fixflip.with', {
+                  count: activeProjects.length,
+                  projectWord: t(activeProjects.length === 1 ? 'word.project.singular' : 'word.project.plural'),
+                })}
           </p>
         </div>
         <button onClick={() => navigate('/projekte')} className="btn btn-md btn-primary shrink-0 mt-2">
           <Plus size={15} />
-          <span className="hidden sm:inline">Neues Projekt</span>
-          <span className="sm:hidden">Neu</span>
+          <span className="hidden sm:inline">{t('dashboard.action.newProject')}</span>
+          <span className="sm:hidden">{t('common.new')}</span>
         </button>
       </div>
 

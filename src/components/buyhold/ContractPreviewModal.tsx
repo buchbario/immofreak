@@ -3,6 +3,7 @@ import { Printer, FileText, Download } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { renderContractHTML } from '../../lib/contractTemplate';
 import { useLandlordSettings } from '../../hooks/useLandlordSettings';
+import { useTranslation } from '../../context/LocaleContext';
 import type { RentalContract, Tenant, RentalUnit, RentalProperty } from '../../types';
 
 interface Props {
@@ -26,6 +27,7 @@ interface Props {
  */
 export function ContractPreviewModal({ open, onClose, contract, tenant, unit, property }: Props) {
   const { settings } = useLandlordSettings();
+  const { t } = useTranslation();
   const previewRef = useRef<HTMLDivElement>(null);
 
   const html = renderContractHTML({ contract, tenant, unit, property, landlord: settings });
@@ -73,17 +75,17 @@ export function ContractPreviewModal({ open, onClose, contract, tenant, unit, pr
           <span className="size-8 rounded-lg bg-[#4F6BFF]/12 inline-flex items-center justify-center">
             <FileText size={16} className="text-[#4F6BFF]" />
           </span>
-          <span>Mietvertrag — {tenant?.name || 'Mieter'}</span>
+          <span>{t('contract.preview.title', { name: tenant?.name || t('nav.item.tenants') })}</span>
         </span>
       }
-      description="Automatisch befüllter Standardvertrag. Drucken oder als HTML speichern."
+      description={t('contract.preview.desc')}
       footer={
         <>
           <button onClick={handleDownload} className="btn btn-md btn-secondary">
-            <Download size={14} /> HTML speichern
+            <Download size={14} /> {t('contract.preview.download')}
           </button>
           <button onClick={handlePrint} className="btn btn-md btn-primary">
-            <Printer size={14} /> Drucken / PDF
+            <Printer size={14} /> {t('contract.preview.print')}
           </button>
         </>
       }

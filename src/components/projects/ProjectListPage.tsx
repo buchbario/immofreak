@@ -24,6 +24,7 @@ import { useProjects } from '../../hooks/useProjects';
 import { useBudgetItems } from '../../hooks/useBudgetItems';
 import { useProjectPhotos } from '../../hooks/useProjectPhotos';
 import { useTour } from '../../context/TourContext';
+import { useTranslation } from '../../context/LocaleContext';
 import { ProjectForm } from './ProjectForm';
 import { formatCurrency, getBudgetPercentage, calculateProjectedProfit, cn } from '../../lib/utils';
 import { PROJECT_STATUSES } from '../../types';
@@ -240,6 +241,7 @@ export function ProjectListPage() {
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
   const { active: tourActive, currentStep: tourStep } = useTour();
+  const { t } = useTranslation();
 
   // Force Kanban view when the tour lands on the "Projekte & Kanban" step (index 7)
   useEffect(() => {
@@ -307,9 +309,9 @@ export function ProjectListPage() {
       <div className="page-container">
         <div className="page-header">
           <div>
-            <h1 className="page-title">Projekte</h1>
+            <h1 className="page-title">{t('project.title')}</h1>
             <p className="page-subtitle">
-              {projects.length} {projects.length === 1 ? 'Projekt' : 'Projekte'} insgesamt
+              {projects.length} {t(projects.length === 1 ? 'word.project.singular' : 'word.project.plural')}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -323,10 +325,10 @@ export function ProjectListPage() {
                     ? 'bg-[#4F6BFF] text-white shadow-[0_1px_2px_rgba(79,107,255,0.25)]'
                     : 'text-muted-foreground hover:text-foreground hover:bg-card/50',
                 )}
-                title="Listen-Ansicht"
+                title={t('project.view.list')}
               >
                 <List size={14} strokeWidth={viewMode === 'list' ? 2.4 : 2} />
-                Liste
+                {t('project.view.list')}
               </button>
               <button
                 onClick={() => setViewMode('kanban')}
@@ -336,10 +338,10 @@ export function ProjectListPage() {
                     ? 'bg-[#4F6BFF] text-white shadow-[0_1px_2px_rgba(79,107,255,0.25)]'
                     : 'text-muted-foreground hover:text-foreground hover:bg-card/50',
                 )}
-                title="Kanban-Ansicht"
+                title={t('project.view.kanban')}
               >
                 <Kanban size={14} strokeWidth={viewMode === 'kanban' ? 2.4 : 2} />
-                Kanban
+                {t('project.view.kanban')}
               </button>
             </div>
             <button
@@ -347,8 +349,8 @@ export function ProjectListPage() {
               className="btn btn-md btn-primary"
             >
               <Plus size={15} />
-              <span className="hidden sm:inline">Neues Projekt</span>
-              <span className="sm:hidden">Neu</span>
+              <span className="hidden sm:inline">{t('project.cta.new')}</span>
+              <span className="sm:hidden">{t('common.new')}</span>
             </button>
           </div>
         </div>
@@ -426,7 +428,7 @@ export function ProjectListPage() {
                 <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="text"
-                  placeholder="Suchen..."
+                  placeholder={t('common.search_placeholder')}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="h-8 pl-7 pr-3 rounded-md bg-layer-hover text-[12px] text-foreground placeholder:text-muted-foreground/70 border border-transparent hover:border-card-line focus:bg-card focus:border-[#4F6BFF]/40 focus:outline-none focus:ring-2 focus:ring-[#4F6BFF]/15 transition-all w-[160px] focus:w-[220px]"
@@ -502,15 +504,15 @@ export function ProjectListPage() {
 
                     {/* KPI cells — 2x2 grid in a tinted container */}
                     <div className="grid grid-cols-2 gap-px rounded-xl overflow-hidden bg-card-line/60 mb-3.5">
-                      <ProjectKpiCell label="Kaufpreis" value={formatCurrency(project.purchasePrice)} />
-                      <ProjectKpiCell label="Verkaufsziel" value={formatCurrency(project.targetSellPrice)} />
+                      <ProjectKpiCell label={t('project.kpi.purchase')} value={formatCurrency(project.purchasePrice)} />
+                      <ProjectKpiCell label={t('project.kpi.targetSell')} value={formatCurrency(project.targetSellPrice)} />
                       <ProjectKpiCell
-                        label="Erw. Gewinn"
+                        label={t('project.kpi.profit')}
                         value={`${profit >= 0 ? '+' : ''}${formatCurrency(profit)}`}
                         valueClass={profit >= 0 ? 'text-emerald-600' : 'text-rose-600'}
                       />
                       <ProjectKpiCell
-                        label="Budget"
+                        label={t('project.kpi.budget')}
                         value={`${percentage}%`}
                         sub={`${formatCurrency(spent)} / ${formatCurrency(project.renovationBudget)}`}
                         valueClass={percentage > 90 ? 'text-rose-600' : undefined}
@@ -520,7 +522,7 @@ export function ProjectListPage() {
                     {/* Budget bar pinned to bottom */}
                     <div className="mt-auto">
                       <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground mb-1.5">
-                        <span>Budget-Auslastung</span>
+                        <span>{t('project.budget.utilization')}</span>
                         <span className="tabular-nums">{percentage}%</span>
                       </div>
                       <div className="h-1.5 w-full rounded-full overflow-hidden bg-card-line/80">
@@ -544,14 +546,14 @@ export function ProjectListPage() {
           {filtered.length === 0 && (
             <div className="text-center py-10 px-5">
               <Search size={20} className="mx-auto mb-2 text-muted-foreground/60" />
-              <p className="text-[13px] text-muted-foreground">Keine Projekte gefunden.</p>
+              <p className="text-[13px] text-muted-foreground">{t('project.notFound')}</p>
             </div>
           )}
 
             {/* Footer */}
             <div className="px-5 sm:px-7 py-3 border-t border-card-divider">
               <p className="text-[11.5px] text-muted-foreground tabular-nums">
-                {filtered.length} von {projects.length} {projects.length === 1 ? 'Projekt' : 'Projekte'}
+                {filtered.length} {t('common.of')} {projects.length} {t(projects.length === 1 ? 'word.project.singular' : 'word.project.plural')}
               </p>
             </div>
           </div>

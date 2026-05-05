@@ -11,6 +11,7 @@ import { useUtilities } from '../../hooks/useUtilities';
 import { useRentalContracts } from '../../hooks/useRentalContracts';
 import { useTasks } from '../../hooks/useTasks';
 import { useAuth } from '../../context/AuthContext';
+import { useTranslation } from '../../context/LocaleContext';
 import { cn } from '../../lib/utils';
 
 const dateFmtRelativeShort = new Intl.RelativeTimeFormat('de-DE', { numeric: 'auto' });
@@ -62,9 +63,10 @@ function classifyOccupancy(occupiedCount: number, totalCount: number): Occupancy
 export function BHDashboardPage() {
   const navigate = useNavigate();
   const { userName } = useAuth();
+  const { t } = useTranslation();
   const firstName = (userName || 'da').split(' ')[0];
   const hour = new Date().getHours();
-  const greeting = hour < 11 ? 'Guten Morgen' : hour < 18 ? 'Hallo' : 'Guten Abend';
+  const greeting = hour < 11 ? t('greeting.morning') : hour < 18 ? t('greeting.day') : t('greeting.evening');
   const { properties } = useRentalProperties();
   const { allUnits, totalMonthlyRent, vacancyRate, occupiedUnits } = useRentalUnits();
   const { allTenants } = useTenants();
@@ -184,14 +186,17 @@ export function BHDashboardPage() {
           </h1>
           <p className="text-[18px] sm:text-[22px] text-muted-foreground/80 leading-relaxed font-light">
             {properties.length === 0
-              ? 'Bereit für dein erstes Mietobjekt?'
-              : `Du verwaltest ${properties.length} ${properties.length === 1 ? 'Objekt' : 'Objekte'} – was möchtest du heute tun?`}
+              ? t('bhdashboard.greeting.subtitle.empty')
+              : t('bhdashboard.greeting.subtitle.with', {
+                  count: properties.length,
+                  objWord: t(properties.length === 1 ? 'word.property.singular' : 'word.property.plural'),
+                })}
           </p>
         </div>
         <button onClick={() => navigate('/bh/objekte')} className="btn btn-md btn-primary shrink-0 mt-2">
           <Plus size={15} />
-          <span className="hidden sm:inline">Objekt anlegen</span>
-          <span className="sm:hidden">Neu</span>
+          <span className="hidden sm:inline">{t('property.cta.create')}</span>
+          <span className="sm:hidden">{t('common.new')}</span>
         </button>
       </div>
 

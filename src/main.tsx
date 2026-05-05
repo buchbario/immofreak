@@ -7,17 +7,20 @@ import { seedIfEmpty } from './lib/seedData'
 import { AppModeProvider } from './context/AppModeContext'
 import { AuthProvider } from './context/AuthContext'
 import { TourProvider } from './context/TourContext'
+import { LocaleProvider } from './context/LocaleContext'
 
 seedIfEmpty()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AuthProvider>
-      <AppModeProvider>
-        <TourProvider>
-          <RouterProvider router={router} />
-        </TourProvider>
-      </AppModeProvider>
-    </AuthProvider>
+    <LocaleProvider>
+      <AuthProvider>
+        <AppModeProvider>
+          <TourProvider>
+            <RouterProvider router={router} />
+          </TourProvider>
+        </AppModeProvider>
+      </AuthProvider>
+    </LocaleProvider>
   </StrictMode>,
 )

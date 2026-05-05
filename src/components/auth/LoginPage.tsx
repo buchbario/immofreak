@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { LogIn, Eye, EyeOff, Sparkles } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTour } from '../../context/TourContext';
+import { useTranslation } from '../../context/LocaleContext';
 
 export function LoginPage() {
   const { login } = useAuth();
   const { startTour } = useTour();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -69,10 +71,10 @@ export function LoginPage() {
           {/* Headline */}
           <div className="text-center mb-8">
             <h1 className="text-[28px] sm:text-[32px] font-bold text-[#0f1430] tracking-tight leading-[1.1] mb-2.5">
-              Anmelden
+              {t('auth.login.submit')}
             </h1>
             <p className="text-[14px] text-[#1e1b4b]/55 leading-relaxed">
-              Dein Immobilien-CRM für Fix &amp; Flip und Buy &amp; Hold.
+              {t('auth.login.subtitle')}
             </p>
           </div>
 
@@ -83,14 +85,14 @@ export function LoginPage() {
             className="group w-full flex items-center justify-center gap-2 px-4 py-3 mb-3 rounded-xl bg-[#4F6BFF] hover:bg-[#3d57e0] text-white font-semibold text-[14px] shadow-[0_6px_16px_-4px_rgba(79,107,255,0.40)] hover:shadow-[0_8px_20px_-4px_rgba(79,107,255,0.50)] hover:-translate-y-px transition-all cursor-pointer disabled:opacity-60"
           >
             <Sparkles size={15} strokeWidth={2.2} />
-            Demo starten
+            {t('auth.login.demo')}
           </button>
 
           {/* Divider */}
           <div className="flex items-center gap-3 my-5">
             <div className="flex-1 h-px bg-[#1e1b4b]/10" />
             <span className="text-[10.5px] font-semibold text-[#1e1b4b]/40 uppercase tracking-[0.1em]">
-              oder
+              {t('auth.login.email').toLowerCase().includes('mail') && t('auth.login.email') === 'Email address' ? 'or' : 'oder'}
             </span>
             <div className="flex-1 h-px bg-[#1e1b4b]/10" />
           </div>
@@ -98,19 +100,19 @@ export function LoginPage() {
           {/* Login form */}
           <form onSubmit={handleLogin} className="space-y-3">
             <div>
-              <label className="block text-[12.5px] font-medium text-[#0f1430] mb-1.5">E-Mail</label>
+              <label className="block text-[12.5px] font-medium text-[#0f1430] mb-1.5">{t('auth.login.email')}</label>
               <input
                 type="email"
                 value={email}
                 onChange={e => { setEmail(e.target.value); setError(''); }}
-                placeholder="name@beispiel.de"
+                placeholder="name@example.com"
                 className="w-full px-3.5 py-2.5 rounded-lg bg-white border border-[#1e1b4b]/12 text-[14px] text-[#0f1430] placeholder:text-[#1e1b4b]/35 focus:outline-none focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15 transition-all"
                 autoComplete="email"
               />
             </div>
 
             <div>
-              <label className="block text-[12.5px] font-medium text-[#0f1430] mb-1.5">Passwort</label>
+              <label className="block text-[12.5px] font-medium text-[#0f1430] mb-1.5">{t('auth.login.password')}</label>
               <div className="relative">
                 <input
                   type={showPw ? 'text' : 'password'}
@@ -124,7 +126,7 @@ export function LoginPage() {
                   type="button"
                   onClick={() => setShowPw(!showPw)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-[#1e1b4b]/45 hover:text-[#0f1430] transition-colors cursor-pointer"
-                  aria-label={showPw ? 'Passwort verbergen' : 'Passwort anzeigen'}
+                  aria-label={t('auth.login.password')}
                 >
                   {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
@@ -146,7 +148,7 @@ export function LoginPage() {
                 <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  <LogIn size={14} /> Anmelden
+                  <LogIn size={14} /> {t('auth.login.submit')}
                 </>
               )}
             </button>

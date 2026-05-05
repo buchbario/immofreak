@@ -11,6 +11,7 @@ import {
   Pin,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useTranslation } from '../../context/LocaleContext';
 import { usePrivateBoards } from '../../hooks/usePrivateBoards';
 import { EmptyState } from '../ui/EmptyState';
 import { Modal, Field, FormSection } from '../ui/Modal';
@@ -32,9 +33,10 @@ function getAccent(accent?: string) {
 export function PrivateDashboardPage() {
   const navigate = useNavigate();
   const { userName } = useAuth();
+  const { t } = useTranslation();
   const firstName = (userName || 'da').split(' ')[0];
   const hour = new Date().getHours();
-  const greeting = hour < 11 ? 'Guten Morgen' : hour < 18 ? 'Hallo' : 'Guten Abend';
+  const greeting = hour < 11 ? t('greeting.morning') : hour < 18 ? t('greeting.day') : t('greeting.evening');
 
   const { boards, createBoard, togglePinBoard, listsForBoard, cardsForList, allCards } = usePrivateBoards();
   const [showNewBoard, setShowNewBoard] = useState(false);
@@ -82,8 +84,12 @@ export function PrivateDashboardPage() {
           </h1>
           <p className="text-[18px] sm:text-[22px] text-muted-foreground/80 leading-relaxed font-light">
             {boards.length === 0
-              ? 'Lege dein erstes persönliches Board an und organisiere deine To-dos.'
-              : `${stats.open} offene ${stats.open === 1 ? 'Aufgabe' : 'Aufgaben'} – ${stats.done} bereits erledigt.`}
+              ? t('private.greeting.subtitle.empty')
+              : t('private.greeting.subtitle.with', {
+                  open: stats.open,
+                  done: stats.done,
+                  taskWord: t(stats.open === 1 ? 'word.task.singular' : 'word.task.plural'),
+                })}
           </p>
         </div>
         <button
@@ -91,8 +97,8 @@ export function PrivateDashboardPage() {
           className="btn btn-md btn-primary shrink-0 mt-2"
         >
           <Plus size={15} />
-          <span className="hidden sm:inline">Neues Board</span>
-          <span className="sm:hidden">Neu</span>
+          <span className="hidden sm:inline">{t('private.board.new')}</span>
+          <span className="sm:hidden">{t('common.new')}</span>
         </button>
       </div>
 
@@ -101,30 +107,30 @@ export function PrivateDashboardPage() {
         <KpiCard
           icon={<LayoutDashboard size={14} />}
           tint="bg-violet-500/10 text-violet-600"
-          label="Boards"
+          label={t('dashboard.kpi.boards')}
           value={boards.length.toString()}
-          hint={boards.length === 1 ? 'Board' : 'Boards'}
+          hint={t(boards.length === 1 ? 'word.board.singular' : 'word.board.plural')}
         />
         <KpiCard
           icon={<ListTodo size={14} />}
           tint="bg-[#4F6BFF]/10 text-[#4F6BFF]"
-          label="Offen"
+          label={t('dashboard.kpi.open')}
           value={stats.open.toString()}
-          hint="Karten in Bearbeitung"
+          hint={t('word.card.plural')}
         />
         <KpiCard
           icon={<Clock size={14} />}
           tint="bg-amber-500/10 text-amber-600"
-          label="Fällig bald"
+          label={t('dashboard.kpi.due_soon')}
           value={stats.dueSoon.toString()}
-          hint="in 3 Tagen oder weniger"
+          hint=""
         />
         <KpiCard
           icon={<CheckCircle2 size={14} />}
           tint="bg-emerald-500/10 text-emerald-600"
-          label="Erledigt"
+          label={t('dashboard.kpi.completed')}
           value={stats.done.toString()}
-          hint="abgeschlossen"
+          hint=""
         />
       </div>
 
@@ -133,11 +139,11 @@ export function PrivateDashboardPage() {
         <div className="bg-card border border-card-line rounded-xl">
           <EmptyState
             icon={<Sparkles size={20} />}
-            title="Noch keine Boards"
-            description="Persönliche Boards helfen dir, To-dos, Ideen und Pläne abseits von Immobilien-Projekten zu organisieren."
+            title={t('private.board.empty.title')}
+            description={t('private.board.empty.desc')}
             action={
               <button onClick={() => setShowNewBoard(true)} className="btn btn-md btn-primary">
-                <Plus size={16} /> Erstes Board anlegen
+                <Plus size={16} /> {t('private.board.empty.cta')}
               </button>
             }
           />
@@ -145,8 +151,8 @@ export function PrivateDashboardPage() {
       ) : (
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-[15px] font-semibold text-foreground">Deine Boards</h2>
-            <span className="text-xs text-muted-foreground">{boards.length} {boards.length === 1 ? 'Board' : 'Boards'}</span>
+            <h2 className="text-[15px] font-semibold text-foreground">{t('private.boards.title')}</h2>
+            <span className="text-xs text-muted-foreground">{boards.length} {t(boards.length === 1 ? 'word.board.singular' : 'word.board.plural')}</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {boards.map((b) => {
@@ -191,13 +197,13 @@ export function PrivateDashboardPage() {
                       <ArrowRight size={14} className="text-muted-foreground group-hover:text-[#4F6BFF] group-hover:translate-x-0.5 transition-all flex-shrink-0 mt-0.5" />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {lists.length} {lists.length === 1 ? 'Liste' : 'Listen'} · {cardCount} {cardCount === 1 ? 'Karte' : 'Karten'}
+                      {lists.length} {t(lists.length === 1 ? 'word.list.singular' : 'word.list.plural')} · {cardCount} {t(cardCount === 1 ? 'word.card.singular' : 'word.card.plural')}
                       {openCount > 0 && (
-                        <span className="ml-1 text-foreground/80 font-medium">· {openCount} offen</span>
+                        <span className="ml-1 text-foreground/80 font-medium">· {openCount} {t('dashboard.kpi.open').toLowerCase()}</span>
                       )}
                       {b.pinned && (
                         <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] font-semibold text-[#4F6BFF] align-middle">
-                          · <Pin size={9} className="fill-current" /> angepinnt
+                          · <Pin size={9} className="fill-current" />
                         </span>
                       )}
                     </p>
@@ -215,7 +221,7 @@ export function PrivateDashboardPage() {
                 <div className="size-9 rounded-full bg-card-line/50 group-hover:bg-[#4F6BFF]/10 flex items-center justify-center transition-colors">
                   <Plus size={16} />
                 </div>
-                <span className="text-xs font-semibold">Neues Board</span>
+                <span className="text-xs font-semibold">{t('private.board.new')}</span>
               </div>
             </button>
           </div>
@@ -237,10 +243,10 @@ export function PrivateDashboardPage() {
             >
               <span aria-hidden>{icon}</span>
             </span>
-            <span>Neues Board</span>
+            <span>{t('private.board.new')}</span>
           </span>
         }
-        description="Persönliches Board für To-dos, Ideen oder Projekte."
+        description={t('private.board.empty.desc')}
         footer={
           <>
             <button onClick={() => setShowNewBoard(false)} className="btn btn-md btn-secondary">Abbrechen</button>

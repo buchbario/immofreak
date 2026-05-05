@@ -12,6 +12,7 @@ import { cn } from '../../lib/utils';
 import { useAppMode } from '../../context/AppModeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useTour } from '../../context/TourContext';
+import { useTranslation } from '../../context/LocaleContext';
 import { usePrivateBoards } from '../../hooks/usePrivateBoards';
 import { NotificationBell } from './NotificationBell';
 
@@ -28,89 +29,89 @@ interface NavSection {
   items: NavItem[];
 }
 
-/* Workflow-oriented categorization:
-   F&F: Start (Dashboard) → was ich tue (Projekte, Handwerker) → Tools → System
-   BH:  Start → Was ich verwalte (Immobilien) → Geld → Aufgaben & Kommunikation → Reports & Archiv */
+/* Workflow-oriented categorization. Section-Titel und Item-Labels sind hier
+   Translation-Keys (siehe `i18n/translations.ts`) — die Sidebar resolved sie
+   beim Render via t(). So ist die Navigation komplett mehrsprachig. */
 
 const fixFlipSections: NavSection[] = [
   {
-    title: 'Übersicht',
+    title: 'nav.section.overview',
     items: [
-      { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+      { to: '/', icon: LayoutDashboard, label: 'nav.item.dashboard' },
     ],
   },
   {
-    title: 'Verwaltung',
+    title: 'nav.section.management',
     items: [
-      { to: '/projekte', icon: Building2, label: 'Projekte' },
-      { to: '/handwerker', icon: HardHat, label: 'Handwerker' },
+      { to: '/projekte', icon: Building2, label: 'nav.item.projects' },
+      { to: '/handwerker', icon: HardHat, label: 'nav.item.contractors' },
     ],
   },
   {
-    title: 'Werkzeuge',
+    title: 'nav.section.tools',
     items: [
-      { to: '/kalkulator', icon: Calculator, label: 'Kalkulator' },
-      { to: '/deal-analyzer', icon: SearchCheck, label: 'Deal Analyzer' },
+      { to: '/kalkulator', icon: Calculator, label: 'nav.item.calculator' },
+      { to: '/deal-analyzer', icon: SearchCheck, label: 'nav.item.deal_analyzer' },
     ],
   },
   {
-    title: 'System',
+    title: 'nav.section.system',
     items: [
-      { to: '/papierkorb', icon: Trash2, label: 'Papierkorb' },
+      { to: '/papierkorb', icon: Trash2, label: 'nav.item.trash' },
     ],
   },
 ];
 
 const privateSectionsBase: NavSection[] = [
   {
-    title: 'Übersicht',
+    title: 'nav.section.overview',
     items: [
-      { to: '/privat', icon: LayoutDashboard, label: 'Dashboard' },
-      { to: '/privat/boards', icon: ListTodo, label: 'Alle Boards' },
+      { to: '/privat', icon: LayoutDashboard, label: 'nav.item.dashboard' },
+      { to: '/privat/boards', icon: ListTodo, label: 'nav.item.all_boards' },
     ],
   },
 ];
 
 const buyHoldSections: NavSection[] = [
   {
-    title: 'Übersicht',
+    title: 'nav.section.overview',
     items: [
-      { to: '/bh', icon: LayoutDashboard, label: 'Dashboard' },
+      { to: '/bh', icon: LayoutDashboard, label: 'nav.item.dashboard' },
     ],
   },
   {
-    title: 'Immobilien',
+    title: 'nav.section.properties',
     items: [
-      { to: '/bh/objekte', icon: Home, label: 'Objekte' },
-      { to: '/bh/mieter', icon: Users, label: 'Mieter' },
-      { to: '/bh/mietvertraege', icon: FileText, label: 'Mietverträge' },
-      { to: '/bh/versorger', icon: Plug, label: 'Versorger' },
-      { to: '/bh/zaehler', icon: Gauge, label: 'Zähler' },
+      { to: '/bh/objekte', icon: Home, label: 'nav.item.objects' },
+      { to: '/bh/mieter', icon: Users, label: 'nav.item.tenants' },
+      { to: '/bh/mietvertraege', icon: FileText, label: 'nav.item.contracts' },
+      { to: '/bh/versorger', icon: Plug, label: 'nav.item.utilities' },
+      { to: '/bh/zaehler', icon: Gauge, label: 'nav.item.meters' },
     ],
   },
   {
-    title: 'Finanzen',
+    title: 'nav.section.finance',
     items: [
-      { to: '/bh/banking', icon: Landmark, label: 'Banking' },
-      { to: '/bh/transaktionen', icon: Receipt, label: 'Transaktionen' },
-      { to: '/bh/ausgaben', icon: CreditCard, label: 'Ausgaben' },
-      { to: '/bh/finanzen', icon: Wallet, label: 'Finanzen' },
+      { to: '/bh/banking', icon: Landmark, label: 'nav.item.banking' },
+      { to: '/bh/transaktionen', icon: Receipt, label: 'nav.item.transactions' },
+      { to: '/bh/ausgaben', icon: CreditCard, label: 'nav.item.expenses' },
+      { to: '/bh/finanzen', icon: Wallet, label: 'nav.item.finance' },
     ],
   },
   {
-    title: 'Aufgaben & Kommunikation',
+    title: 'nav.section.tasks_communication',
     items: [
-      { to: '/bh/vorgaenge', icon: ListTodo, label: 'Vorgänge' },
-      { to: '/bh/schreiben', icon: FileText, label: 'Schreiben' },
-      { to: '/bh/nebenkosten', icon: Receipt, label: 'Nebenkosten' },
+      { to: '/bh/vorgaenge', icon: ListTodo, label: 'nav.item.processes' },
+      { to: '/bh/schreiben', icon: FileText, label: 'nav.item.letters' },
+      { to: '/bh/nebenkosten', icon: Receipt, label: 'nav.item.utility_billing' },
     ],
   },
   {
-    title: 'Reports & Archiv',
+    title: 'nav.section.reports_archive',
     items: [
-      { to: '/bh/berichte', icon: BarChart3, label: 'Berichte' },
-      { to: '/bh/dokumente', icon: FolderArchive, label: 'Archiv' },
-      { to: '/bh/papierkorb', icon: Trash2, label: 'Papierkorb' },
+      { to: '/bh/berichte', icon: BarChart3, label: 'nav.item.reports' },
+      { to: '/bh/dokumente', icon: FolderArchive, label: 'nav.item.archive' },
+      { to: '/bh/papierkorb', icon: Trash2, label: 'nav.item.trash' },
     ],
   },
 ];
@@ -131,6 +132,7 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
   const { userName, userEmail, logout } = useAuth();
   const { startTour } = useTour();
   const { pinnedBoards } = usePrivateBoards();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const [profileOpen, setProfileOpen] = useState(false);
@@ -170,7 +172,7 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
     ? [
         ...privateSectionsBase,
         ...(pinnedBoards.length > 0 ? [{
-          title: 'Angepinnt',
+          title: 'nav.section.pinned',
           items: pinnedBoards.map((b) => ({
             to: `/privat/boards/${b.id}`,
             icon: ListTodo,
@@ -187,17 +189,20 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
     buyHoldSections;
   const allItems = sections.flatMap(s => s.items);
   const ModeIcon = mode === 'fixflip' ? Zap : mode === 'private' ? Sparkles : Home;
-  const modeLabel = mode === 'fixflip' ? 'Fix & Flip' : mode === 'private' ? 'Privat' : 'Buy & Hold';
+  const modeLabel = t(
+    mode === 'fixflip' ? 'mode.fixflip.label' : mode === 'private' ? 'mode.private.label' : 'mode.buyhold.label',
+  );
   const modeGradient =
     mode === 'fixflip' ? 'from-amber-400 via-orange-500 to-orange-600' :
     mode === 'private' ? 'from-violet-400 via-fuchsia-500 to-rose-500' :
     'from-emerald-400 via-emerald-500 to-teal-600';
   const open = sidebarOpen;
 
-  const nextModeLabel =
-    mode === 'fixflip' ? 'Buy & Hold' :
-    mode === 'buyhold' ? 'Privat' :
-    'Fix & Flip';
+  const nextModeLabel = t(
+    mode === 'fixflip' ? 'mode.buyhold.label' :
+    mode === 'buyhold' ? 'mode.private.label' :
+    'mode.fixflip.label',
+  );
 
   const switchMode = (m: 'fixflip' | 'buyhold' | 'private') => {
     if (m === mode) { setModeOpen(false); return; }
@@ -248,15 +253,15 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
           <>
             <button
               onClick={() => setSidebarOpenTransient(false)}
-              aria-label="Sidebar schließen"
+              aria-label={t('common.close')}
               className="lg:hidden size-7 rounded-md flex items-center justify-center text-foreground/60 hover:text-foreground hover:bg-white/40 cursor-pointer transition-colors"
             >
               <X size={16} />
             </button>
-            <Tip label="Sidebar einklappen">
+            <Tip label={t('sidebar.collapse')}>
               <button
                 onClick={() => setSidebarOpen(false)}
-                aria-label="Sidebar einklappen"
+                aria-label={t('sidebar.collapse')}
                 className="hidden lg:flex size-7 rounded-md items-center justify-center text-foreground/60 hover:text-foreground hover:bg-white/40 cursor-pointer transition-colors"
               >
                 <PanelLeftClose size={15} strokeWidth={2} />
@@ -274,16 +279,16 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
             className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-[12.5px] text-foreground/60 hover:text-foreground/85 bg-white/55 hover:bg-white/75 transition-colors cursor-pointer"
           >
             <Search size={13} className="shrink-0" />
-            <span className="flex-1 text-left">Suchen...</span>
+            <span className="flex-1 text-left">{t('common.search_placeholder')}</span>
             <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-white/65 rounded text-[10px] font-medium text-foreground/55">
               ⌘K
             </kbd>
           </button>
         ) : (
-          <Tip label="Suchen (⌘K)">
+          <Tip label={`${t('common.search')} (⌘K)`}>
             <button
               onClick={onSearchClick}
-              aria-label="Suchen"
+              aria-label={t('common.search')}
               className="w-full flex items-center justify-center py-2 rounded-md text-foreground/60 hover:bg-white/40 hover:text-foreground transition-colors cursor-pointer"
             >
               <Search size={18} strokeWidth={2} />
@@ -298,7 +303,7 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
           <div className="flex flex-col gap-3">
             {sections.map((section) => (
               <div key={section.title}>
-                <div className="sidebar-section-label py-1 mb-0.5">{section.title}</div>
+                <div className="sidebar-section-label py-1 mb-0.5">{t(section.title)}</div>
                 <div className="flex flex-col gap-0.5">
                   {section.items.map(item => (
                     <NavLink key={item.to} to={item.to} end={item.to === '/' || item.to === '/bh'}>
@@ -313,7 +318,7 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
                               strokeWidth={isActive ? 2.2 : 1.85}
                             />
                           )}
-                          <span className="truncate">{item.label}</span>
+                          <span className="truncate">{t(item.label)}</span>
                         </div>
                       )}
                     </NavLink>
@@ -327,7 +332,7 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
             {allItems.map(item => (
               <NavLink key={item.to} to={item.to} end={item.to === '/' || item.to === '/bh'}>
                 {({ isActive }) => (
-                  <Tip label={item.label}>
+                  <Tip label={t(item.label)}>
                     <div
                       className={cn(
                         'flex items-center justify-center py-2 rounded-md transition-colors duration-100',
@@ -361,9 +366,9 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
               className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] font-medium text-foreground/85 hover:text-[#4F6BFF] hover:bg-white/55 transition-colors cursor-pointer"
             >
               <Sparkles size={15} strokeWidth={2} className="text-[#4F6BFF] shrink-0" />
-              <span className="truncate">Tour starten</span>
+              <span className="truncate">{t('sidebar.tour')}</span>
               <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#4F6BFF]/10 text-[#4F6BFF] tracking-wide">
-                DEMO
+                {t('sidebar.tour.demo')}
               </span>
             </button>
             <button
@@ -371,7 +376,7 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
               className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-md text-[13px] font-medium text-foreground/85 hover:text-foreground hover:bg-white/55 transition-colors cursor-pointer"
             >
               <Settings size={15} strokeWidth={1.9} className="opacity-90 shrink-0" />
-              <span className="truncate">Einstellungen</span>
+              <span className="truncate">{t('common.settings')}</span>
             </button>
           </div>
         ) : (
@@ -379,19 +384,19 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
             <div className="flex justify-center">
               <NotificationBell />
             </div>
-            <Tip label="Tour starten">
+            <Tip label={t('sidebar.tour')}>
               <button
                 onClick={handleStartTour}
-                aria-label="Tour starten"
+                aria-label={t('sidebar.tour')}
                 className="w-full flex items-center justify-center py-2 rounded-md cursor-pointer text-[#4F6BFF] hover:bg-white/40 transition-colors"
               >
                 <Sparkles size={17} strokeWidth={2} />
               </button>
             </Tip>
-            <Tip label="Einstellungen">
+            <Tip label={t('common.settings')}>
               <button
                 onClick={() => navigate('/einstellungen')}
-                aria-label="Einstellungen"
+                aria-label={t('common.settings')}
                 className="w-full flex items-center justify-center py-2 rounded-md cursor-pointer text-foreground/60 hover:text-foreground hover:bg-white/40 transition-colors"
               >
                 <Settings size={17} strokeWidth={1.9} />
@@ -405,7 +410,7 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
           {open ? (
             <button
               onClick={() => setModeOpen(!modeOpen)}
-              aria-label={`Modus wechseln — aktuell ${modeLabel}`}
+              aria-label={t('mode.switch.aria', { label: modeLabel })}
               className={cn(
                 'group w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer text-left transition-all duration-200',
                 'shadow-[0_4px_12px_-2px_rgba(15,23,42,0.18)] hover:shadow-[0_6px_16px_-2px_rgba(15,23,42,0.24)]',
@@ -419,17 +424,17 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[12.5px] font-semibold text-white leading-[1.15] drop-shadow-sm">{modeLabel}</p>
-                <p className="text-[10.5px] text-white/85 truncate leading-[1.2] mt-0.5">Wechseln zu {nextModeLabel}</p>
+                <p className="text-[10.5px] text-white/85 truncate leading-[1.2] mt-0.5">{t('mode.switch.toLabel', { target: nextModeLabel })}</p>
               </div>
               <div className="size-6 rounded-md bg-white/20 ring-1 ring-white/30 flex items-center justify-center flex-shrink-0 group-hover:bg-white/30 transition-colors">
                 <ArrowLeftRight size={11} className="text-white" strokeWidth={2.4} />
               </div>
             </button>
           ) : (
-            <Tip label={`Wechseln — ${modeLabel}`}>
+            <Tip label={t('mode.switch.tooltip', { label: modeLabel })}>
               <button
                 onClick={() => setModeOpen(!modeOpen)}
-                aria-label={`Modus wechseln — aktuell ${modeLabel}`}
+                aria-label={t('mode.switch.aria', { label: modeLabel })}
                 className="w-full flex items-center justify-center py-2 rounded-md cursor-pointer hover:bg-white/40 transition-colors"
               >
                 <div className={cn(
@@ -455,11 +460,14 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
                   m === 'fixflip' ? 'bg-gradient-to-br from-amber-400 to-orange-500' :
                   m === 'private' ? 'bg-gradient-to-br from-violet-400 to-fuchsia-500' :
                   'bg-gradient-to-br from-emerald-400 to-teal-600';
-                const itemLabel = m === 'fixflip' ? 'Fix & Flip' : m === 'private' ? 'Privat' : 'Buy & Hold';
-                const itemDesc =
-                  m === 'fixflip' ? 'Projekte verwalten' :
-                  m === 'private' ? 'Persönliche To-dos' :
-                  'Mietobjekte verwalten';
+                const itemLabel = t(
+                  m === 'fixflip' ? 'mode.fixflip.label' : m === 'private' ? 'mode.private.label' : 'mode.buyhold.label',
+                );
+                const itemDesc = t(
+                  m === 'fixflip' ? 'mode.fixflip.desc' :
+                  m === 'private' ? 'mode.private.desc' :
+                  'mode.buyhold.desc',
+                );
                 return (
                   <button
                     key={m}
@@ -500,10 +508,10 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
               <ChevronDown size={13} className={cn('transition-transform text-foreground/55 flex-shrink-0', profileOpen && 'rotate-180')} strokeWidth={2.2} />
             </button>
           ) : (
-            <Tip label={userName || 'Profil'}>
+            <Tip label={userName || t('sidebar.profile')}>
               <button
                 onClick={() => setProfileOpen(!profileOpen)}
-                aria-label="Profil"
+                aria-label={t('sidebar.profile')}
                 className="w-full flex items-center justify-center py-2 cursor-pointer rounded-md hover:bg-white/40 transition-colors"
               >
                 <div className="size-8 rounded-full bg-gradient-to-br from-[#4F6BFF] to-[#6B5BFF] flex items-center justify-center ring-2 ring-white/70 shadow-sm">
@@ -523,7 +531,7 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
               </div>
               <div className="py-1">
                 <button onClick={() => { logout(); navigate('/login'); }} className="w-full flex items-center gap-2.5 px-3 py-1.5 transition-colors cursor-pointer text-sm text-muted-foreground hover:bg-dropdown-item-hover">
-                  <LogOut size={14} /> Abmelden
+                  <LogOut size={14} /> {t('sidebar.logout')}
                 </button>
               </div>
             </div>
@@ -531,10 +539,10 @@ export function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
         </div>
 
         {!open && (
-          <Tip label="Sidebar öffnen">
+          <Tip label={t('sidebar.expand')}>
             <button
               onClick={() => setSidebarOpen(true)}
-              aria-label="Sidebar öffnen"
+              aria-label={t('sidebar.expand')}
               className="w-full flex items-center justify-center py-2 rounded-lg cursor-pointer mt-0.5 text-muted-foreground hover:text-foreground hover:bg-sidebar-nav-hover"
             >
               <PanelLeftOpen size={20} strokeWidth={1.9} />

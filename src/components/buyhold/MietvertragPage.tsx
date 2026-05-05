@@ -7,21 +7,29 @@ import { useRentalContracts } from '../../hooks/useRentalContracts';
 import { useTenants } from '../../hooks/useTenants';
 import { useRentalUnits } from '../../hooks/useRentalUnits';
 import { useRentalProperties } from '../../hooks/useRentalProperties';
+import { useTranslation } from '../../context/LocaleContext';
 import { cn } from '../../lib/utils';
 import { ContractPreviewModal } from './ContractPreviewModal';
 import type { RentalContract } from '../../types';
 
 type Filter = 'alle' | 'unbefristet' | 'befristet' | 'auslaufend';
 
-function getContractStatus(contract: { contractType: string; endDate?: string }) {
-  if (contract.contractType === 'unbefristet') return { label: 'Unbefristet', cls: 'badge-blue' };
-  if (!contract.endDate) return { label: 'Befristet', cls: 'badge-amber' };
+/**
+ * Status-Helfer akzeptiert die `t()`-Funktion, damit das Status-Label in der
+ * aktuellen Sprache zurückkommt (Unbefristet/Open-ended, Befristet/Fixed-term, …).
+ */
+function getContractStatus(
+  contract: { contractType: string; endDate?: string },
+  t: (k: string, vars?: Record<string, string | number>) => string,
+) {
+  if (contract.contractType === 'unbefristet') return { label: t('contracts.status.openEnded'), cls: 'badge-blue' };
+  if (!contract.endDate) return { label: t('contracts.status.fixed'), cls: 'badge-amber' };
   const end = new Date(contract.endDate);
   const now = new Date();
   const daysLeft = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  if (daysLeft < 0) return { label: 'Abgelaufen', cls: 'badge-red' };
-  if (daysLeft <= 90) return { label: `${daysLeft}T übrig`, cls: 'badge-amber' };
-  return { label: 'Befristet', cls: 'badge-green' };
+  if (daysLeft < 0) return { label: t('contracts.status.expired'), cls: 'badge-red' };
+  if (daysLeft <= 90) return { label: t('contracts.status.daysLeft', { days: daysLeft }), cls: 'badge-amber' };
+  return { label: t('contracts.status.fixed'), cls: 'badge-green' };
 }
 
 export function MietvertragPage() {
@@ -30,25 +38,29 @@ export function MietvertragPage() {
   const { allTenants } = useTenants();
   const { allUnits } = useRentalUnits();
   const { properties } = useRentalProperties();
+  const { t, locale } = useTranslation();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('alle');
   const [previewContract, setPreviewContract] = useState<RentalContract | null>(null);
 
-  const fmt = (n: number) => n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  // Locale-spezifische Zahlen-/Datumsformate. Die Werte (€-Beträge) bleiben
+  // numerisch identisch, nur Tausenderpunkt/-komma und Datumsreihenfolge ändern sich.
+  const numLocale = locale === 'en' ? 'en-GB' : 'de-DE';
+  const fmt = (n: number) => n.toLocaleString(numLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString(numLocale, { day: '2-digit', month: '2-digit', year: 'numeric' });
 
   const enriched = useMemo(() => allContracts.map((c) => {
-    const tenant = allTenants.find((t) => t.id === c.tenantId);
+    const tenant = allTenants.find((tn) => tn.id === c.tenantId);
     const unit = allUnits.find((u) => u.id === c.unitId);
     const property = properties.find((p) => p.id === c.propertyId);
     const warmmiete = c.rentAmount + c.operatingCosts + c.heatingCosts;
-    const status = getContractStatus(c);
+    const status = getContractStatus(c, t);
     const isExpiring = c.contractType === 'befristet' && c.endDate && (() => {
       const d = Math.ceil((new Date(c.endDate!).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
       return d >= 0 && d <= 90;
     })();
     return { ...c, tenant, unit, property, warmmiete, status, isExpiring };
-  }), [allContracts, allTenants, allUnits, properties]);
+  }), [allContracts, allTenants, allUnits, properties, t]);
 
   const filtered = useMemo(() => {
     let list = enriched;
@@ -76,25 +88,25 @@ export function MietvertragPage() {
         <>
           <div className="page-header">
             <div>
-              <h1 className="page-title">Mietverträge</h1>
-              <p className="page-subtitle">Lege deinen ersten Mietvertrag an.</p>
+              <h1 className="page-title">{t('contracts.title')}</h1>
+              <p className="page-subtitle">{t('contracts.empty.desc')}</p>
             </div>
           </div>
           <div className="surface empty-state">
             <div className="size-12 rounded-xl bg-[#4F6BFF]/10 flex items-center justify-center mb-4">
               <FileText size={22} className="text-[#4F6BFF]" />
             </div>
-            <p className="text-sm font-semibold mb-1 text-foreground">Noch keine Mietverträge</p>
-            <p className="text-sm text-muted-foreground-2">Verträge erscheinen hier, sobald du sie über die Mieter-Detailseite anlegst.</p>
+            <p className="text-sm font-semibold mb-1 text-foreground">{t('contracts.empty.title')}</p>
+            <p className="text-sm text-muted-foreground-2">{t('contracts.empty.desc')}</p>
           </div>
         </>
       ) : (
         <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">
           {/* Header */}
           <div className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 border-b border-card-divider">
-            <h1 className="text-[24px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight mb-1">Mietverträge</h1>
+            <h1 className="text-[24px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight mb-1">{t('contracts.title')}</h1>
             <p className="text-[13px] text-muted-foreground max-w-2xl leading-relaxed">
-              Übersicht aller aktiven und befristeten Mietverhältnisse mit Warmmiete, Kaution und Vertragslaufzeit.
+              {t('contracts.subtitle')}
             </p>
           </div>
 
@@ -102,10 +114,10 @@ export function MietvertragPage() {
           <div className="px-5 sm:px-7 py-3 border-b border-card-divider flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-3 sm:gap-4 -mb-3">
               {([
-                { key: 'alle', label: 'Alle', cnt: allContracts.length },
-                { key: 'unbefristet', label: 'Unbefristet', cnt: unbefristetCount },
-                { key: 'befristet', label: 'Befristet', cnt: befristetCount },
-                { key: 'auslaufend', label: 'Auslaufend', cnt: expiringCount },
+                { key: 'alle', label: t('contracts.tab.all'), cnt: allContracts.length },
+                { key: 'unbefristet', label: t('contracts.tab.openEnded'), cnt: unbefristetCount },
+                { key: 'befristet', label: t('contracts.tab.fixed'), cnt: befristetCount },
+                { key: 'auslaufend', label: t('contracts.tab.expiring'), cnt: expiringCount },
               ] as const).map((opt) => (
                 <button
                   key={opt.key}
@@ -134,7 +146,7 @@ export function MietvertragPage() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Suchen..."
+                placeholder={t('common.search_placeholder')}
                 className="h-8 pl-7 pr-3 rounded-md bg-layer-hover text-[12px] text-foreground placeholder:text-muted-foreground/70 border border-transparent hover:border-card-line focus:bg-card focus:border-[#4F6BFF]/40 focus:outline-none focus:ring-2 focus:ring-[#4F6BFF]/15 transition-all w-[160px] focus:w-[220px]"
               />
             </div>
@@ -144,19 +156,19 @@ export function MietvertragPage() {
           {filtered.length === 0 ? (
             <div className="text-center py-10 px-5">
               <Search size={20} className="mx-auto mb-2 text-muted-foreground/60" />
-              <p className="text-[13px] text-muted-foreground">Keine Verträge gefunden.</p>
+              <p className="text-[13px] text-muted-foreground">{t('contracts.notFound')}</p>
             </div>
           ) : (
             <>
               {/* Table Header (desktop) */}
               <div className="hidden md:grid grid-cols-[1fr_140px_110px_130px_110px_110px_72px] gap-4 px-5 sm:px-7 py-2.5 border-b border-card-divider text-[10.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold">
-                <span>Mieter / Einheit</span>
-                <span>Objekt</span>
-                <span>Warmmiete</span>
-                <span>Kaution</span>
-                <span>Vertragsbeginn</span>
-                <span>Status</span>
-                <span className="text-right">Vertrag</span>
+                <span>{t('contracts.col.tenantUnit')}</span>
+                <span>{t('contracts.col.property')}</span>
+                <span>{t('contracts.col.warmRent')}</span>
+                <span>{t('contracts.col.deposit')}</span>
+                <span>{t('contracts.col.startDate')}</span>
+                <span>{t('common.status')}</span>
+                <span className="text-right">{t('contracts.col.contract')}</span>
               </div>
 
               <div className="divide-y divide-card-divider">
@@ -185,8 +197,8 @@ export function MietvertragPage() {
                       <button
                         onClick={(e) => { e.stopPropagation(); setPreviewContract(c); }}
                         className="size-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-[#4F6BFF] hover:bg-[#4F6BFF]/10 transition-colors cursor-pointer"
-                        aria-label="Vertrag ansehen"
-                        title="Vertrag ansehen"
+                        aria-label={t("contracts.action.view")}
+                        title={t("contracts.action.view")}
                       >
                         <Eye size={15} />
                       </button>
@@ -204,7 +216,7 @@ export function MietvertragPage() {
                         <button
                           onClick={(e) => { e.stopPropagation(); setPreviewContract(c); }}
                           className="size-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-[#4F6BFF] hover:bg-[#4F6BFF]/10 transition-colors cursor-pointer"
-                          aria-label="Vertrag ansehen"
+                          aria-label={t("contracts.action.view")}
                         >
                           <Eye size={14} />
                         </button>
@@ -219,7 +231,7 @@ export function MietvertragPage() {
           {/* Footer */}
           <div className="px-5 sm:px-7 py-3 border-t border-card-divider">
             <p className="text-[11.5px] text-muted-foreground tabular-nums">
-              {filtered.length} von {allContracts.length} {allContracts.length === 1 ? 'Vertrag' : 'Verträge'}
+              {filtered.length} {t('common.of')} {allContracts.length} {t(allContracts.length === 1 ? 'word.contract.singular' : 'word.contract.plural')}
             </p>
           </div>
         </div>

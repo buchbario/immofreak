@@ -1,14 +1,15 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
-  User, Palette, Database, Info,
-  Download, Upload, Trash2, Check, Building2, Landmark, Home, Zap, Wrench, LayoutDashboard,
-  KeyRound, Eye, EyeOff, Lock, AlertCircle,
+  User, Palette, Database, Building2, Landmark, Home, Zap, Wrench,
+  Download, Upload, Trash2, Check, Eye, EyeOff, Lock,
+  AlertCircle, Languages, LayoutDashboard,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { NumberInput } from '../ui/NumberInput';
-import { useAppMode } from '../../context/AppModeContext';
 import { useLandlordSettings } from '../../hooks/useLandlordSettings';
+import { useTranslation } from '../../context/LocaleContext';
+import { LOCALE_FLAG, LOCALE_LABEL } from '../../i18n/translations';
 import type { AppMode } from '../../types';
 import {
   BUNDESLAENDER,
@@ -18,172 +19,129 @@ import {
   getBundeslandByCode,
 } from '../../lib/bundesland';
 
-function Section({ title, description, icon: Icon, children }: {
-  title: string;
-  description: string;
+/* ────────────────────────────────────────────────────────────
+   Settings page
+   ──────────────────────────────────────────────────────────────
+   Eine Seite, fünf klare Bereiche. Vertikales Tab-Rail auf Desktop,
+   horizontale Pille-Tabs auf Mobile. Pro Bereich: schlanke Sektionen
+   ohne verschachtelte Karten, simpler Bottom-Save mit "Saved"-Status.
+   ──────────────────────────────────────────────────────────── */
+
+type Tab = 'account' | 'appearance' | 'landlord' | 'calc' | 'data';
+
+const SAVED_FLASH_MS = 2000;
+
+interface TabDef {
+  id: Tab;
+  label: string;
+  desc: string;
   icon: typeof User;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">
-      <div className="px-5 sm:px-6 py-4 border-b border-card-divider flex items-center gap-3">
-        <div className="size-9 rounded-[9px] bg-[#4F6BFF]/10 flex items-center justify-center shrink-0">
-          <Icon size={16} className="text-[#4F6BFF]" />
-        </div>
-        <div className="min-w-0">
-          <h2 className="text-[13.5px] font-semibold text-foreground tracking-tight">{title}</h2>
-          <p className="text-[11.5px] text-muted-foreground leading-relaxed">{description}</p>
-        </div>
-      </div>
-      <div className="p-5 sm:p-6">{children}</div>
-    </div>
-  );
 }
 
-type Tab = 'allgemein' | 'buyhold' | 'fixflip' | 'daten';
-
 export function SettingsPage() {
-  const { mode } = useAppMode();
   const { settings: landlord, save: saveLandlord } = useLandlordSettings();
+  const { t } = useTranslation();
+  const [tab, setTab] = useState<Tab>('account');
 
-  const [tab, setTab] = useState<Tab>(mode === 'fixflip' ? 'fixflip' : 'buyhold');
-
-  // Profil-Name: Abwärtskompat zu `immofreak_profile_name` (Full-Name).
-  // Falls Vor-/Nachname separat gespeichert sind → nutzen, sonst aus Full-Name
-  // splitten (erstes Wort = Vorname, Rest = Nachname) und beim Speichern beide
-  // Keys schreiben. So bleibt `useAuth().userName` + AuthContext unverändert
-  // funktionsfähig.
-  const [profileFirstName, setProfileFirstName] = useState(() => {
-    const stored = localStorage.getItem('immofreak_profile_firstname');
-    if (stored !== null) return stored;
-    const full = localStorage.getItem('immofreak_profile_name') || 'Yan';
-    return full.split(' ')[0] || 'Yan';
-  });
-  const [profileLastName, setProfileLastName] = useState(() => {
-    const stored = localStorage.getItem('immofreak_profile_lastname');
-    if (stored !== null) return stored;
-    const full = localStorage.getItem('immofreak_profile_name') || '';
-    return full.split(' ').slice(1).join(' ');
-  });
-  // E-Mail ist nach Registrierung gelockt — nur anzeigen, nicht editieren.
+  // ── Profile
+  const [firstName, setFirstName] = useState(() =>
+    localStorage.getItem('immofreak_profile_firstname')
+    ?? (localStorage.getItem('immofreak_profile_name')?.split(' ')[0] || 'Yan'));
+  const [lastName, setLastName] = useState(() =>
+    localStorage.getItem('immofreak_profile_lastname')
+    ?? (localStorage.getItem('immofreak_profile_name')?.split(' ').slice(1).join(' ') || ''));
   const profileEmail = localStorage.getItem('immofreak_profile_email') || 'yan@immofreak.de';
-  const [profileSaved, setProfileSaved] = useState(false);
 
-  // Passwort-Änderung (localStorage-Demo; im echten Backend → API-Call).
+  // ── Password
   const [pwCurrent, setPwCurrent] = useState('');
   const [pwNew, setPwNew] = useState('');
   const [pwConfirm, setPwConfirm] = useState('');
   const [pwError, setPwError] = useState('');
-  const [pwSaved, setPwSaved] = useState(false);
   const [showPwCurrent, setShowPwCurrent] = useState(false);
   const [showPwNew, setShowPwNew] = useState(false);
 
-  const [exportDone, setExportDone] = useState(false);
-  const [showReset, setShowReset] = useState(false);
-
-  // Standard-Dashboard: welche Ansicht beim Start / nach Tour-Ende geladen wird.
-  // Default `buyhold`, da die Mehrheit der Nutzer Vermieter sind.
+  // ── Default dashboard
   const [defaultDashboard, setDefaultDashboard] = useState<AppMode>(() => {
     const saved = localStorage.getItem('immofreak_default_dashboard');
     return saved === 'fixflip' ? 'fixflip' : 'buyhold';
   });
-  const [defaultDashboardSaved, setDefaultDashboardSaved] = useState(false);
-  const handleSelectDefaultDashboard = (next: AppMode) => {
-    setDefaultDashboard(next);
-    localStorage.setItem('immofreak_default_dashboard', next);
-    setDefaultDashboardSaved(true);
-    setTimeout(() => setDefaultDashboardSaved(false), 1500);
-  };
 
-  // Landlord form state (committed on Save)
+  // ── Landlord (single bag of fields, saved together)
   const [landlordDraft, setLandlordDraft] = useState(landlord);
-  const [landlordSaved, setLandlordSaved] = useState(false);
+  const updateLandlord = <K extends keyof typeof landlordDraft>(k: K, v: (typeof landlordDraft)[K]) =>
+    setLandlordDraft((d) => ({ ...d, [k]: v }));
 
-  // Fix & Flip settings. Bundesland ist die "Master"-Quelle für die GrESt —
-  // wechselt der Nutzer das Bundesland, wird der GrESt-Wert automatisch
-  // übernommen. Nutzer können den Satz danach trotzdem manuell überschreiben
-  // (z. B. für Sonderfälle wie ermäßigte Familien-Sätze).
+  // ── Fix & Flip Defaults
   const [ffBundesland, setFfBundesland] = useState<string>(() =>
-    localStorage.getItem('immofreak_ff_bundesland') || DEFAULT_BUNDESLAND_CODE
+    localStorage.getItem('immofreak_ff_bundesland') || DEFAULT_BUNDESLAND_CODE,
   );
-  const [ffDefaultPurchaseTax, setFfDefaultPurchaseTax] = useState(() => {
+  const [ffPurchaseTax, setFfPurchaseTax] = useState(() => {
     const stored = localStorage.getItem('immofreak_ff_purchase_tax');
     if (stored !== null) return Number(stored);
     const bl = getBundeslandByCode(localStorage.getItem('immofreak_ff_bundesland') || DEFAULT_BUNDESLAND_CODE);
     return bl?.grunderwerbsteuer ?? 6;
   });
-  const [ffDefaultNotarFee, setFfDefaultNotarFee] = useState(() =>
-    Number(localStorage.getItem('immofreak_ff_notar_fee') ?? DEFAULT_NOTAR_PCT)
+  const [ffNotarFee, setFfNotarFee] = useState(() =>
+    Number(localStorage.getItem('immofreak_ff_notar_fee') ?? DEFAULT_NOTAR_PCT),
   );
-  const [ffDefaultBrokerFee, setFfDefaultBrokerFee] = useState(() =>
-    Number(localStorage.getItem('immofreak_ff_broker_fee') ?? DEFAULT_MAKLER_PCT)
+  const [ffBrokerFee, setFfBrokerFee] = useState(() =>
+    Number(localStorage.getItem('immofreak_ff_broker_fee') ?? DEFAULT_MAKLER_PCT),
   );
-  const [ffSaved, setFfSaved] = useState(false);
 
-  // Kombinierte Kaufnebenkosten (live, unabhängig vom Save-State).
-  const ffTotalPct = ffDefaultPurchaseTax + ffDefaultNotarFee + ffDefaultBrokerFee;
+  // ── Saved-flash state per category
+  const [savedFor, setSavedFor] = useState<Tab | null>(null);
+  const flash = (which: Tab) => {
+    setSavedFor(which);
+    setTimeout(() => setSavedFor(null), SAVED_FLASH_MS);
+  };
+
+  // ── Data export/import/reset
+  const [showReset, setShowReset] = useState(false);
+  const [exportDone, setExportDone] = useState(false);
+
+  // ── Save handlers
+  const handleSaveAccount = () => {
+    const fullName = `${firstName} ${lastName}`.trim();
+    localStorage.setItem('immofreak_profile_firstname', firstName);
+    localStorage.setItem('immofreak_profile_lastname', lastName);
+    localStorage.setItem('immofreak_profile_name', fullName);
+
+    // Optional password change — only if all three fields filled in
+    if (pwCurrent || pwNew || pwConfirm) {
+      const stored = localStorage.getItem('immofreak_password') || 'demo';
+      if (!pwCurrent) { setPwError('Bitte aktuelles Passwort eingeben.'); return; }
+      if (pwCurrent !== stored) { setPwError('Aktuelles Passwort ist nicht korrekt.'); return; }
+      if (pwNew.length < 6) { setPwError('Neues Passwort muss mindestens 6 Zeichen lang sein.'); return; }
+      if (pwNew !== pwConfirm) { setPwError('Neues Passwort und Bestätigung stimmen nicht überein.'); return; }
+      localStorage.setItem('immofreak_password', pwNew);
+      setPwCurrent(''); setPwNew(''); setPwConfirm(''); setPwError('');
+    }
+    flash('account');
+  };
+
+  const handleSaveAppearance = () => {
+    localStorage.setItem('immofreak_default_dashboard', defaultDashboard);
+    flash('appearance');
+  };
+
+  const handleSaveLandlord = () => {
+    saveLandlord(landlordDraft);
+    flash('landlord');
+  };
 
   const handleSelectBundesland = (code: string) => {
     const bl = getBundeslandByCode(code);
     if (!bl) return;
     setFfBundesland(code);
-    // GrESt automatisch an das Bundesland angleichen — das ist der Kernpunkt
-    // der Feature-Anfrage: "z. B. Hessen insgesamt 8%".
-    setFfDefaultPurchaseTax(bl.grunderwerbsteuer);
+    setFfPurchaseTax(bl.grunderwerbsteuer);
   };
 
-  const handleSaveProfile = () => {
-    const fullName = `${profileFirstName} ${profileLastName}`.trim();
-    localStorage.setItem('immofreak_profile_firstname', profileFirstName);
-    localStorage.setItem('immofreak_profile_lastname', profileLastName);
-    // Kombinierter Name bleibt für Abwärtskompat (AuthContext, Avatar-Fallbacks).
-    localStorage.setItem('immofreak_profile_name', fullName);
-    setProfileSaved(true);
-    setTimeout(() => setProfileSaved(false), 2000);
-  };
-
-  const handleSavePassword = () => {
-    setPwError('');
-    // Demo-Modus: Default-Passwort ist „demo" (siehe LoginPage.tsx). Nach
-    // erstem Change liegt das neue Passwort unter `immofreak_password`.
-    const stored = localStorage.getItem('immofreak_password') || 'demo';
-    if (!pwCurrent) {
-      setPwError('Bitte aktuelles Passwort eingeben.');
-      return;
-    }
-    if (pwCurrent !== stored) {
-      setPwError('Aktuelles Passwort ist nicht korrekt.');
-      return;
-    }
-    if (pwNew.length < 6) {
-      setPwError('Neues Passwort muss mindestens 6 Zeichen lang sein.');
-      return;
-    }
-    if (pwNew !== pwConfirm) {
-      setPwError('Neues Passwort und Bestätigung stimmen nicht überein.');
-      return;
-    }
-    localStorage.setItem('immofreak_password', pwNew);
-    setPwCurrent('');
-    setPwNew('');
-    setPwConfirm('');
-    setPwSaved(true);
-    setTimeout(() => setPwSaved(false), 2500);
-  };
-
-  const handleSaveLandlord = () => {
-    saveLandlord(landlordDraft);
-    setLandlordSaved(true);
-    setTimeout(() => setLandlordSaved(false), 2000);
-  };
-
-  const handleSaveFF = () => {
+  const handleSaveCalc = () => {
     localStorage.setItem('immofreak_ff_bundesland', ffBundesland);
-    localStorage.setItem('immofreak_ff_purchase_tax', String(ffDefaultPurchaseTax));
-    localStorage.setItem('immofreak_ff_notar_fee', String(ffDefaultNotarFee));
-    localStorage.setItem('immofreak_ff_broker_fee', String(ffDefaultBrokerFee));
-    setFfSaved(true);
-    setTimeout(() => setFfSaved(false), 2000);
+    localStorage.setItem('immofreak_ff_purchase_tax', String(ffPurchaseTax));
+    localStorage.setItem('immofreak_ff_notar_fee', String(ffNotarFee));
+    localStorage.setItem('immofreak_ff_broker_fee', String(ffBrokerFee));
+    flash('calc');
   };
 
   const handleExport = () => {
@@ -227,10 +185,6 @@ export function SettingsPage() {
           alert('Ungültige Datei. Bitte eine gültige ImmoFreak-Backup-Datei auswählen.');
         }
       };
-      reader.onerror = () => {
-        console.error('Import-Datei konnte nicht gelesen werden', reader.error);
-        alert('Datei konnte nicht gelesen werden. Bitte erneut versuchen.');
-      };
       reader.readAsText(file);
     };
     input.click();
@@ -242,10 +196,11 @@ export function SettingsPage() {
       const key = localStorage.key(i);
       if (key?.startsWith('immofreak_')) keys.push(key);
     }
-    keys.forEach(k => localStorage.removeItem(k));
+    keys.forEach((k) => localStorage.removeItem(k));
     window.location.href = '/';
   };
 
+  // Storage stats
   const dataStats = (() => {
     let totalSize = 0;
     let storeCount = 0;
@@ -254,335 +209,317 @@ export function SettingsPage() {
       if (key?.startsWith('immofreak_')) {
         const val = localStorage.getItem(key) || '';
         totalSize += val.length * 2;
-        try {
-          const arr = JSON.parse(val);
-          if (Array.isArray(arr)) storeCount += arr.length;
-        } catch { /* not an array */ }
+        try { const arr = JSON.parse(val); if (Array.isArray(arr)) storeCount += arr.length; }
+        catch { /* not an array */ }
       }
     }
-    const sizeMB = (totalSize / (1024 * 1024)).toFixed(2);
-    return { storeCount, sizeMB };
+    return { storeCount, sizeMB: (totalSize / (1024 * 1024)).toFixed(2) };
   })();
 
-  const TABS: { id: Tab; label: string; icon: typeof User; modeOnly?: 'fixflip' | 'buyhold' }[] = [
-    { id: 'allgemein', label: 'Allgemein', icon: User },
-    { id: 'buyhold', label: 'Buy & Hold', icon: Home, modeOnly: 'buyhold' },
-    { id: 'fixflip', label: 'Fix & Flip', icon: Zap, modeOnly: 'fixflip' },
-    { id: 'daten', label: 'Daten', icon: Database },
+  const ffTotalPct = ffPurchaseTax + ffNotarFee + ffBrokerFee;
+
+  const TABS: TabDef[] = [
+    { id: 'account',    label: t('settings.section.profile'),     desc: 'Name, E-Mail, Passwort',         icon: User },
+    { id: 'appearance', label: t('settings.section.appearance'),  desc: t('settings.section.appearance.desc'), icon: Palette },
+    { id: 'landlord',   label: 'Vermieter',                       desc: 'Stammdaten & Bankverbindung',    icon: Building2 },
+    { id: 'calc',       label: 'Kalkulation',                     desc: 'Kaufnebenkosten-Defaults',       icon: Wrench },
+    { id: 'data',       label: 'Daten',                           desc: 'Backup, Import, Reset',          icon: Database },
   ];
 
   return (
-    <div className="page-container">
-      {/* Flat header */}
-      <div className="mb-4 sm:mb-5 px-1">
+    <div className="page-container max-w-5xl">
+      {/* Page header */}
+      <div className="mb-6 sm:mb-7 px-1">
         <h1 className="text-[26px] sm:text-[30px] font-bold text-foreground tracking-tight leading-[1.15] mb-1.5">
-          Einstellungen
+          {t('settings.title')}
         </h1>
         <p className="text-[14px] text-muted-foreground max-w-2xl leading-relaxed">
-          Profil, {mode === 'buyhold' ? 'Vermieterdaten' : 'Kalkulations-Defaults'} und Datenverwaltung — alle Einstellungen pro Modus.
+          Profil, Vermieterdaten und App-Defaults — alle an einem Ort.
         </p>
       </div>
 
-      {/* Underline tabs — flat, with bottom border */}
-      <div className="flex items-center gap-3 sm:gap-4 flex-wrap mb-5 pb-3 border-b border-card-line px-1 overflow-x-auto">
-        {TABS.map((t) => {
-          const Icon = t.icon;
-          const isActive = tab === t.id;
-          return (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={cn(
-                'group relative inline-flex items-center gap-1.5 pb-3 text-[13.5px] font-medium transition-colors cursor-pointer whitespace-nowrap',
-                isActive ? 'text-[#4F6BFF]' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              <Icon size={14} className="shrink-0" />
-              {t.label}
-              {isActive && <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-[#4F6BFF]" />}
-            </button>
-          );
-        })}
+      {/* Mobile pills (visible < lg) */}
+      <div className="lg:hidden mb-4 -mx-4 px-4 overflow-x-auto no-scrollbar">
+        <div className="inline-flex items-center gap-1.5 p-1 rounded-xl bg-card border border-card-line shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          {TABS.map((tabDef) => {
+            const isActive = tab === tabDef.id;
+            const Icon = tabDef.icon;
+            return (
+              <button
+                key={tabDef.id}
+                onClick={() => setTab(tabDef.id)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold whitespace-nowrap transition-colors cursor-pointer',
+                  isActive
+                    ? 'bg-[#4F6BFF] text-white shadow-[0_1px_2px_rgba(79,107,255,0.25)]'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-layer-hover',
+                )}
+              >
+                <Icon size={13} strokeWidth={isActive ? 2.4 : 2} />
+                {tabDef.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <div className="space-y-4 sm:space-y-5">
+      <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-5 sm:gap-6">
+        {/* Desktop side-rail */}
+        <aside className="hidden lg:block">
+          <nav className="bg-card border border-card-line rounded-2xl p-1.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] sticky top-3">
+            {TABS.map((tabDef) => {
+              const isActive = tab === tabDef.id;
+              const Icon = tabDef.icon;
+              return (
+                <button
+                  key={tabDef.id}
+                  onClick={() => setTab(tabDef.id)}
+                  className={cn(
+                    'w-full flex items-start gap-3 px-3 py-2.5 rounded-xl text-left transition-colors cursor-pointer',
+                    isActive
+                      ? 'bg-[#4F6BFF]/8 ring-1 ring-[#4F6BFF]/20'
+                      : 'hover:bg-layer-hover',
+                  )}
+                >
+                  <div className={cn(
+                    'size-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 transition-colors',
+                    isActive ? 'bg-[#4F6BFF]/15 text-[#4F6BFF]' : 'bg-card-line/40 text-muted-foreground',
+                  )}>
+                    <Icon size={15} strokeWidth={isActive ? 2.4 : 2} />
+                  </div>
+                  <div className="min-w-0 flex-1 pt-0.5">
+                    <p className={cn(
+                      'text-[13px] font-semibold leading-tight',
+                      isActive ? 'text-[#4F6BFF]' : 'text-foreground',
+                    )}>
+                      {tabDef.label}
+                    </p>
+                    <p className="text-[11.5px] text-muted-foreground mt-0.5 leading-tight truncate">
+                      {tabDef.desc}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+            <div className="px-3 pt-3 pb-1.5 mt-2 border-t border-card-divider">
+              <div className="flex items-center gap-2">
+                <img src="/logo.png" alt="" className="h-5 object-contain shrink-0" />
+                <p className="text-[10.5px] text-muted-foreground/80 leading-tight">
+                  ImmoFreak v1.0.0
+                </p>
+              </div>
+            </div>
+          </nav>
+        </aside>
 
-        {tab === 'allgemein' && (
-          <>
-            <Section title="Profil" description="Deine persönlichen Informationen" icon={User}>
-              <div className="space-y-4">
-                <div className="flex items-center gap-4 pb-4 border-b border-card-divider">
-                  <div className="size-14 rounded-2xl bg-emerald-500 flex items-center justify-center shrink-0">
-                    <span className="text-xl font-bold text-white">{(profileFirstName.charAt(0) || '?').toUpperCase()}</span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">{`${profileFirstName} ${profileLastName}`.trim() || 'Unbenannt'}</p>
-                    <p className="text-xs text-muted-foreground">{profileEmail}</p>
-                  </div>
+        {/* Content card */}
+        <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">
+          {tab === 'account' && (
+            <CategoryFrame
+              title={t('settings.section.profile')}
+              description="Deine persönlichen Informationen und das Passwort für deinen Account."
+              saved={savedFor === 'account'}
+              onSave={handleSaveAccount}
+            >
+              {/* Avatar + readonly identity */}
+              <div className="flex items-center gap-4 mb-6">
+                <div className="size-14 rounded-2xl bg-gradient-to-br from-[#4F6BFF] to-[#6B5BFF] flex items-center justify-center shrink-0 ring-2 ring-white shadow-[0_2px_8px_rgba(79,107,255,0.20)]">
+                  <span className="text-[19px] font-bold text-white">{(firstName.charAt(0) || '?').toUpperCase()}</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="input-label">Vorname</label>
-                    <input value={profileFirstName} onChange={e => setProfileFirstName(e.target.value)} className="input" placeholder="z. B. Max" />
-                  </div>
-                  <div>
-                    <label className="input-label">Nachname</label>
-                    <input value={profileLastName} onChange={e => setProfileLastName(e.target.value)} className="input" placeholder="z. B. Mustermann" />
-                  </div>
-                </div>
-                <div>
-                  <label className="input-label flex items-center gap-1.5">
-                    E-Mail
-                    <Lock size={11} className="text-muted-foreground" />
-                  </label>
-                  <input value={profileEmail} disabled readOnly className="input opacity-60 cursor-not-allowed" type="email" />
-                  <p className="text-[11px] text-muted-foreground mt-1.5 flex items-center gap-1">
-                    <AlertCircle size={11} />
-                    Die E-Mail-Adresse kann nach der Registrierung nicht mehr geändert werden.
+                <div className="min-w-0">
+                  <p className="text-[15px] font-semibold text-foreground truncate">{`${firstName} ${lastName}`.trim() || 'Unbenannt'}</p>
+                  <p className="text-[12.5px] text-muted-foreground truncate flex items-center gap-1">
+                    <Lock size={11} /> {profileEmail}
                   </p>
                 </div>
-                <div className="flex justify-end">
-                  <button onClick={handleSaveProfile} className={cn('btn btn-md', profileSaved ? 'btn-primary' : 'btn-secondary')}>
-                    {profileSaved ? <><Check size={14} /> Gespeichert</> : 'Speichern'}
-                  </button>
-                </div>
               </div>
-            </Section>
 
-            <Section title="Passwort ändern" description="Setze ein neues Passwort für deinen Account" icon={KeyRound}>
-              <div className="space-y-4">
-                <div>
-                  <label className="input-label">Aktuelles Passwort</label>
-                  <div className="relative">
-                    <input
-                      type={showPwCurrent ? 'text' : 'password'}
-                      value={pwCurrent}
-                      onChange={e => { setPwCurrent(e.target.value); setPwError(''); }}
-                      className="input w-full pr-10"
-                      placeholder="••••••••"
-                      autoComplete="current-password"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPwCurrent(v => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                      aria-label={showPwCurrent ? 'Passwort verbergen' : 'Passwort anzeigen'}
-                    >
-                      {showPwCurrent ? <EyeOff size={15} /> : <Eye size={15} />}
-                    </button>
-                  </div>
-                </div>
+              <SubSection title="Name">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="input-label">Neues Passwort</label>
-                    <div className="relative">
-                      <input
-                        type={showPwNew ? 'text' : 'password'}
-                        value={pwNew}
-                        onChange={e => { setPwNew(e.target.value); setPwError(''); }}
-                        className="input w-full pr-10"
-                        placeholder="Mindestens 6 Zeichen"
-                        autoComplete="new-password"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPwNew(v => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                        aria-label={showPwNew ? 'Passwort verbergen' : 'Passwort anzeigen'}
-                      >
-                        {showPwNew ? <EyeOff size={15} /> : <Eye size={15} />}
-                      </button>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="input-label">Neues Passwort bestätigen</label>
+                  <Field label="Vorname">
+                    <input value={firstName} onChange={(e) => setFirstName(e.target.value)} className="input" placeholder="Max" />
+                  </Field>
+                  <Field label="Nachname">
+                    <input value={lastName} onChange={(e) => setLastName(e.target.value)} className="input" placeholder="Mustermann" />
+                  </Field>
+                </div>
+                <Field
+                  label={<span className="inline-flex items-center gap-1.5">E-Mail <Lock size={11} className="text-muted-foreground" /></span>}
+                  help="E-Mail kann nach Registrierung nicht geändert werden."
+                >
+                  <input value={profileEmail} disabled readOnly className="input opacity-60 cursor-not-allowed" type="email" />
+                </Field>
+              </SubSection>
+
+              <SubSection title="Passwort ändern" optional>
+                <Field label="Aktuelles Passwort">
+                  <PasswordInput value={pwCurrent} onChange={(v) => { setPwCurrent(v); setPwError(''); }} show={showPwCurrent} onToggle={() => setShowPwCurrent((s) => !s)} placeholder="••••••••" />
+                </Field>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Field label="Neues Passwort">
+                    <PasswordInput value={pwNew} onChange={(v) => { setPwNew(v); setPwError(''); }} show={showPwNew} onToggle={() => setShowPwNew((s) => !s)} placeholder="Mindestens 6 Zeichen" />
+                  </Field>
+                  <Field label="Wiederholen">
                     <input
                       type={showPwNew ? 'text' : 'password'}
                       value={pwConfirm}
-                      onChange={e => { setPwConfirm(e.target.value); setPwError(''); }}
-                      className="input w-full"
+                      onChange={(e) => { setPwConfirm(e.target.value); setPwError(''); }}
+                      className="input"
                       placeholder="Passwort wiederholen"
                       autoComplete="new-password"
                     />
-                  </div>
+                  </Field>
                 </div>
                 {pwError && (
-                  <div className="px-3 py-2 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20">
-                    <p className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1.5">
-                      <AlertCircle size={12} />
-                      {pwError}
-                    </p>
+                  <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200">
+                    <AlertCircle size={13} className="text-red-600 shrink-0 mt-0.5" />
+                    <p className="text-[12.5px] text-red-700">{pwError}</p>
                   </div>
                 )}
-                <div className="flex justify-end">
-                  <button onClick={handleSavePassword} className={cn('btn btn-md', pwSaved ? 'btn-primary' : 'btn-secondary')}>
-                    {pwSaved ? <><Check size={14} /> Passwort geändert</> : 'Passwort ändern'}
-                  </button>
-                </div>
-              </div>
-            </Section>
+              </SubSection>
+            </CategoryFrame>
+          )}
 
-            <Section title="Standard-Dashboard" description="Welche Ansicht beim Start und nach der Tour geladen wird" icon={LayoutDashboard}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  { id: 'buyhold' as const, label: 'Buy & Hold', desc: 'Vermietung, Mieter & Nebenkosten', icon: Home, accent: 'emerald' },
-                  { id: 'fixflip' as const, label: 'Fix & Flip', desc: 'Projekte, Handwerker & Kalkulation', icon: Zap, accent: 'amber' },
-                ].map((opt) => {
-                  const active = defaultDashboard === opt.id;
-                  const OptIcon = opt.icon;
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => handleSelectDefaultDashboard(opt.id)}
-                      className={cn(
-                        'flex items-start gap-3 p-4 rounded-xl border text-left transition-colors cursor-pointer',
-                        active
-                          ? 'border-[#4F6BFF] bg-[#4F6BFF]/5 ring-1 ring-[#4F6BFF]/20'
-                          : 'border-card-divider hover:bg-muted/40'
-                      )}
-                    >
-                      <div
+          {tab === 'appearance' && (
+            <CategoryFrame
+              title={t('settings.section.appearance')}
+              description={t('settings.section.appearance.desc')}
+              saved={savedFor === 'appearance'}
+              onSave={handleSaveAppearance}
+            >
+              {/* Language */}
+              <SubSection title={<span className="inline-flex items-center gap-1.5"><Languages size={13} /> {t('settings.language.label')}</span>}>
+                <div className="grid grid-cols-2 gap-3">
+                  <LocaleCard locale="de" />
+                  <LocaleCard locale="en" />
+                </div>
+                <p className="text-[12px] text-muted-foreground">{t('settings.language.help')}</p>
+              </SubSection>
+
+              {/* Default dashboard */}
+              <SubSection title={<span className="inline-flex items-center gap-1.5"><LayoutDashboard size={13} /> {t('settings.defaultDashboard.label')}</span>}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {[
+                    { id: 'buyhold' as const, label: t('mode.buyhold.label'), desc: t('mode.buyhold.desc'), icon: Home, accent: 'emerald' as const },
+                    { id: 'fixflip' as const, label: t('mode.fixflip.label'), desc: t('mode.fixflip.desc'), icon: Zap, accent: 'amber' as const },
+                  ].map((opt) => {
+                    const active = defaultDashboard === opt.id;
+                    const OptIcon = opt.icon;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setDefaultDashboard(opt.id)}
                         className={cn(
-                          'size-9 rounded-lg flex items-center justify-center shrink-0',
-                          opt.accent === 'emerald' ? 'bg-emerald-500/10' : 'bg-amber-500/10'
+                          'flex items-start gap-3 p-3.5 rounded-xl border text-left transition-colors cursor-pointer',
+                          active
+                            ? 'border-[#4F6BFF] bg-[#4F6BFF]/5 ring-1 ring-[#4F6BFF]/20'
+                            : 'border-card-divider hover:bg-layer-hover',
                         )}
                       >
-                        <OptIcon size={16} className={opt.accent === 'emerald' ? 'text-emerald-600' : 'text-amber-600'} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold text-foreground">{opt.label}</p>
-                          {active && <Check size={14} className="text-[#4F6BFF]" />}
+                        <div className={cn(
+                          'size-9 rounded-lg flex items-center justify-center shrink-0',
+                          opt.accent === 'emerald' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600',
+                        )}>
+                          <OptIcon size={16} />
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">{opt.desc}</p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-              {defaultDashboardSaved && (
-                <p className="text-xs text-emerald-600 mt-3 flex items-center gap-1.5">
-                  <Check size={12} /> Gespeichert
-                </p>
-              )}
-            </Section>
-
-            <Section title="Darstellung" description="Theme und Anzeigeoptionen" icon={Palette}>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="input-label">Währung</label>
-                  <input value="EUR" disabled className="input opacity-60" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-[13.5px] font-semibold text-foreground">{opt.label}</p>
+                            {active && <Check size={13} className="text-[#4F6BFF]" />}
+                          </div>
+                          <p className="text-[11.5px] text-muted-foreground mt-0.5">{opt.desc}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
-                <div>
-                  <label className="input-label">Sprache</label>
-                  <input value="Deutsch" disabled className="input opacity-60" />
-                </div>
-              </div>
-            </Section>
+                <p className="text-[12px] text-muted-foreground">{t('settings.defaultDashboard.help')}</p>
+              </SubSection>
 
-            <Section title="Über ImmoFreak" description="Version und Info" icon={Info}>
-              <div className="flex items-center gap-4">
-                <img src="/logo.png" alt="ImmoFreak" className="h-8 object-contain" />
-                <div>
-                  <p className="text-sm font-semibold text-foreground">ImmoFreak CRM</p>
-                  <p className="text-xs text-muted-foreground">Version 1.0.0 · Made with ♥ in Germany</p>
-                </div>
-              </div>
-            </Section>
-          </>
-        )}
+              {/* Currency (read-only for now) */}
+              <SubSection title="Währung">
+                <Field help="Aktuell ist EUR fest hinterlegt.">
+                  <input value="EUR — Euro (€)" disabled className="input opacity-60" />
+                </Field>
+              </SubSection>
+            </CategoryFrame>
+          )}
 
-        {tab === 'buyhold' && (
-          <>
-            <Section title="Vermieter / Absender" description="Daten für Mieter-Schreiben, Mahnungen und Kautionsabrechnung" icon={Building2}>
-              <div className="space-y-4">
+          {tab === 'landlord' && (
+            <CategoryFrame
+              title="Vermieter"
+              description="Diese Daten werden in Mahnungen, Mietverträgen und Nebenkosten-Abrechnungen verwendet."
+              saved={savedFor === 'landlord'}
+              onSave={handleSaveLandlord}
+            >
+              <SubSection title={<span className="inline-flex items-center gap-1.5"><Building2 size={13} /> Stammdaten</span>}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="input-label">Firma / Hausverwaltung</label>
-                    <input value={landlordDraft.companyName} onChange={e => setLandlordDraft({ ...landlordDraft, companyName: e.target.value })} className="input" placeholder="z. B. Musterverwaltung GmbH" />
-                  </div>
-                  <div>
-                    <label className="input-label">Ansprechpartner</label>
-                    <input value={landlordDraft.contactName} onChange={e => setLandlordDraft({ ...landlordDraft, contactName: e.target.value })} className="input" placeholder="z. B. Max Mustermann" />
-                  </div>
+                  <Field label="Firma / Hausverwaltung">
+                    <input value={landlordDraft.companyName} onChange={(e) => updateLandlord('companyName', e.target.value)} className="input" placeholder="Musterverwaltung GmbH" />
+                  </Field>
+                  <Field label="Ansprechpartner">
+                    <input value={landlordDraft.contactName} onChange={(e) => updateLandlord('contactName', e.target.value)} className="input" placeholder="Max Mustermann" />
+                  </Field>
                 </div>
-                <div>
-                  <label className="input-label">Straße und Hausnummer</label>
-                  <input value={landlordDraft.street} onChange={e => setLandlordDraft({ ...landlordDraft, street: e.target.value })} className="input" placeholder="z. B. Musterstr. 1" />
-                </div>
+                <Field label="Straße und Hausnummer">
+                  <input value={landlordDraft.street} onChange={(e) => updateLandlord('street', e.target.value)} className="input" placeholder="Musterstr. 1" />
+                </Field>
                 <div className="grid grid-cols-[100px_1fr] gap-3">
-                  <div>
-                    <label className="input-label">PLZ</label>
-                    <input value={landlordDraft.zip} onChange={e => setLandlordDraft({ ...landlordDraft, zip: e.target.value })} className="input" />
-                  </div>
-                  <div>
-                    <label className="input-label">Ort</label>
-                    <input value={landlordDraft.city} onChange={e => setLandlordDraft({ ...landlordDraft, city: e.target.value })} className="input" />
-                  </div>
+                  <Field label="PLZ">
+                    <input value={landlordDraft.zip} onChange={(e) => updateLandlord('zip', e.target.value)} className="input" />
+                  </Field>
+                  <Field label="Ort">
+                    <input value={landlordDraft.city} onChange={(e) => updateLandlord('city', e.target.value)} className="input" />
+                  </Field>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="input-label">Telefon</label>
-                    <input value={landlordDraft.phone} onChange={e => setLandlordDraft({ ...landlordDraft, phone: e.target.value })} className="input" placeholder="+49 ..." />
-                  </div>
-                  <div>
-                    <label className="input-label">E-Mail</label>
-                    <input value={landlordDraft.email} onChange={e => setLandlordDraft({ ...landlordDraft, email: e.target.value })} className="input" type="email" />
-                  </div>
-                  <div>
-                    <label className="input-label">Steuernummer / USt-ID</label>
-                    <input value={landlordDraft.taxId} onChange={e => setLandlordDraft({ ...landlordDraft, taxId: e.target.value })} className="input" placeholder="optional" />
-                  </div>
+                  <Field label="Telefon">
+                    <input value={landlordDraft.phone} onChange={(e) => updateLandlord('phone', e.target.value)} className="input" placeholder="+49 …" />
+                  </Field>
+                  <Field label="E-Mail">
+                    <input value={landlordDraft.email} onChange={(e) => updateLandlord('email', e.target.value)} className="input" type="email" />
+                  </Field>
+                  <Field label="Steuer-Nr." help="Optional">
+                    <input value={landlordDraft.taxId} onChange={(e) => updateLandlord('taxId', e.target.value)} className="input" />
+                  </Field>
                 </div>
-              </div>
-            </Section>
+              </SubSection>
 
-            <Section title="Bankverbindung" description="Wird in Mahnungen, Kautionsabrechnung und Nebenkosten-Nachforderungen verwendet" icon={Landmark}>
-              <div className="space-y-4">
-                <div>
-                  <label className="input-label">IBAN <span className="text-red-500">*</span></label>
-                  <input value={landlordDraft.iban} onChange={e => setLandlordDraft({ ...landlordDraft, iban: e.target.value })} className="input font-mono" placeholder="DE00 0000 0000 0000 0000 00" />
-                </div>
+              <SubSection title={<span className="inline-flex items-center gap-1.5"><Landmark size={13} /> Bankverbindung</span>}>
+                <Field label={<span>IBAN <span className="text-red-500">*</span></span>}>
+                  <input value={landlordDraft.iban} onChange={(e) => updateLandlord('iban', e.target.value)} className="input font-mono tracking-wide" placeholder="DE00 0000 0000 0000 0000 00" />
+                </Field>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="input-label">BIC</label>
-                    <input value={landlordDraft.bic} onChange={e => setLandlordDraft({ ...landlordDraft, bic: e.target.value })} className="input font-mono" placeholder="z. B. DEUTDEFFXXX" />
-                  </div>
-                  <div>
-                    <label className="input-label">Bankname</label>
-                    <input value={landlordDraft.bankName} onChange={e => setLandlordDraft({ ...landlordDraft, bankName: e.target.value })} className="input" placeholder="z. B. Deutsche Bank" />
-                  </div>
+                  <Field label="BIC">
+                    <input value={landlordDraft.bic} onChange={(e) => updateLandlord('bic', e.target.value)} className="input font-mono" placeholder="DEUTDEFFXXX" />
+                  </Field>
+                  <Field label="Bankname">
+                    <input value={landlordDraft.bankName} onChange={(e) => updateLandlord('bankName', e.target.value)} className="input" placeholder="Deutsche Bank" />
+                  </Field>
                 </div>
-                <div>
-                  <label className="input-label">Standard-Verwendungszweck</label>
-                  <input value={landlordDraft.defaultPaymentPurpose} onChange={e => setLandlordDraft({ ...landlordDraft, defaultPaymentPurpose: e.target.value })} className="input" placeholder="z. B. Miete + Mieternummer" />
-                </div>
-              </div>
-            </Section>
+                <Field label="Standard-Verwendungszweck" help="Wird auf Mahnungen und Forderungen vorgeschlagen.">
+                  <input value={landlordDraft.defaultPaymentPurpose} onChange={(e) => updateLandlord('defaultPaymentPurpose', e.target.value)} className="input" placeholder="Miete + Mieternummer" />
+                </Field>
+              </SubSection>
 
-            <Section title="Unterschrift" description="Name der/die unter Schreiben erscheint" icon={User}>
-              <div>
-                <label className="input-label">Unterzeichnende Person / Firma</label>
-                <input value={landlordDraft.signatureName} onChange={e => setLandlordDraft({ ...landlordDraft, signatureName: e.target.value })} className="input" placeholder="z. B. Max Mustermann — Vermieter" />
-              </div>
-            </Section>
+              <SubSection title={<span className="inline-flex items-center gap-1.5"><User size={13} /> Unterschrift</span>}>
+                <Field label="Unterzeichnende Person / Firma" help="Erscheint unten auf Schreiben und Mietverträgen.">
+                  <input value={landlordDraft.signatureName} onChange={(e) => updateLandlord('signatureName', e.target.value)} className="input" placeholder="Max Mustermann — Vermieter" />
+                </Field>
+              </SubSection>
+            </CategoryFrame>
+          )}
 
-            <div className="flex justify-end">
-              <button onClick={handleSaveLandlord} className={cn('btn btn-md', landlordSaved ? 'btn-primary' : 'btn-secondary')}>
-                {landlordSaved ? <><Check size={14} /> Gespeichert</> : 'Vermieterdaten speichern'}
-              </button>
-            </div>
-          </>
-        )}
-
-        {tab === 'fixflip' && (
-          <>
-            <Section title="Kaufnebenkosten — Defaults" description="Werden automatisch im Kalkulator und Deal Analyzer vorbelegt" icon={Wrench}>
-              <div className="space-y-5">
-                {/* Bundesland-Auswahl: Master-Quelle für GrESt */}
-                <div>
-                  <label className="input-label">Bundesland</label>
+          {tab === 'calc' && (
+            <CategoryFrame
+              title="Kalkulation"
+              description="Kaufnebenkosten-Defaults, automatisch befüllt im Kalkulator und Deal Analyzer."
+              saved={savedFor === 'calc'}
+              onSave={handleSaveCalc}
+            >
+              <SubSection title="Bundesland">
+                <Field help="Grunderwerbsteuer wird automatisch übernommen — manuelles Anpassen weiter unten möglich.">
                   <select
                     value={ffBundesland}
                     onChange={(e) => handleSelectBundesland(e.target.value)}
@@ -594,95 +531,81 @@ export function SettingsPage() {
                       </option>
                     ))}
                   </select>
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    Grunderwerbsteuer wird automatisch übernommen. Notar- und Makler-Sätze bleiben unverändert.
-                  </p>
-                </div>
+                </Field>
 
-                {/* Live Gesamt-Übersicht */}
-                <div className="p-4 rounded-xl border border-[#4F6BFF]/20 bg-[#4F6BFF]/5">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <div>
-                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Kaufnebenkosten gesamt</p>
-                      <p className="text-xs text-muted-foreground-2 mt-0.5">
-                        {getBundeslandByCode(ffBundesland)?.name ?? 'Unbekannt'}: GrESt {ffDefaultPurchaseTax.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} % + Notar {ffDefaultNotarFee.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} % + Makler {ffDefaultBrokerFee.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %
-                      </p>
-                    </div>
-                    <p className="text-2xl font-bold tabular-nums text-[#4F6BFF]">
-                      {ffTotalPct.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}&nbsp;%
+                {/* Live total preview — minimaler Block */}
+                <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-[#4F6BFF]/6 border border-[#4F6BFF]/20">
+                  <div className="min-w-0">
+                    <p className="text-[10.5px] uppercase tracking-wider font-semibold text-muted-foreground">Kaufnebenkosten gesamt</p>
+                    <p className="text-[11.5px] text-muted-foreground truncate">
+                      {ffPurchaseTax.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} % + {ffNotarFee.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} % + {ffBrokerFee.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %
                     </p>
                   </div>
+                  <p className="text-[22px] font-bold tabular-nums text-[#4F6BFF] shrink-0">
+                    {ffTotalPct.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %
+                  </p>
                 </div>
+              </SubSection>
 
-                {/* Einzelsätze — weiterhin manuell überschreibbar (z. B. für Sonderfälle) */}
+              <SubSection title="Einzelne Sätze">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="input-label">Grunderwerbsteuer</label>
-                    <NumberInput value={ffDefaultPurchaseTax} onChange={(v) => setFfDefaultPurchaseTax(v === '' ? 0 : v)} suffix="%" decimals={2} className="input" />
-                    <p className="text-[10px] text-muted-foreground mt-1">Aus Bundesland übernommen</p>
-                  </div>
-                  <div>
-                    <label className="input-label">Notar &amp; Grundbuch</label>
-                    <NumberInput value={ffDefaultNotarFee} onChange={(v) => setFfDefaultNotarFee(v === '' ? 0 : v)} suffix="%" decimals={2} className="input" />
-                    <p className="text-[10px] text-muted-foreground mt-1">Üblich: 1,5–2,0 %</p>
-                  </div>
-                  <div>
-                    <label className="input-label">Makler (inkl. USt)</label>
-                    <NumberInput value={ffDefaultBrokerFee} onChange={(v) => setFfDefaultBrokerFee(v === '' ? 0 : v)} suffix="%" decimals={2} className="input" />
-                    <p className="text-[10px] text-muted-foreground mt-1">Bestellerprinzip seit 2020</p>
-                  </div>
+                  <Field label="Grunderwerbsteuer" help="Aus Bundesland übernommen">
+                    <NumberInput value={ffPurchaseTax} onChange={(v) => setFfPurchaseTax(v === '' ? 0 : v)} suffix="%" decimals={2} className="input" />
+                  </Field>
+                  <Field label="Notar & Grundbuch" help="Üblich: 1,5–2,0 %">
+                    <NumberInput value={ffNotarFee} onChange={(v) => setFfNotarFee(v === '' ? 0 : v)} suffix="%" decimals={2} className="input" />
+                  </Field>
+                  <Field label="Makler" help="Inkl. USt — Bestellerprinzip seit 2020">
+                    <NumberInput value={ffBrokerFee} onChange={(v) => setFfBrokerFee(v === '' ? 0 : v)} suffix="%" decimals={2} className="input" />
+                  </Field>
                 </div>
+              </SubSection>
+            </CategoryFrame>
+          )}
 
-                <div className="flex justify-end">
-                  <button onClick={handleSaveFF} className={cn('btn btn-md', ffSaved ? 'btn-primary' : 'btn-secondary')}>
-                    {ffSaved ? <><Check size={14} /> Gespeichert</> : 'Speichern'}
-                  </button>
-                </div>
-              </div>
-            </Section>
-
-            <Section title="Über Fix & Flip" description="Modus-spezifische Info" icon={Zap}>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Im Fix &amp; Flip Modus verwaltest du Projekte mit Sanierungsbudget, Handwerkern und Verkaufskalkulation. Kalkulator und Deal Analyzer nutzen die oben gesetzten Defaults als Ausgangsbasis.
-              </p>
-            </Section>
-          </>
-        )}
-
-        {tab === 'daten' && (
-          <Section title="Daten" description="Backup, Import und Speicher verwalten" icon={Database}>
-            <div className="space-y-4">
-              <div className="flex items-center gap-4 p-3 rounded-xl bg-muted/30 border border-card-divider">
+          {tab === 'data' && (
+            <CategoryFrame
+              title="Daten"
+              description="Backup deiner kompletten App-Daten als JSON-Datei. Wiederherstellen, importieren oder vollständig zurücksetzen."
+              hideSave
+            >
+              {/* Storage stats card */}
+              <div className="flex items-center gap-3 p-3.5 rounded-xl bg-card-line/30 border border-card-divider mb-5">
                 <div className="size-10 rounded-xl bg-[#4F6BFF]/10 flex items-center justify-center shrink-0">
-                  <Database size={16} className="text-[#4F6BFF]" />
+                  <Database size={17} className="text-[#4F6BFF]" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground">{dataStats.storeCount} Datensätze</p>
-                  <p className="text-xs text-muted-foreground">{dataStats.sizeMB} MB im lokalen Speicher</p>
+                  <p className="text-[14px] font-semibold text-foreground tabular-nums">{dataStats.storeCount} Datensätze</p>
+                  <p className="text-[12px] text-muted-foreground tabular-nums">{dataStats.sizeMB} MB im lokalen Speicher</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <button onClick={handleExport} className={cn('btn btn-md w-full', exportDone ? 'btn-primary' : 'btn-secondary')}>
-                  {exportDone ? <><Check size={14} /> Exportiert</> : <><Download size={14} /> Daten exportieren</>}
-                </button>
-                <button onClick={handleImport} className="btn btn-md btn-secondary w-full">
-                  <Upload size={14} /> Daten importieren
-                </button>
-              </div>
+              <SubSection title="Backup">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button onClick={handleExport} className={cn('btn btn-md w-full', exportDone ? 'btn-primary' : 'btn-secondary')}>
+                    {exportDone ? <><Check size={14} /> Exportiert</> : <><Download size={14} /> Als JSON exportieren</>}
+                  </button>
+                  <button onClick={handleImport} className="btn btn-md btn-secondary w-full">
+                    <Upload size={14} /> Backup importieren
+                  </button>
+                </div>
+                <p className="text-[12px] text-muted-foreground">Beim Import werden bestehende Daten überschrieben — vorher Export nicht vergessen.</p>
+              </SubSection>
 
-              <div className="pt-3 border-t border-card-divider">
-                <button onClick={() => setShowReset(true)} className="btn btn-md w-full border-red-200 text-red-600 hover:bg-red-50 transition-colors">
-                  <Trash2 size={14} /> Alle Daten löschen
+              <SubSection title="Gefahrenzone" danger>
+                <button
+                  onClick={() => setShowReset(true)}
+                  className="btn btn-md w-full bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 transition-colors"
+                >
+                  <Trash2 size={14} /> Alle Daten zurücksetzen
                 </button>
-                <p className="text-[11px] text-muted-foreground mt-2 text-center">
-                  Alle Projekte, Objekte, Mieter und Einstellungen werden unwiderruflich gelöscht.
+                <p className="text-[12px] text-muted-foreground">
+                  Alle Projekte, Objekte, Mieter, Verträge, Boards und Einstellungen werden unwiderruflich gelöscht.
                 </p>
-              </div>
-            </div>
-          </Section>
-        )}
-
+              </SubSection>
+            </CategoryFrame>
+          )}
+        </div>
       </div>
 
       {showReset && (
@@ -694,5 +617,159 @@ export function SettingsPage() {
         />
       )}
     </div>
+  );
+}
+
+// ─── Layout primitives ─────────────────────────────────────
+
+interface CategoryFrameProps {
+  title: string;
+  description: string;
+  children: ReactNode;
+  saved?: boolean;
+  hideSave?: boolean;
+  onSave?: () => void;
+}
+
+/**
+ * Header + Body + Save-Footer einer Kategorie. Eine einzige Karte pro Tab,
+ * darin sind die Subsections nur durch Trennstriche getrennt — keine
+ * verschachtelten Karten mehr.
+ */
+function CategoryFrame({ title, description, children, saved, hideSave, onSave }: CategoryFrameProps) {
+  return (
+    <>
+      <div className="px-5 sm:px-7 pt-5 sm:pt-6 pb-3.5 border-b border-card-divider">
+        <h2 className="text-[17px] font-semibold text-foreground tracking-tight leading-tight">{title}</h2>
+        <p className="text-[12.5px] text-muted-foreground leading-relaxed mt-1 max-w-2xl">{description}</p>
+      </div>
+      <div className="p-5 sm:p-7 space-y-7">
+        {children}
+      </div>
+      {!hideSave && (
+        <div className="px-5 sm:px-7 py-3.5 border-t border-card-divider flex items-center justify-between gap-3 bg-card/40">
+          <p className="text-[12px] text-muted-foreground">
+            {saved ? (
+              <span className="inline-flex items-center gap-1.5 text-emerald-600 font-semibold">
+                <Check size={13} /> Gespeichert
+              </span>
+            ) : (
+              'Änderungen werden lokal in deinem Browser gespeichert.'
+            )}
+          </p>
+          <button onClick={onSave} className="btn btn-md btn-primary">
+            Speichern
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
+
+interface SubSectionProps {
+  title: ReactNode;
+  optional?: boolean;
+  danger?: boolean;
+  children: ReactNode;
+}
+
+function SubSection({ title, optional, danger, children }: SubSectionProps) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <h3 className={cn(
+          'text-[12.5px] font-bold uppercase tracking-[0.06em]',
+          danger ? 'text-red-600' : 'text-muted-foreground',
+        )}>
+          {title}
+        </h3>
+        {optional && (
+          <span className="text-[10.5px] font-semibold text-muted-foreground/70 bg-card-line/40 px-1.5 py-0.5 rounded-md">
+            optional
+          </span>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+interface FieldProps {
+  label?: ReactNode;
+  help?: ReactNode;
+  children: ReactNode;
+}
+
+function Field({ label, help, children }: FieldProps) {
+  return (
+    <div>
+      {label && <label className="input-label">{label}</label>}
+      {children}
+      {help && <p className="text-[11.5px] text-muted-foreground mt-1.5 leading-relaxed">{help}</p>}
+    </div>
+  );
+}
+
+interface PasswordInputProps {
+  value: string;
+  onChange: (v: string) => void;
+  show: boolean;
+  onToggle: () => void;
+  placeholder?: string;
+}
+
+function PasswordInput({ value, onChange, show, onToggle, placeholder }: PasswordInputProps) {
+  return (
+    <div className="relative">
+      <input
+        type={show ? 'text' : 'password'}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="input pr-10"
+        placeholder={placeholder}
+        autoComplete="new-password"
+      />
+      <button
+        type="button"
+        onClick={onToggle}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        aria-label={show ? 'Passwort verbergen' : 'Passwort anzeigen'}
+      >
+        {show ? <EyeOff size={15} /> : <Eye size={15} />}
+      </button>
+    </div>
+  );
+}
+
+interface LocaleCardProps {
+  locale: 'de' | 'en';
+}
+
+function LocaleCard({ locale }: LocaleCardProps) {
+  const { locale: current, setLocale } = useTranslation();
+  const active = current === locale;
+  return (
+    <button
+      type="button"
+      onClick={() => setLocale(locale)}
+      className={cn(
+        'flex items-center gap-3 p-3 rounded-xl border text-left transition-colors cursor-pointer',
+        active
+          ? 'border-[#4F6BFF] bg-[#4F6BFF]/5 ring-1 ring-[#4F6BFF]/20'
+          : 'border-card-divider hover:bg-layer-hover',
+      )}
+      aria-pressed={active}
+    >
+      <span className="text-[24px] leading-none" aria-hidden>{LOCALE_FLAG[locale]}</span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <p className="text-[13.5px] font-semibold text-foreground">{LOCALE_LABEL[locale]}</p>
+          {active && <Check size={13} className="text-[#4F6BFF]" />}
+        </div>
+        <p className="text-[11px] text-muted-foreground mt-0.5">
+          {locale === 'de' ? 'de-DE' : 'en-GB'}
+        </p>
+      </div>
+    </button>
   );
 }

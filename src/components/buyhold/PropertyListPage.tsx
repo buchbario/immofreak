@@ -7,6 +7,7 @@ import {
 import { useRentalProperties } from '../../hooks/useRentalProperties';
 import { useRentalUnits } from '../../hooks/useRentalUnits';
 import { usePropertyPhotos } from '../../hooks/usePropertyPhotos';
+import { useTranslation } from '../../context/LocaleContext';
 import { PropertyForm } from './PropertyForm';
 import { cn } from '../../lib/utils';
 
@@ -36,6 +37,7 @@ export function PropertyListPage() {
   const [showForm, setShowForm] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>(readPersistedViewMode);
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   useEffect(() => {
     try {
@@ -64,20 +66,20 @@ export function PropertyListPage() {
         <>
           <div className="page-header">
             <div>
-              <h1 className="page-title">Mietobjekte</h1>
-              <p className="page-subtitle">Lege dein erstes Mietobjekt an.</p>
+              <h1 className="page-title">{t('property.title')}</h1>
+              <p className="page-subtitle">{t('property.empty.firstSubtitle')}</p>
             </div>
             <button onClick={() => setShowForm(true)} className="btn btn-md btn-primary">
-              <Plus size={15} /> Objekt anlegen
+              <Plus size={15} /> {t('property.cta.create')}
             </button>
           </div>
           <div className="surface empty-state">
             <div className="size-14 rounded-2xl flex items-center justify-center mb-4 bg-layer-hover">
               <Building2 size={22} className="text-muted-foreground" />
             </div>
-            <p className="text-sm font-semibold mb-1 text-foreground">Keine Objekte</p>
-            <p className="text-sm mb-5 text-muted-foreground-2">Lege dein erstes Mietobjekt an.</p>
-            <button onClick={() => setShowForm(true)} className="btn btn-md btn-primary">Objekt anlegen</button>
+            <p className="text-sm font-semibold mb-1 text-foreground">{t('property.empty.title')}</p>
+            <p className="text-sm mb-5 text-muted-foreground-2">{t('property.empty.desc')}</p>
+            <button onClick={() => setShowForm(true)} className="btn btn-md btn-primary">{t('property.cta.create')}</button>
           </div>
         </>
       ) : (
@@ -86,13 +88,13 @@ export function PropertyListPage() {
           <div className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 border-b border-card-divider">
             <div className="flex items-start justify-between gap-3 flex-wrap">
               <div className="min-w-0 flex-1">
-                <h1 className="text-[24px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight mb-1">Mietobjekte</h1>
+                <h1 className="text-[24px] sm:text-[26px] font-bold text-foreground tracking-tight leading-tight mb-1">{t('property.title')}</h1>
                 <p className="text-[13px] text-muted-foreground max-w-2xl leading-relaxed">
-                  Dein Buy-&-Hold-Portfolio mit Kaufpreis, Marktwert, Mieteinnahmen und Belegungsrate je Objekt.
+                  {t('property.subtitle')}
                 </p>
               </div>
               <button onClick={() => setShowForm(true)} className="btn btn-sm btn-primary shrink-0">
-                <Plus size={14} /> Neues Objekt
+                <Plus size={14} /> {t('property.cta.new')}
               </button>
             </div>
           </div>
@@ -108,10 +110,10 @@ export function PropertyListPage() {
                     ? 'bg-[#4F6BFF] text-white shadow-[0_1px_2px_rgba(79,107,255,0.25)]'
                     : 'text-muted-foreground hover:text-foreground hover:bg-card/50',
                 )}
-                title="Kachel-Ansicht"
+                title={t('property.view.tiles')}
               >
                 <LayoutGrid size={14} strokeWidth={viewMode === 'grid' ? 2.4 : 2} />
-                Kacheln
+                {t('property.view.tiles')}
               </button>
               <button
                 onClick={() => setViewMode('list')}
@@ -121,10 +123,10 @@ export function PropertyListPage() {
                     ? 'bg-[#4F6BFF] text-white shadow-[0_1px_2px_rgba(79,107,255,0.25)]'
                     : 'text-muted-foreground hover:text-foreground hover:bg-card/50',
                 )}
-                title="Listen-Ansicht"
+                title={t('property.view.list')}
               >
                 <List size={14} strokeWidth={viewMode === 'list' ? 2.4 : 2} />
-                Liste
+                {t('property.view.list')}
               </button>
             </div>
 
@@ -135,7 +137,7 @@ export function PropertyListPage() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Suchen..."
+                placeholder={t('common.search_placeholder')}
                 className="h-8 pl-7 pr-3 rounded-md bg-layer-hover text-[12px] text-foreground placeholder:text-muted-foreground/70 border border-transparent hover:border-card-line focus:bg-card focus:border-[#4F6BFF]/40 focus:outline-none focus:ring-2 focus:ring-[#4F6BFF]/15 transition-all w-[160px] focus:w-[220px]"
               />
             </div>
@@ -144,7 +146,7 @@ export function PropertyListPage() {
           {filtered.length === 0 ? (
             <div className="text-center py-10 px-5">
               <Search size={20} className="mx-auto mb-2 text-muted-foreground/60" />
-              <p className="text-[13px] text-muted-foreground">Keine Objekte gefunden.</p>
+              <p className="text-[13px] text-muted-foreground">{t('property.notFound')}</p>
             </div>
           ) : viewMode === 'grid' ? (
             <div className="p-5 sm:p-6">
@@ -189,7 +191,7 @@ export function PropertyListPage() {
                         occState === 'empty' && 'bg-rose-500/90 text-white',
                       )}>
                         <span className="size-1.5 rounded-full bg-white/95" />
-                        {occState === 'full' ? 'Vollbelegt' : occState === 'partial' ? 'Teilbelegt' : 'Leerstand'}
+                        {occState === 'full' ? t('property.occupancy.full') : occState === 'partial' ? t('property.occupancy.partial') : t('property.occupancy.empty')}
                       </span>
                     </div>
                   </div>
@@ -209,11 +211,11 @@ export function PropertyListPage() {
 
                     {/* KPI cells — 2x2 grid in a tinted container */}
                     <div className="grid grid-cols-2 gap-px rounded-xl overflow-hidden bg-card-line/60 mb-3.5">
-                      <KpiCell label="Marktwert" value={`${fmt(p.currentValue)} €`} />
-                      <KpiCell label="Miete / Monat" value={`${fmt(monthlyRent)} €`} />
-                      <KpiCell label="Einheiten" value={`${units.length}`} sub={`${occupied} belegt`} />
+                      <KpiCell label={t('property.kpi.market')} value={`${fmt(p.currentValue)} €`} />
+                      <KpiCell label={t('property.kpi.rentMonth')} value={`${fmt(monthlyRent)} €`} />
+                      <KpiCell label={t('property.kpi.units')} value={`${units.length}`} sub={`${occupied} ${t('property.occupied.suffix')}`} />
                       <KpiCell
-                        label="Bruttorendite"
+                        label={t('property.kpi.yield')}
                         value={`${rendite.toFixed(1)} %`}
                         valueClass={cn(
                           renditeState === 'good' && 'text-emerald-600',
@@ -226,7 +228,7 @@ export function PropertyListPage() {
                     {/* Occupancy bar pinned to bottom */}
                     <div className="mt-auto">
                       <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground mb-1.5">
-                        <span>Belegung</span>
+                        <span>{t('property.occupancy.label')}</span>
                         <span className="tabular-nums">{occupied}/{units.length}</span>
                       </div>
                       <div className="h-1.5 w-full rounded-full overflow-hidden bg-card-line/80">
@@ -398,7 +400,7 @@ export function PropertyListPage() {
           {/* Footer */}
           <div className="px-5 sm:px-7 py-3 border-t border-card-divider">
             <p className="text-[11.5px] text-muted-foreground tabular-nums">
-              {filtered.length} von {properties.length} {properties.length === 1 ? 'Objekt' : 'Objekte'}
+              {filtered.length} {t('common.of')} {properties.length} {t(properties.length === 1 ? 'word.property.singular' : 'word.property.plural')}
             </p>
           </div>
         </div>

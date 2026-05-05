@@ -4,6 +4,7 @@ import {
   Home, Users, Receipt, Wallet, ListTodo, Sparkles,
 } from 'lucide-react';
 import { useAppMode } from '../../context/AppModeContext';
+import { useTranslation } from '../../context/LocaleContext';
 import { usePrivateBoards } from '../../hooks/usePrivateBoards';
 import { cn } from '../../lib/utils';
 
@@ -16,20 +17,23 @@ interface NavItem {
   end?: boolean;
 }
 
+// Labels sind hier Translation-Keys (siehe `i18n/translations.ts`).
+// Der Renderer ruft t(item.label) auf — Pinned-Boards mit User-Namen
+// fallen automatisch auf den unveränderten String zurück.
 const fixFlipItems: NavItem[] = [
-  { to: '/', icon: LayoutDashboard, label: 'Start', end: true },
-  { to: '/projekte', icon: Building2, label: 'Projekte' },
-  { to: '/handwerker', icon: HardHat, label: 'Handwerker' },
-  { to: '/kalkulator', icon: Calculator, label: 'Rechner' },
-  { to: '/deal-analyzer', icon: SearchCheck, label: 'Analyzer' },
+  { to: '/', icon: LayoutDashboard, label: 'mobilenav.start', end: true },
+  { to: '/projekte', icon: Building2, label: 'mobilenav.projects' },
+  { to: '/handwerker', icon: HardHat, label: 'mobilenav.contractors' },
+  { to: '/kalkulator', icon: Calculator, label: 'mobilenav.calculator' },
+  { to: '/deal-analyzer', icon: SearchCheck, label: 'mobilenav.analyzer' },
 ];
 
 const buyHoldItems: NavItem[] = [
-  { to: '/bh', icon: LayoutDashboard, label: 'Start', end: true },
-  { to: '/bh/objekte', icon: Home, label: 'Objekte' },
-  { to: '/bh/mieter', icon: Users, label: 'Mieter' },
-  { to: '/bh/transaktionen', icon: Receipt, label: 'Zahlungen' },
-  { to: '/bh/finanzen', icon: Wallet, label: 'Finanzen' },
+  { to: '/bh', icon: LayoutDashboard, label: 'mobilenav.start', end: true },
+  { to: '/bh/objekte', icon: Home, label: 'mobilenav.objects' },
+  { to: '/bh/mieter', icon: Users, label: 'mobilenav.tenants' },
+  { to: '/bh/transaktionen', icon: Receipt, label: 'mobilenav.payments' },
+  { to: '/bh/finanzen', icon: Wallet, label: 'mobilenav.finance' },
 ];
 
 /**
@@ -60,16 +64,17 @@ const MODE_ACCENT = {
 export function MobileBottomNav() {
   const { mode } = useAppMode();
   const { pinnedBoards } = usePrivateBoards();
+  const { t } = useTranslation();
 
   // Privat-Modus: Start + alle Boards + bis zu 3 angepinnte Boards (Top-3 nach pinOrder).
   // Wenn weniger als 3 gepinnt sind, schrumpft das Grid passend — kein toter Raum.
   const privateItems: NavItem[] = [
-    { to: '/privat', icon: LayoutDashboard, label: 'Start', end: true },
-    { to: '/privat/boards', icon: ListTodo, label: 'Boards', end: true },
+    { to: '/privat', icon: LayoutDashboard, label: 'mobilenav.start', end: true },
+    { to: '/privat/boards', icon: ListTodo, label: 'mobilenav.boards', end: true },
     ...pinnedBoards.slice(0, 3).map((b) => ({
       to: `/privat/boards/${b.id}`,
       icon: Sparkles, // Fallback falls das Board kein Emoji hat
-      label: b.name,
+      label: b.name, // User-Boardname → wird von t() unverändert durchgereicht
       emoji: b.icon,
     })),
   ];
@@ -143,7 +148,7 @@ export function MobileBottomNav() {
                       'drop-shadow-[0_1px_1px_rgba(0,0,0,0.18)]',
                     )}
                   >
-                    {item.label}
+                    {t(item.label)}
                   </span>
                 )}
               </div>
