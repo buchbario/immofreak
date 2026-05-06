@@ -4,7 +4,9 @@ import { useTenants } from '../../../hooks/useTenants';
 import { useRentalProperties } from '../../../hooks/useRentalProperties';
 import { useRentalUnits } from '../../../hooks/useRentalUnits';
 import { useRentalContracts } from '../../../hooks/useRentalContracts';
+import { useLandlordSettings } from '../../../hooks/useLandlordSettings';
 import { exportElementToPDF } from '../../../lib/pdfExport';
+import { BriefLayout } from './BriefLayout';
 
 interface Props {
   onBack: () => void;
@@ -44,6 +46,7 @@ export function TerminationLetter({ onBack }: Props) {
   const { properties } = useRentalProperties();
   const { allUnits } = useRentalUnits();
   const { allContracts } = useRentalContracts();
+  const { settings: landlord } = useLandlordSettings();
   const letterRef = useRef<HTMLDivElement>(null);
 
   const [tenantId, setTenantId] = useState('');
@@ -241,141 +244,106 @@ export function TerminationLetter({ onBack }: Props) {
           </div>
         </div>
 
-        {/* DIN A4 Preview */}
+        {/* DIN A4 Preview — einheitliches BriefLayout */}
         <div className="flex-1 flex justify-center overflow-auto pb-8">
           <div className="origin-top" style={{ transform: 'scale(var(--a4-scale, 0.75))' }}>
-            <div
-              ref={letterRef}
-              style={{
-                width: '794px',
-                minHeight: '1123px',
-                background: '#ffffff',
-                color: '#1a1a1a',
-                fontFamily: "'Inter', 'Helvetica Neue', Arial, sans-serif",
-                padding: '70px 60px 60px 60px',
-                boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
-                position: 'relative',
-              }}
-            >
-              {ready ? (
-                <>
-                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: config.isExtraordinary ? 'linear-gradient(90deg, #dc2626, #ef4444)' : 'linear-gradient(90deg, #1f2937, #4b5563)' }} />
+            {ready ? (
+              <BriefLayout
+                ref={letterRef}
+                landlord={landlord}
+                recipient={{
+                  name: tenant!.name,
+                  street: property!.address,
+                  cityLine: unit!.name,
+                }}
+                subject={{
+                  lines: [
+                    'Einschreiben — Rückschein',
+                    property!.name,
+                    `${property!.address}${unit ? `, ${unit.name}` : ''}`,
+                    config.isExtraordinary ? 'Außerordentliche fristlose Kündigung' : 'Kündigung des Mietverhältnisses',
+                  ],
+                }}
+                salutation={`Sehr geehrte/r ${tenant!.name},`}
+              >
+                <p style={{ marginBottom: '8px', fontSize: '10.5px', color: '#6b7280' }}>
+                  Rechtsgrundlage: {config.basis}
+                </p>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px' }}>
-                    <div>
-                      <div style={{ fontSize: '18px', fontWeight: 700, color: '#1a1a2e' }}>{property!.name}</div>
-                      <div style={{ fontSize: '10.5px', color: '#6b7280', marginTop: '2px' }}>{property!.address}</div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '9px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Datum</div>
-                      <div style={{ fontSize: '11px', color: '#374151', marginTop: '2px' }}>{todayStr}</div>
-                    </div>
-                  </div>
+                <p style={{ marginBottom: '14px' }}>
+                  hiermit kündige(n) ich/wir das zwischen uns bestehende Mietverhältnis über die Wohnung <strong>{unit!.name}</strong> in <strong>{property!.address}</strong>
+                  {contract?.startDate && <> (Mietvertrag vom {formatDate(contract.startDate)})</>}
+                  {' '}
+                  {config.isExtraordinary
+                    ? <strong>außerordentlich fristlos mit sofortiger Wirkung</strong>
+                    : <>ordentlich zum <strong>{formatDate(terminationDate)}</strong></>
+                  }.
+                </p>
 
-                  <div style={{ marginBottom: '28px' }}>
-                    <div style={{ fontSize: '9px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600, marginBottom: '4px' }}>An</div>
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#1a1a2e' }}>{tenant!.name}</div>
-                    <div style={{ fontSize: '11px', color: '#4b5563', marginTop: '1px' }}>{unit!.name}, {property!.address}</div>
-                  </div>
-
-                  <div style={{ fontSize: '9.5px', color: '#6b7280', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>
-                    Einschreiben — Rückschein
-                  </div>
-                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#1a1a2e', marginBottom: '8px', paddingBottom: '10px', borderBottom: '2px solid #e5e7eb' }}>
-                    {config.isExtraordinary
-                      ? 'Außerordentliche fristlose Kündigung des Mietverhältnisses'
-                      : 'Kündigung des Mietverhältnisses'}
-                  </div>
-                  <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '16px' }}>
-                    Rechtsgrundlage: {config.basis}
-                  </div>
-
-                  <div style={{ fontSize: '11px', lineHeight: '1.7', color: '#374151' }}>
-                    <p style={{ marginBottom: '12px' }}>Sehr geehrte/r {tenant!.name},</p>
-                    <p style={{ marginBottom: '14px' }}>
-                      hiermit kündige(n) ich/wir das zwischen uns bestehende Mietverhältnis über die Wohnung <strong>{unit!.name}</strong> in <strong>{property!.address}</strong>
-                      {contract?.startDate && <> (Mietvertrag vom {formatDate(contract.startDate)})</>}
-                      {' '}
-                      {config.isExtraordinary
-                        ? <strong>außerordentlich fristlos mit sofortiger Wirkung</strong>
-                        : <>ordentlich zum <strong>{formatDate(terminationDate)}</strong></>
-                      }.
-                    </p>
-
-                    {!config.isExtraordinary && (
-                      <div style={{ background: '#f8f9fb', borderRadius: '6px', padding: '12px 16px', marginBottom: '14px', border: '1px solid #e5e7eb' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '10.5px' }}>
-                          <div>
-                            <div style={{ fontSize: '9px', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 600 }}>Mietdauer</div>
-                            <div style={{ fontWeight: 600, marginTop: '2px' }}>{tenancyYears} Jahre</div>
-                          </div>
-                          <div>
-                            <div style={{ fontSize: '9px', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 600 }}>Gesetzliche Frist</div>
-                            <div style={{ fontWeight: 600, marginTop: '2px' }}>{noticePeriodMonths} Monate (§ 573c BGB)</div>
-                          </div>
-                        </div>
+                {!config.isExtraordinary && (
+                  <div style={{ background: '#f8f9fb', borderRadius: '6px', padding: '12px 16px', marginBottom: '14px', border: '1px solid #e5e7eb' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '10.5px' }}>
+                      <div>
+                        <div style={{ fontSize: '9px', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 600 }}>Mietdauer</div>
+                        <div style={{ fontWeight: 600, marginTop: '2px' }}>{tenancyYears} Jahre</div>
                       </div>
-                    )}
-
-                    {/* Reason — mandatory */}
-                    <div style={{ marginBottom: '14px' }}>
-                      <div style={{ fontWeight: 700, marginBottom: '6px', fontSize: '11.5px', color: '#1a1a2e' }}>Begründung</div>
-                      <p style={{ marginBottom: '8px', whiteSpace: 'pre-wrap' }}>{reason}</p>
-                    </div>
-
-                    {/* Widerspruchsrecht */}
-                    {!config.isExtraordinary && (
-                      <div style={{ marginBottom: '14px', padding: '10px 12px', borderLeft: '3px solid #2563eb', background: '#eff6ff', fontSize: '10px' }}>
-                        <div style={{ fontWeight: 700, marginBottom: '4px', color: '#1e40af', fontSize: '10.5px' }}>Widerspruchsrecht nach § 574 BGB (Sozialklausel)</div>
-                        <p style={{ marginBottom: '4px' }}>
-                          Sie können der Kündigung widersprechen, wenn die vertragsmäßige Beendigung für Sie, Ihre Familie oder einen anderen Angehörigen Ihres Haushalts eine Härte bedeuten würde, die auch unter Würdigung der berechtigten Interessen des Vermieters nicht zu rechtfertigen ist.
-                        </p>
-                        <p>
-                          Der Widerspruch muss schriftlich spätestens zwei Monate vor dem Beendigungstermin ({widerspruchDeadline ? widerspruchDeadline.toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }) : '___________'}) bei uns eingehen (§ 574b Abs. 2 BGB).
-                        </p>
+                      <div>
+                        <div style={{ fontSize: '9px', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 600 }}>Gesetzliche Frist</div>
+                        <div style={{ fontWeight: 600, marginTop: '2px' }}>{noticePeriodMonths} Monate (§ 573c BGB)</div>
                       </div>
-                    )}
-
-                    {/* Fristlose Hinweise */}
-                    {config.isExtraordinary && (
-                      <div style={{ marginBottom: '14px', padding: '10px 12px', borderLeft: '3px solid #dc2626', background: '#fef2f2', fontSize: '10px' }}>
-                        <div style={{ fontWeight: 700, marginBottom: '4px', color: '#991b1b', fontSize: '10.5px' }}>Hinweis zur Schonfrist (§ 569 Abs. 3 Nr. 2 BGB)</div>
-                        <p>
-                          Sofern diese Kündigung auf Zahlungsverzug gestützt wird, wird sie unwirksam, wenn Sie innerhalb von zwei Monaten nach Rechtshängigkeit einer Räumungsklage die Mietrückstände vollständig ausgleichen oder eine öffentliche Stelle die Zahlung übernimmt.
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Übergabe */}
-                    <p style={{ marginBottom: '12px' }}>
-                      Wir bitten Sie, die Wohnung bis spätestens zum <strong>{config.isExtraordinary ? `${todayStr} (unverzüglich)` : formatDate(terminationDate)}</strong> vollständig geräumt und besenrein an uns zu übergeben. Die Übergabe wird per Protokoll dokumentiert; eine Terminvereinbarung erbitten wir rechtzeitig.
-                    </p>
-
-                    <p style={{ marginBottom: '12px' }}>
-                      Die Kaution wird Ihnen nach ordnungsgemäßer Rückgabe der Wohnung und Abrechnung der Betriebskosten innerhalb der gesetzlichen Frist (i. d. R. 3–6 Monate) ausgezahlt; etwaige berechtigte Ansprüche werden verrechnet.
-                    </p>
-
-                    <p style={{ marginBottom: '20px' }}>Mit freundlichen Grüßen</p>
-
-                    <div style={{ borderTop: '1px solid #d1d5db', width: '220px', paddingTop: '6px' }}>
-                      <div style={{ fontSize: '10px', color: '#6b7280' }}>Vermieter (Unterschrift erforderlich)</div>
                     </div>
                   </div>
+                )}
 
-                  <div style={{
-                    borderTop: '1px solid #e5e7eb', paddingTop: '8px', marginTop: '20px',
-                    display: 'flex', justifyContent: 'space-between', fontSize: '8px', color: '#9ca3af',
-                  }}>
-                    <span>{property!.name} · {property!.address}</span>
-                    <span>Kündigung · {todayStr}</span>
-                  </div>
-                </>
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '1000px', color: '#9ca3af', fontSize: '14px', textAlign: 'center', padding: '0 40px' }}>
-                  Bitte wähle einen Mieter und setze das Beendigungsdatum.
+                {/* Reason — mandatory */}
+                <div style={{ marginBottom: '14px' }}>
+                  <div style={{ fontWeight: 700, marginBottom: '6px', fontSize: '11.5px' }}>Begründung</div>
+                  <p style={{ marginBottom: '8px', whiteSpace: 'pre-wrap' }}>{reason}</p>
                 </div>
-              )}
-            </div>
+
+                {/* Widerspruchsrecht */}
+                {!config.isExtraordinary && (
+                  <div style={{ marginBottom: '14px', padding: '10px 12px', borderLeft: '3px solid #2563eb', background: '#eff6ff', fontSize: '10.5px' }}>
+                    <div style={{ fontWeight: 700, marginBottom: '4px' }}>Widerspruchsrecht nach § 574 BGB (Sozialklausel)</div>
+                    <p style={{ marginBottom: '4px' }}>
+                      Sie können der Kündigung widersprechen, wenn die vertragsmäßige Beendigung für Sie, Ihre Familie oder einen anderen Angehörigen Ihres Haushalts eine Härte bedeuten würde.
+                    </p>
+                    <p style={{ margin: 0 }}>
+                      Widerspruch schriftlich spätestens zwei Monate vor dem Beendigungstermin ({widerspruchDeadline ? widerspruchDeadline.toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }) : '___________'}) bei uns einzureichen (§ 574b Abs. 2 BGB).
+                    </p>
+                  </div>
+                )}
+
+                {/* Fristlose Hinweise */}
+                {config.isExtraordinary && (
+                  <div style={{ marginBottom: '14px', padding: '10px 12px', borderLeft: '3px solid #dc2626', background: '#fef2f2', fontSize: '10.5px' }}>
+                    <div style={{ fontWeight: 700, marginBottom: '4px' }}>Hinweis zur Schonfrist (§ 569 Abs. 3 Nr. 2 BGB)</div>
+                    <p style={{ margin: 0 }}>
+                      Sofern diese Kündigung auf Zahlungsverzug gestützt wird, wird sie unwirksam, wenn Sie innerhalb von zwei Monaten nach Rechtshängigkeit einer Räumungsklage die Mietrückstände vollständig ausgleichen oder eine öffentliche Stelle die Zahlung übernimmt.
+                    </p>
+                  </div>
+                )}
+
+                <p style={{ marginBottom: '12px' }}>
+                  Wir bitten Sie, die Wohnung bis spätestens zum <strong>{config.isExtraordinary ? `${todayStr} (unverzüglich)` : formatDate(terminationDate)}</strong> vollständig geräumt und besenrein an uns zu übergeben.
+                </p>
+
+                <p style={{ marginBottom: '12px' }}>
+                  Die Kaution wird Ihnen nach ordnungsgemäßer Rückgabe der Wohnung und Abrechnung der Betriebskosten innerhalb der gesetzlichen Frist ausgezahlt; etwaige berechtigte Ansprüche werden verrechnet.
+                </p>
+              </BriefLayout>
+            ) : (
+              <div
+                style={{
+                  width: '794px', minHeight: '1123px', background: '#ffffff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: '#9ca3af', fontSize: '14px', textAlign: 'center', padding: '0 40px',
+                  boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
+                }}
+              >
+                Bitte wähle einen Mieter und setze das Beendigungsdatum.
+              </div>
+            )}
           </div>
         </div>
       </div>

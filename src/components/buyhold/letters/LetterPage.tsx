@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { ArrowRight, FileText, Receipt, Bell, XCircle, ClipboardList, Wallet, RefreshCw, UserCheck, TrendingUp, FileSignature } from 'lucide-react';
+import { ArrowRight, FileText, Bell, XCircle, ClipboardList, Wallet, RefreshCw, UserCheck, TrendingUp, FileSignature } from 'lucide-react';
 import { RentIncreaseLetter } from './RentIncreaseLetter';
-import { UtilityBillLetter } from './UtilityBillLetter';
 import { DunningLetter } from './DunningLetter';
 import { TerminationLetter } from './TerminationLetter';
 import { HandoverProtocol } from './HandoverProtocol';
@@ -11,10 +10,11 @@ import { TenantSelfDisclosure } from './TenantSelfDisclosure';
 import { IndexRentAdjustment } from './IndexRentAdjustment';
 import { RentalContractLetter } from './RentalContractLetter';
 
+// `utility-bill` wurde aus den Schreiben entfernt — die Nebenkostenabrechnung
+// hat ihre eigene Menüspalte unter `/bh/nebenkosten` (Feedback Punkt 1.1).
 type LetterType =
   | 'none'
   | 'rent-increase'
-  | 'utility-bill'
   | 'dunning'
   | 'termination'
   | 'handover'
@@ -60,13 +60,6 @@ const templates: {
     description: 'Abrechnung nach § 551 BGB mit Verzinsung, Abzügen mit Nachweis und § 548 BGB Verjährungshinweis.',
     icon: Wallet,
     section: 'uebergabe',
-  },
-  {
-    id: 'utility-bill',
-    title: 'Nebenkostenabrechnung',
-    description: 'Betriebs- und Heizkostenabrechnung nach § 556 BGB und HeizkostenV mit Verteilerschlüsseln, trennung umlagefähig/nicht umlagefähig und 12-Monats-Einwendungsfrist.',
-    icon: Receipt,
-    section: 'betrieb',
   },
   {
     id: 'advance-payment',
@@ -116,7 +109,6 @@ export function LetterPage() {
   const [letterType, setLetterType] = useState<LetterType>('none');
 
   if (letterType === 'rent-increase') return <RentIncreaseLetter onBack={() => setLetterType('none')} />;
-  if (letterType === 'utility-bill') return <UtilityBillLetter onBack={() => setLetterType('none')} />;
   if (letterType === 'dunning') return <DunningLetter onBack={() => setLetterType('none')} />;
   if (letterType === 'termination') return <TerminationLetter onBack={() => setLetterType('none')} />;
   if (letterType === 'handover') return <HandoverProtocol onBack={() => setLetterType('none')} />;

@@ -4,8 +4,10 @@ import { useTenants } from '../../../hooks/useTenants';
 import { useRentalProperties } from '../../../hooks/useRentalProperties';
 import { useRentalUnits } from '../../../hooks/useRentalUnits';
 import { useRentalContracts } from '../../../hooks/useRentalContracts';
+import { useLandlordSettings } from '../../../hooks/useLandlordSettings';
 import { exportElementToPDF } from '../../../lib/pdfExport';
 import { NumberInput } from '../../ui/NumberInput';
+import { BriefLayout } from './BriefLayout';
 
 interface Props {
   onBack: () => void;
@@ -18,6 +20,7 @@ export function IndexRentAdjustment({ onBack }: Props) {
   const { properties } = useRentalProperties();
   const { allUnits } = useRentalUnits();
   const { allContracts } = useRentalContracts();
+  const { settings: landlord } = useLandlordSettings();
   const letterRef = useRef<HTMLDivElement>(null);
 
   const [tenantId, setTenantId] = useState('');
@@ -218,135 +221,87 @@ export function IndexRentAdjustment({ onBack }: Props) {
 
         <div className="flex-1 flex justify-center overflow-auto pb-8">
           <div className="origin-top" style={{ transform: 'scale(var(--a4-scale, 0.75))' }}>
-            <div
-              ref={letterRef}
-              style={{
-                width: '794px',
-                minHeight: '1123px',
-                background: '#ffffff',
-                color: '#1a1a1a',
-                fontFamily: "'Inter', 'Helvetica Neue', Arial, sans-serif",
-                padding: '70px 60px 60px 60px',
-                boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
-                position: 'relative',
-              }}
-            >
-              {ready ? (
-                <>
-                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: 'linear-gradient(90deg, #4F6BFF, #f59e0b)' }} />
+            {ready ? (
+              <BriefLayout
+                ref={letterRef}
+                landlord={landlord}
+                recipient={{
+                  name: tenant!.name,
+                  street: property!.address,
+                  cityLine: unit!.name,
+                }}
+                subject={{
+                  lines: [
+                    property!.name,
+                    `${property!.address}${unit ? `, ${unit.name}` : ''}`,
+                    type === 'index' ? 'Mitteilung der Indexmietanpassung' : 'Mitteilung der Staffelmietanpassung',
+                  ],
+                }}
+                salutation={`Sehr geehrte/r ${tenant!.name},`}
+              >
+                <p style={{ marginBottom: '14px' }}>
+                  {type === 'index'
+                    ? <>gemäß der in Ihrem Mietvertrag über die Wohnung <strong>{unit!.name}</strong> vereinbarten Indexmiete (§ 557b BGB) passen wir die monatliche Nettokaltmiete auf Grundlage der Entwicklung des Verbraucherpreisindex (VPI) wie folgt an:</>
+                    : <>gemäß der in Ihrem Mietvertrag über die Wohnung <strong>{unit!.name}</strong> vereinbarten Staffelmiete (§ 557a BGB) weisen wir Sie auf die kommende Staffelstufe hin:</>
+                  }
+                </p>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px' }}>
-                    <div>
-                      <div style={{ fontSize: '18px', fontWeight: 700 }}>{property!.name}</div>
-                      <div style={{ fontSize: '10.5px', color: '#6b7280', marginTop: '2px' }}>{property!.address}</div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '9px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Datum</div>
-                      <div style={{ fontSize: '11px', marginTop: '2px' }}>{todayStr}</div>
-                    </div>
+                {type === 'index' && (
+                  <div style={{ marginBottom: '14px', padding: '12px 16px', background: '#f8f9fb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, marginBottom: '6px' }}>Indexberechnung</div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10.5px' }}>
+                      <tbody>
+                        <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+                          <td style={{ padding: '4px 0' }}>VPI {vpiBaseMonth || 'Basis'}</td>
+                          <td style={{ padding: '4px 0', textAlign: 'right', fontWeight: 600 }}>{fmt(vpiBaseValue)}</td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+                          <td style={{ padding: '4px 0' }}>VPI {vpiNewMonth || 'aktuell'}</td>
+                          <td style={{ padding: '4px 0', textAlign: 'right', fontWeight: 600 }}>{fmt(vpiNewValue)}</td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
+                          <td style={{ padding: '4px 0' }}>Indexveränderung</td>
+                          <td style={{ padding: '4px 0', textAlign: 'right', fontWeight: 600, color: indexChange >= 0 ? '#dc2626' : '#10b981' }}>{indexChange >= 0 ? '+' : ''}{fmt(indexChange)} %</td>
+                        </tr>
+                        <tr>
+                          <td style={{ padding: '4px 0' }}>Berechnung</td>
+                          <td style={{ padding: '4px 0', textAlign: 'right', fontSize: '9.5px', color: '#6b7280' }}>
+                            {fmt(currentRent)} € × {fmt(vpiNewValue)} / {fmt(vpiBaseValue)}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
+                )}
 
-                  <div style={{ marginBottom: '28px' }}>
-                    <div style={{ fontSize: '9px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600, marginBottom: '4px' }}>An</div>
-                    <div style={{ fontSize: '12px', fontWeight: 600 }}>{tenant!.name}</div>
-                    <div style={{ fontSize: '11px', color: '#4b5563' }}>{unit!.name}, {property!.address}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                  <div style={{ padding: '12px 14px', background: '#f3f4f6', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '9px', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600, marginBottom: '4px' }}>Bisherige Nettokaltmiete</div>
+                    <div style={{ fontSize: '18px', fontWeight: 700 }}>{fmt(currentRent)} €</div>
                   </div>
-
-                  <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: '6px', paddingBottom: '10px', borderBottom: '2px solid #e5e7eb' }}>
-                    {type === 'index' ? 'Mitteilung der Indexmietanpassung' : 'Mitteilung der Staffelmietanpassung'}
+                  <div style={{ padding: '12px 14px', background: '#fef2f2', borderRadius: '8px', border: '1px solid #ef4444' }}>
+                    <div style={{ fontSize: '9px', color: '#b91c1c', textTransform: 'uppercase', fontWeight: 600, marginBottom: '4px' }}>Neu ab {formatDate(effectiveFrom)}</div>
+                    <div style={{ fontSize: '18px', fontWeight: 700, color: '#dc2626' }}>{fmt(finalNewRent)} €</div>
+                    <div style={{ fontSize: '9.5px', color: '#b91c1c' }}>+ {fmt(diff)} € ({diff >= 0 ? '+' : ''}{fmt(percentChange)} %)</div>
                   </div>
-                  <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '18px' }}>
-                    Rechtsgrundlage: {type === 'index' ? '§ 557b BGB' : '§ 557a BGB'} &nbsp;|&nbsp; Wirksam ab {formatDate(effectiveFrom)}
-                  </div>
-
-                  <p style={{ fontSize: '11px', lineHeight: '1.7', marginBottom: '14px' }}>
-                    Sehr geehrte/r {tenant!.name},
-                  </p>
-                  <p style={{ fontSize: '11px', lineHeight: '1.7', marginBottom: '18px' }}>
-                    {type === 'index'
-                      ? <>
-                          gemäß der in Ihrem Mietvertrag über die Wohnung <strong>{unit!.name}</strong> vereinbarten Indexmiete (§ 557b BGB) passen wir die monatliche Nettokaltmiete auf Grundlage der Entwicklung des Verbraucherpreisindex (VPI) für Deutschland (Statistisches Bundesamt) wie folgt an:
-                        </>
-                      : <>
-                          gemäß der in Ihrem Mietvertrag über die Wohnung <strong>{unit!.name}</strong> vereinbarten Staffelmiete (§ 557a BGB) weisen wir Sie auf die kommende Staffelstufe hin:
-                        </>
-                    }
-                  </p>
-
-                  {/* Berechnung */}
-                  {type === 'index' && (
-                    <div style={{ marginBottom: '20px', padding: '14px 16px', background: '#f8f9fb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                      <div style={{ fontSize: '11px', fontWeight: 700, marginBottom: '8px' }}>Indexberechnung</div>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10.5px' }}>
-                        <tbody>
-                          <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
-                            <td style={{ padding: '6px 0' }}>VPI {vpiBaseMonth || 'Basis'}</td>
-                            <td style={{ padding: '6px 0', textAlign: 'right', fontWeight: 600 }}>{fmt(vpiBaseValue)}</td>
-                          </tr>
-                          <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
-                            <td style={{ padding: '6px 0' }}>VPI {vpiNewMonth || 'aktuell'}</td>
-                            <td style={{ padding: '6px 0', textAlign: 'right', fontWeight: 600 }}>{fmt(vpiNewValue)}</td>
-                          </tr>
-                          <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
-                            <td style={{ padding: '6px 0' }}>Indexveränderung</td>
-                            <td style={{ padding: '6px 0', textAlign: 'right', fontWeight: 600, color: indexChange >= 0 ? '#dc2626' : '#10b981' }}>{indexChange >= 0 ? '+' : ''}{fmt(indexChange)} %</td>
-                          </tr>
-                          <tr>
-                            <td style={{ padding: '6px 0' }}>Berechnung</td>
-                            <td style={{ padding: '6px 0', textAlign: 'right', fontSize: '9.5px', color: '#6b7280' }}>
-                              {fmt(currentRent)} € × {fmt(vpiNewValue)} / {fmt(vpiBaseValue)}
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                      <p style={{ fontSize: '9px', color: '#6b7280', marginTop: '6px', fontStyle: 'italic' }}>
-                        Quelle: Statistisches Bundesamt, VPI Deutschland (Basis 2020 = 100)
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Vergleich */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '20px' }}>
-                    <div style={{ padding: '14px 16px', background: '#f3f4f6', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '9px', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600, marginBottom: '6px' }}>Bisherige Nettokaltmiete</div>
-                      <div style={{ fontSize: '18px', fontWeight: 700 }}>{fmt(currentRent)} €</div>
-                    </div>
-                    <div style={{ padding: '14px 16px', background: '#fef2f2', borderRadius: '8px', border: '1px solid #ef4444' }}>
-                      <div style={{ fontSize: '9px', color: '#b91c1c', textTransform: 'uppercase', fontWeight: 600, marginBottom: '6px' }}>Neue Nettokaltmiete ab {formatDate(effectiveFrom)}</div>
-                      <div style={{ fontSize: '18px', fontWeight: 700, color: '#dc2626' }}>{fmt(finalNewRent)} €</div>
-                      <div style={{ fontSize: '9.5px', color: '#b91c1c' }}>+ {fmt(diff)} € ({diff >= 0 ? '+' : ''}{fmt(percentChange)} %)</div>
-                    </div>
-                  </div>
-
-                  <p style={{ fontSize: '11px', lineHeight: '1.7', marginBottom: '14px' }}>
-                    Die Anpassung erfolgt automatisch zum genannten Zeitpunkt; eine Zustimmung Ihrerseits ist nicht erforderlich. Bitte passen Sie gegebenenfalls Ihren Dauerauftrag zum <strong>{formatDate(effectiveFrom)}</strong> an.
-                  </p>
-
-                  {/* Rechtlicher Hinweis */}
-                  <div style={{ marginBottom: '20px', padding: '10px 12px', borderLeft: '3px solid #4F6BFF', background: '#f0f4ff', fontSize: '9.5px', color: '#1e40af', lineHeight: '1.55' }}>
-                    <div style={{ fontWeight: 700, marginBottom: '3px' }}>{type === 'index' ? 'Voraussetzungen einer Indexmietanpassung' : 'Voraussetzungen der Staffelmiete'}</div>
-                    {type === 'index'
-                      ? <>• Die Miete muss zum Zeitpunkt der Änderung mindestens ein Jahr unverändert gewesen sein (§ 557b Abs. 2 BGB).<br />• Die geänderte Miete muss schriftlich mitgeteilt werden (§ 557b Abs. 3 BGB), frühestens ab dem übernächsten Monatsersten wirksam.<br />• Ausgeschlossen ist eine zusätzliche Mieterhöhung nach § 558 BGB (Vergleichsmiete) oder § 559 BGB (Modernisierung mit Ausnahmen).</>
-                      : <>• Staffelbeträge müssen im Mietvertrag exakt beziffert sein (§ 557a Abs. 1 BGB).<br />• Zwischen zwei Staffelstufen müssen mindestens 12 Monate liegen (§ 557a Abs. 2 BGB).<br />• Während der Staffelmiete ausgeschlossen: Mieterhöhung nach § 558 BGB. § 559 BGB (Modernisierung) nur bei Anordnung durch Behörde.</>
-                    }
-                  </div>
-
-                  <p style={{ fontSize: '11px', lineHeight: '1.7', marginBottom: '10px' }}>Mit freundlichen Grüßen</p>
-                  <div style={{ marginTop: '30px', borderTop: '1px solid #1a1a2e', paddingTop: '5px', fontSize: '10px', color: '#6b7280', maxWidth: '220px' }}>
-                    Vermieter / Hausverwaltung
-                  </div>
-
-                  <div style={{ position: 'absolute', bottom: '30px', left: '60px', right: '60px', fontSize: '8.5px', color: '#9ca3af', display: 'flex', justifyContent: 'space-between' }}>
-                    <span>{property!.name}, {property!.address}</span>
-                    <span>{type === 'index' ? '§ 557b BGB — Indexmiete' : '§ 557a BGB — Staffelmiete'}</span>
-                  </div>
-                </>
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '1000px', color: '#9ca3af', fontSize: '13px' }}>
-                  Bitte wähle einen Mieter und gib die Anpassung ein.
                 </div>
-              )}
-            </div>
+
+                <p style={{ marginBottom: '12px' }}>
+                  Die Anpassung erfolgt automatisch zum genannten Zeitpunkt; eine Zustimmung Ihrerseits ist nicht erforderlich. Bitte passen Sie gegebenenfalls Ihren Dauerauftrag zum <strong>{formatDate(effectiveFrom)}</strong> an.
+                </p>
+              </BriefLayout>
+            ) : (
+              <div
+                style={{
+                  width: '794px', minHeight: '1123px', background: '#ffffff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: '#9ca3af', fontSize: '13px', textAlign: 'center', padding: '0 40px',
+                  boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
+                }}
+              >
+                Bitte wähle einen Mieter und gib die Anpassung ein.
+              </div>
+            )}
           </div>
         </div>
       </div>

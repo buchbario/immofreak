@@ -572,6 +572,48 @@ textarea.input { resize: none; }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* Nebenkosten-Vorschau: A4 (794 px) skalieren je nach Container-Breite.
+   `nk-preview-frame` ist die Outer-Box (full width), `nk-preview-scale`
+   wendet den Scale-Faktor an. Über Media-Queries skaliert das Dokument
+   dynamisch — auf großen Screens nahezu 1:1, auf kleineren kompakter. */
+.nk-preview-frame {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  /* Reserviert vertikalen Raum, damit der Scale-Container nicht kollabiert */
+  min-height: calc(1123px * var(--nk-scale, 0.62) + 24px);
+  --nk-scale: 0.62;
+}
+.nk-preview-scale {
+  transform: scale(var(--nk-scale));
+  transform-origin: top center;
+  /* Width kompensiert den scale, damit das Layout den verfügbaren Raum kennt */
+  width: 794px;
+  flex-shrink: 0;
+}
+@media (min-width: 640px) { .nk-preview-frame { --nk-scale: 0.7; } }
+@media (min-width: 768px) { .nk-preview-frame { --nk-scale: 0.78; } }
+@media (min-width: 1024px) { .nk-preview-frame { --nk-scale: 0.62; } }  /* lg: schmal weil Sidebar 380px frisst */
+@media (min-width: 1280px) { .nk-preview-frame { --nk-scale: 0.75; } }  /* xl: mehr Platz */
+@media (min-width: 1536px) { .nk-preview-frame { --nk-scale: 0.88; } }  /* 2xl: fast 1:1 */
+@media (min-width: 1800px) { .nk-preview-frame { --nk-scale: 1.0; } }   /* 4K-ish: 1:1 */
+@media print {
+  .nk-preview-frame { --nk-scale: 1; min-height: 0; justify-content: flex-start; }
+}
+
+/* Dropdowns (Navbar-Sektionsmenüs, Mode-Switch, Profil) — sanftes Slide-Down */
+@keyframes dropdown-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.dropdown-anim-in {
+  animation: dropdown-in 160ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform-origin: top center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dropdown-anim-in { animation: none; }
+}
+
 .modal-backdrop {
   position: fixed; inset: 0; z-index: 80;
   display: flex; align-items: flex-start; justify-content: center;

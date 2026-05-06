@@ -4,8 +4,10 @@ import { useTenants } from '../../../hooks/useTenants';
 import { useRentalProperties } from '../../../hooks/useRentalProperties';
 import { useRentalUnits } from '../../../hooks/useRentalUnits';
 import { useRentalContracts } from '../../../hooks/useRentalContracts';
+import { useLandlordSettings } from '../../../hooks/useLandlordSettings';
 import { exportElementToPDF } from '../../../lib/pdfExport';
 import { NumberInput } from '../../ui/NumberInput';
+import { BriefLayout } from './BriefLayout';
 
 interface Props {
   onBack: () => void;
@@ -25,6 +27,7 @@ export function RentIncreaseLetter({ onBack }: Props) {
   const { properties } = useRentalProperties();
   const { allUnits } = useRentalUnits();
   const { allContracts } = useRentalContracts();
+  const { settings: landlord } = useLandlordSettings();
   const letterRef = useRef<HTMLDivElement>(null);
 
   const [tenantId, setTenantId] = useState('');
@@ -235,140 +238,102 @@ export function RentIncreaseLetter({ onBack }: Props) {
           </div>
         </div>
 
-        {/* DIN A4 Preview */}
+        {/* DIN A4 Preview — einheitliches BriefLayout */}
         <div className="flex-1 flex justify-center overflow-auto pb-8">
           <div className="origin-top" style={{ transform: 'scale(var(--a4-scale, 0.75))' }}>
-            <div
-              ref={letterRef}
-              style={{
-                width: '794px',
-                minHeight: '1123px',
-                background: '#ffffff',
-                color: '#1a1a1a',
-                fontFamily: "'Inter', 'Helvetica Neue', Arial, sans-serif",
-                padding: '70px 60px 60px 60px',
-                boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
-                position: 'relative',
-              }}
-            >
-              {ready ? (
-                <>
-                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: 'linear-gradient(90deg, #2563eb, #60a5fa)' }} />
+            {ready ? (
+              <BriefLayout
+                ref={letterRef}
+                landlord={landlord}
+                recipient={{
+                  name: tenant!.name,
+                  street: property!.address,
+                  cityLine: unit!.name,
+                }}
+                subject={{
+                  lines: [
+                    property!.name,
+                    `${property!.address}${unit ? `, ${unit.name}` : ''}`,
+                    'Mieterhöhungsverlangen nach § 558 BGB',
+                  ],
+                }}
+                salutation={`Sehr geehrte/r ${tenant!.name},`}
+                attachments={[`Begründung: ${selectedReason.label}`]}
+              >
+                <p style={{ marginBottom: '12px' }}>
+                  nach § 558 BGB bitte ich Sie, der nachfolgend dargelegten Erhöhung der monatlichen Nettokaltmiete für Ihre Wohnung {unit!.name} in {property!.address} zuzustimmen.
+                </p>
 
-                  {/* Header */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px' }}>
-                    <div>
-                      <div style={{ fontSize: '18px', fontWeight: 700, color: '#1a1a2e' }}>{property!.name}</div>
-                      <div style={{ fontSize: '10.5px', color: '#6b7280', marginTop: '2px' }}>{property!.address}</div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '9px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Datum</div>
-                      <div style={{ fontSize: '11px', color: '#374151', marginTop: '2px' }}>{todayStr}</div>
-                    </div>
+                {/* Rent comparison */}
+                <div style={{
+                  background: '#f8f9fb', borderRadius: '6px', padding: '14px 18px', marginBottom: '14px', border: '1px solid #e5e7eb',
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '10.5px' }}>
+                    <span style={{ color: '#6b7280' }}>Bisherige Nettokaltmiete</span>
+                    <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fmt(oldRent)} €</span>
                   </div>
-
-                  {/* Recipient */}
-                  <div style={{ marginBottom: '28px' }}>
-                    <div style={{ fontSize: '9px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600, marginBottom: '4px' }}>An</div>
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#1a1a2e' }}>{tenant!.name}</div>
-                    <div style={{ fontSize: '11px', color: '#4b5563', marginTop: '1px' }}>{unit!.name}, {property!.address}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '10.5px' }}>
+                    <span style={{ color: '#6b7280' }}>Neue Nettokaltmiete</span>
+                    <span style={{ fontWeight: 700, fontSize: '12px', color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>{fmt(newRent)} €</span>
                   </div>
-
-                  {/* Subject */}
-                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#1a1a2e', marginBottom: '16px', paddingBottom: '10px', borderBottom: '2px solid #e5e7eb' }}>
-                    Mieterhöhungsverlangen nach § 558 BGB zur Anpassung an die ortsübliche Vergleichsmiete
+                  <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '10.5px' }}>
+                    <span style={{ color: '#6b7280' }}>Erhöhungsbetrag</span>
+                    <span style={{ fontWeight: 600, color: '#059669', fontVariantNumeric: 'tabular-nums' }}>+{fmt(increase)} € ({increasePercent.toFixed(1)} %)</span>
                   </div>
-
-                  {/* Body */}
-                  <div style={{ fontSize: '11px', lineHeight: '1.7', color: '#374151' }}>
-                    <p style={{ marginBottom: '12px' }}>Sehr geehrte/r {tenant!.name},</p>
-                    <p style={{ marginBottom: '12px' }}>
-                      nach § 558 BGB bitte ich Sie, der nachfolgend dargelegten Erhöhung der monatlichen Nettokaltmiete für Ihre Wohnung {unit!.name} in {property!.address} zuzustimmen.
-                    </p>
-
-                    {/* Rent comparison */}
-                    <div style={{
-                      background: '#f8f9fb', borderRadius: '6px', padding: '14px 18px', marginBottom: '14px', border: '1px solid #e5e7eb',
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '10.5px' }}>
-                        <span style={{ color: '#6b7280' }}>Bisherige Nettokaltmiete</span>
-                        <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fmt(oldRent)} EUR</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '10.5px' }}>
-                        <span style={{ color: '#6b7280' }}>Neue Nettokaltmiete</span>
-                        <span style={{ fontWeight: 700, fontSize: '12px', color: '#2563eb', fontVariantNumeric: 'tabular-nums' }}>{fmt(newRent)} EUR</span>
-                      </div>
-                      <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '10.5px' }}>
-                        <span style={{ color: '#6b7280' }}>Erhöhungsbetrag</span>
-                        <span style={{ fontWeight: 600, color: '#059669', fontVariantNumeric: 'tabular-nums' }}>+{fmt(increase)} EUR ({increasePercent.toFixed(1)}%)</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9.5px', color: '#6b7280', marginTop: '4px' }}>
-                        <span>Kappungsgrenze {cap}% (max.)</span>
-                        <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(maxRent)} EUR</span>
-                      </div>
-                    </div>
-
-                    <p style={{ marginBottom: '12px' }}>
-                      Die neue Nettokaltmiete soll gemäß § 558b Abs. 1 BGB ab dem <strong>{formatDate(effectiveDate)}</strong> gelten.
-                    </p>
-
-                    {/* Legal checks summary */}
-                    <div style={{ marginBottom: '14px', padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '10px', background: '#fafbfc' }}>
-                      <div style={{ fontWeight: 700, marginBottom: '6px', color: '#1a1a2e', fontSize: '10.5px' }}>Einhaltung der gesetzlichen Voraussetzungen</div>
-                      <ul style={{ paddingLeft: '16px', margin: 0, lineHeight: '1.6' }}>
-                        <li>Seit der letzten Mietänderung bzw. dem Vertragsbeginn ({formatDate(relevantLastDate)}) sind mehr als 15 Monate vergangen (§ 558 Abs. 1 BGB).</li>
-                        <li>Die Kappungsgrenze von {cap}% innerhalb von drei Jahren (§ 558 Abs. 3 BGB) wird eingehalten.</li>
-                        <li>Das Erhöhungsverlangen erfolgt in Textform unter Angabe der Begründung (§ 558a Abs. 1 BGB).</li>
-                      </ul>
-                    </div>
-
-                    {/* Reason */}
-                    <div style={{ marginBottom: '14px' }}>
-                      <div style={{ fontWeight: 700, marginBottom: '6px', fontSize: '11px', color: '#1a1a2e' }}>Begründung: {selectedReason.label}</div>
-                      <p style={{ marginBottom: '8px', fontSize: '10.5px' }}>
-                        {reasonText || `Die ortsübliche Vergleichsmiete wird mittels ${selectedReason.label} nachgewiesen. Eine detaillierte Begründung ist diesem Schreiben als Anlage beigefügt.`}
-                      </p>
-                    </div>
-
-                    {/* Zustimmung */}
-                    <p style={{ marginBottom: '12px' }}>
-                      Ich bitte Sie, der Mieterhöhung bis zum Ablauf des zweiten Kalendermonats nach Zugang dieses Schreibens, spätestens bis zum <strong>{zustimmungsfristStr}</strong>, zuzustimmen (§ 558b Abs. 1 BGB). Die Zustimmung kann schriftlich oder durch vorbehaltlose Zahlung der erhöhten Miete erfolgen.
-                    </p>
-
-                    {/* Sonderkündigungsrecht */}
-                    <div style={{ marginBottom: '14px', padding: '10px 12px', borderLeft: '3px solid #2563eb', background: '#eff6ff', fontSize: '10px' }}>
-                      <div style={{ fontWeight: 700, marginBottom: '4px', color: '#1e40af' }}>Sonderkündigungsrecht nach § 561 BGB</div>
-                      <p>
-                        Sie können das Mietverhältnis bis zum Ablauf des zweiten Monats nach Zugang dieser Erklärung ({sonderkuendigungsDeadlineStr}) außerordentlich zum Ablauf des übernächsten Monats kündigen. In diesem Fall tritt die Mieterhöhung nicht in Kraft.
-                      </p>
-                    </div>
-
-                    <p style={{ marginBottom: '12px', fontSize: '10.5px' }}>
-                      Sollten Sie der Erhöhung nicht oder nicht vollständig zustimmen, bin ich nach § 558b Abs. 2 BGB berechtigt, auf Erteilung der Zustimmung zu klagen. Bitte setzen Sie sich bei Fragen rechtzeitig mit mir in Verbindung.
-                    </p>
-
-                    <p style={{ marginBottom: '24px' }}>Mit freundlichen Grüßen</p>
-
-                    <div style={{ borderTop: '1px solid #d1d5db', width: '220px', paddingTop: '6px' }}>
-                      <div style={{ fontSize: '10px', color: '#6b7280' }}>Vermieter / Hausverwaltung</div>
-                    </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9.5px', color: '#6b7280', marginTop: '4px' }}>
+                    <span>Kappungsgrenze {cap} % (max.)</span>
+                    <span style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(maxRent)} €</span>
                   </div>
-
-                  {/* Footer */}
-                  <div style={{
-                    borderTop: '1px solid #e5e7eb', paddingTop: '8px', marginTop: '20px',
-                    display: 'flex', justifyContent: 'space-between', fontSize: '8px', color: '#9ca3af',
-                  }}>
-                    <span>{property!.name} · {property!.address}</span>
-                    <span>Mieterhöhung · {todayStr}</span>
-                  </div>
-                </>
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '1000px', color: '#9ca3af', fontSize: '14px', textAlign: 'center', padding: '0 40px' }}>
-                  Bitte wähle einen Mieter, trage die neue Miete und das Gültigkeitsdatum ein.
                 </div>
-              )}
-            </div>
+
+                <p style={{ marginBottom: '12px' }}>
+                  Die neue Nettokaltmiete soll gemäß § 558b Abs. 1 BGB ab dem <strong>{formatDate(effectiveDate)}</strong> gelten.
+                </p>
+
+                {/* Reason */}
+                <div style={{ marginBottom: '14px' }}>
+                  <div style={{ fontWeight: 700, marginBottom: '6px', fontSize: '11px' }}>Begründung: {selectedReason.label}</div>
+                  <p style={{ marginBottom: '8px' }}>
+                    {reasonText || `Die ortsübliche Vergleichsmiete wird mittels ${selectedReason.label} nachgewiesen. Eine detaillierte Begründung ist diesem Schreiben als Anlage beigefügt.`}
+                  </p>
+                </div>
+
+                {/* Zustimmung */}
+                <p style={{ marginBottom: '12px' }}>
+                  Ich bitte Sie, der Mieterhöhung bis zum Ablauf des zweiten Kalendermonats nach Zugang dieses Schreibens, spätestens bis zum <strong>{zustimmungsfristStr}</strong>, zuzustimmen (§ 558b Abs. 1 BGB). Die Zustimmung kann schriftlich oder durch vorbehaltlose Zahlung der erhöhten Miete erfolgen.
+                </p>
+
+                {/* Sonderkündigungsrecht */}
+                <div style={{ marginBottom: '14px', padding: '10px 12px', borderLeft: '3px solid #4F6BFF', background: '#eff6ff', fontSize: '10.5px' }}>
+                  <div style={{ fontWeight: 700, marginBottom: '4px' }}>Sonderkündigungsrecht nach § 561 BGB</div>
+                  <p style={{ margin: 0 }}>
+                    Sie können das Mietverhältnis bis zum Ablauf des zweiten Monats nach Zugang dieser Erklärung ({sonderkuendigungsDeadlineStr}) außerordentlich zum Ablauf des übernächsten Monats kündigen. In diesem Fall tritt die Mieterhöhung nicht in Kraft.
+                  </p>
+                </div>
+
+                <p style={{ marginBottom: '12px' }}>
+                  Sollten Sie der Erhöhung nicht oder nicht vollständig zustimmen, bin ich nach § 558b Abs. 2 BGB berechtigt, auf Erteilung der Zustimmung zu klagen. Bitte setzen Sie sich bei Fragen rechtzeitig mit mir in Verbindung.
+                </p>
+              </BriefLayout>
+            ) : (
+              <div
+                style={{
+                  width: '794px',
+                  minHeight: '1123px',
+                  background: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#9ca3af',
+                  fontSize: '14px',
+                  textAlign: 'center',
+                  padding: '0 40px',
+                  boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
+                }}
+              >
+                Bitte wähle einen Mieter, trage die neue Miete und das Gültigkeitsdatum ein.
+              </div>
+            )}
           </div>
         </div>
       </div>

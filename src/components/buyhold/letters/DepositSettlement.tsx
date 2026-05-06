@@ -4,9 +4,11 @@ import { useTenants } from '../../../hooks/useTenants';
 import { useRentalProperties } from '../../../hooks/useRentalProperties';
 import { useRentalUnits } from '../../../hooks/useRentalUnits';
 import { useRentalContracts } from '../../../hooks/useRentalContracts';
+import { useLandlordSettings } from '../../../hooks/useLandlordSettings';
 import { exportElementToPDF } from '../../../lib/pdfExport';
 import { isValidIBAN } from '../../../lib/utils';
 import { NumberInput } from '../../ui/NumberInput';
+import { BriefLayout } from './BriefLayout';
 
 interface Props {
   onBack: () => void;
@@ -24,6 +26,7 @@ export function DepositSettlement({ onBack }: Props) {
   const { properties } = useRentalProperties();
   const { allUnits } = useRentalUnits();
   const { allContracts } = useRentalContracts();
+  const { settings: landlord } = useLandlordSettings();
   const letterRef = useRef<HTMLDivElement>(null);
 
   const [tenantId, setTenantId] = useState('');
@@ -40,8 +43,6 @@ export function DepositSettlement({ onBack }: Props) {
   const unit = tenant ? allUnits.find((u) => u.id === tenant.unitId) : undefined;
   const property = tenant ? properties.find((p) => p.id === tenant.propertyId) : undefined;
 
-  const today = new Date();
-  const todayStr = today.toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' });
   const formatDate = (d: string) => d ? new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }) : '___________';
   const fmt = (n: number) => n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -54,7 +55,7 @@ export function DepositSettlement({ onBack }: Props) {
         setDepositAmount(c.depositAmount || 0);
         if (c.startDate) {
           const startY = new Date(c.startDate).getFullYear();
-          setYearsHeld(Math.max(0, today.getFullYear() - startY));
+          setYearsHeld(Math.max(0, new Date().getFullYear() - startY));
         }
       }
     }
@@ -216,53 +217,27 @@ export function DepositSettlement({ onBack }: Props) {
 
         <div className="flex-1 flex justify-center overflow-auto pb-8">
           <div className="origin-top" style={{ transform: 'scale(var(--a4-scale, 0.75))' }}>
-            <div
-              ref={letterRef}
-              style={{
-                width: '794px',
-                minHeight: '1123px',
-                background: '#ffffff',
-                color: '#1a1a1a',
-                fontFamily: "'Inter', 'Helvetica Neue', Arial, sans-serif",
-                padding: '70px 60px 60px 60px',
-                boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
-                position: 'relative',
-              }}
-            >
-              {ready ? (
-                <>
-                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: 'linear-gradient(90deg, #10b981, #4F6BFF)' }} />
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px' }}>
-                    <div>
-                      <div style={{ fontSize: '18px', fontWeight: 700 }}>{property!.name}</div>
-                      <div style={{ fontSize: '10.5px', color: '#6b7280', marginTop: '2px' }}>{property!.address}</div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '9px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Datum</div>
-                      <div style={{ fontSize: '11px', color: '#374151', marginTop: '2px' }}>{todayStr}</div>
-                    </div>
-                  </div>
-
-                  <div style={{ marginBottom: '28px' }}>
-                    <div style={{ fontSize: '9px', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600, marginBottom: '4px' }}>An</div>
-                    <div style={{ fontSize: '12px', fontWeight: 600 }}>{tenant!.name}</div>
-                    <div style={{ fontSize: '11px', color: '#4b5563' }}>{unit!.name}, {property!.address}</div>
-                  </div>
-
-                  <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: '6px', paddingBottom: '10px', borderBottom: '2px solid #e5e7eb' }}>
-                    Kautionsabrechnung
-                  </div>
-                  <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '18px' }}>
-                    Mietverhältnis beendet zum {formatDate(moveOutDate)} &nbsp;|&nbsp; Rechtsgrundlage: § 551 BGB
-                  </div>
-
-                  <p style={{ fontSize: '11px', lineHeight: '1.7', marginBottom: '16px' }}>
-                    Sehr geehrte/r {tenant!.name},
-                  </p>
-                  <p style={{ fontSize: '11px', lineHeight: '1.7', marginBottom: '18px' }}>
-                    hiermit rechnen wir die von Ihnen hinterlegte Mietsicherheit über das Mietverhältnis <strong>{unit!.name}</strong> wie folgt ab:
-                  </p>
+            {ready ? (
+              <BriefLayout
+                ref={letterRef}
+                landlord={landlord}
+                recipient={{
+                  name: tenant!.name,
+                  street: property!.address,
+                  cityLine: unit!.name,
+                }}
+                subject={{
+                  lines: [
+                    property!.name,
+                    `${property!.address}${unit ? `, ${unit.name}` : ''}`,
+                    `Kautionsabrechnung — Mietverhältnis beendet zum ${formatDate(moveOutDate)}`,
+                  ],
+                }}
+                salutation={`Sehr geehrte/r ${tenant!.name},`}
+              >
+                <p style={{ marginBottom: '14px' }}>
+                  hiermit rechnen wir die von Ihnen hinterlegte Mietsicherheit über das Mietverhältnis <strong>{unit!.name}</strong> wie folgt ab:
+                </p>
 
                   {/* Kaution + Zinsen */}
                   <div style={{ marginBottom: '18px' }}>
@@ -350,30 +325,26 @@ export function DepositSettlement({ onBack }: Props) {
                     </div>
                   )}
 
-                  {/* Rechtlicher Hinweis */}
-                  <div style={{ marginBottom: '20px', padding: '10px 12px', borderLeft: '3px solid #4F6BFF', background: '#f0f4ff', fontSize: '9.5px', color: '#1e40af' }}>
-                    <div style={{ fontWeight: 700, marginBottom: '3px' }}>Hinweise zur Kautionsabrechnung</div>
-                    • Abrechnung erfolgt nach angemessener Prüfungsfrist (BGH: idR bis zu 6 Monate, BGH VIII ZR 71/05).<br />
-                    • Ansprüche des Vermieters auf Ersatz für Veränderungen oder Verschlechterungen der Mietsache verjähren in <strong>sechs Monaten</strong> nach Rückerhalt (§ 548 Abs. 1 BGB) — Frist: <strong>{deadlineStr}</strong>.<br />
-                    • Bei Fragen oder Einwendungen wenden Sie sich bitte innerhalb von 30 Tagen schriftlich an uns.
-                  </div>
-
-                  <p style={{ fontSize: '11px', lineHeight: '1.7', marginBottom: '10px' }}>Mit freundlichen Grüßen</p>
-                  <div style={{ marginTop: '40px', borderTop: '1px solid #1a1a2e', paddingTop: '5px', fontSize: '10px', color: '#6b7280', maxWidth: '220px' }}>
-                    Vermieter / Hausverwaltung
-                  </div>
-
-                  <div style={{ position: 'absolute', bottom: '30px', left: '60px', right: '60px', fontSize: '8.5px', color: '#9ca3af', display: 'flex', justifyContent: 'space-between' }}>
-                    <span>{property!.name}, {property!.address}</span>
-                    <span>§ 551 BGB — Mietsicherheit · § 548 BGB — Verjährung</span>
-                  </div>
-                </>
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '1000px', color: '#9ca3af', fontSize: '13px' }}>
-                  Bitte wähle einen Mieter und gib Kaution + Auszugsdatum ein.
+                {/* Rechtlicher Hinweis */}
+                <div style={{ marginBottom: '14px', padding: '10px 12px', borderLeft: '3px solid #4F6BFF', background: '#f0f4ff', fontSize: '10.5px' }}>
+                  <div style={{ fontWeight: 700, marginBottom: '3px' }}>Hinweise zur Kautionsabrechnung</div>
+                  • Abrechnung erfolgt nach angemessener Prüfungsfrist (BGH: i. d. R. bis zu 6 Monate).<br />
+                  • Ansprüche des Vermieters verjähren in <strong>sechs Monaten</strong> nach Rückerhalt (§ 548 Abs. 1 BGB) — Frist: <strong>{deadlineStr}</strong>.<br />
+                  • Bei Fragen oder Einwendungen wenden Sie sich bitte innerhalb von 30 Tagen schriftlich an uns.
                 </div>
-              )}
-            </div>
+              </BriefLayout>
+            ) : (
+              <div
+                style={{
+                  width: '794px', minHeight: '1123px', background: '#ffffff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: '#9ca3af', fontSize: '13px', textAlign: 'center', padding: '0 40px',
+                  boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
+                }}
+              >
+                Bitte wähle einen Mieter und gib Kaution + Auszugsdatum ein.
+              </div>
+            )}
           </div>
         </div>
       </div>
