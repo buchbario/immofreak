@@ -9,6 +9,8 @@ import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { NumberInput } from '../ui/NumberInput';
 import { useLandlordSettings } from '../../hooks/useLandlordSettings';
 import { useTranslation } from '../../context/LocaleContext';
+import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabase';
 import { LOCALE_FLAG, LOCALE_LABEL } from '../../i18n/translations';
 import type { AppMode } from '../../types';
 import {
@@ -41,16 +43,19 @@ interface TabDef {
 export function SettingsPage() {
   const { settings: landlord, save: saveLandlord } = useLandlordSettings();
   const { t } = useTranslation();
+  const { userName: authName, userEmail: authEmail, isDemo } = useAuth();
   const [tab, setTab] = useState<Tab>('account');
 
-  // ── Profile
-  const [firstName, setFirstName] = useState(() =>
+  // ── Profile (Quelle: AuthContext für echte User, sonst localStorage als Fallback)
+  const initialFirstName =
     localStorage.getItem('immofreak_profile_firstname')
-    ?? (localStorage.getItem('immofreak_profile_name')?.split(' ')[0] || 'Yan'));
-  const [lastName, setLastName] = useState(() =>
+    ?? (authName.split(' ')[0] || '');
+  const initialLastName =
     localStorage.getItem('immofreak_profile_lastname')
-    ?? (localStorage.getItem('immofreak_profile_name')?.split(' ').slice(1).join(' ') || ''));
-  const profileEmail = localStorage.getItem('immofreak_profile_email') || 'yan@immofreak.de';
+    ?? authName.split(' ').slice(1).join(' ');
+  const [firstName, setFirstName] = useState(initialFirstName);
+  const [lastName, setLastName] = useState(initialLastName);
+  const profileEmail = authEmail || localStorage.getItem('immofreak_profile_email') || '';
 
   // ── Password
   const [pwCurrent, setPwCurrent] = useState('');
@@ -100,13 +105,31 @@ export function SettingsPage() {
   const [exportDone, setExportDone] = useState(false);
 
   // ── Save handlers
-  const handleSaveAccount = () => {
+  const handleSaveAccount = async () => {
     const fullName = `${firstName} ${lastName}`.trim();
     localStorage.setItem('immofreak_profile_firstname', firstName);
     localStorage.setItem('immofreak_profile_lastname', lastName);
     localStorage.setItem('immofreak_profile_name', fullName);
 
-    // Optional password change — only if all three fields filled in
+    // Für echte Supabase-User: Profil-Metadaten und ggf. Passwort dort updaten.
+    if (!isDemo) {
+      const updates: { data?: Record<string, unknown>; password?: string } = {
+        data: { full_name: fullName },
+      };
+      if (pwCurrent || pwNew || pwConfirm) {
+        if (!pwNew) { setPwError('Bitte neues Passwort eingeben.'); return; }
+        if (pwNew.length < 8) { setPwError('Neues Passwort muss mindestens 8 Zeichen lang sein.'); return; }
+        if (pwNew !== pwConfirm) { setPwError('Neues Passwort und Bestätigung stimmen nicht überein.'); return; }
+        updates.password = pwNew;
+      }
+      const { error } = await supabase.auth.updateUser(updates);
+      if (error) { setPwError(error.message); return; }
+      setPwCurrent(''); setPwNew(''); setPwConfirm(''); setPwError('');
+      flash('account');
+      return;
+    }
+
+    // Demo: weiterhin localStorage-basiertes Passwort
     if (pwCurrent || pwNew || pwConfirm) {
       const stored = localStorage.getItem('immofreak_password') || 'demo';
       if (!pwCurrent) { setPwError('Bitte aktuelles Passwort eingeben.'); return; }

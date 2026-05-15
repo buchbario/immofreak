@@ -85,6 +85,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [isDemo]);
 
+  // Sync der Profildaten in localStorage, damit Komponenten (Settings, Sidebar
+  // Footer etc.), die direkt aus localStorage lesen, die echten User-Daten
+  // sehen — nicht mehr den hartkodierten 'Yan / yan@immofreak.de'-Fallback.
+  useEffect(() => {
+    if (isDemo) return;
+    if (!session) return;
+    const u = session.user;
+    const meta = (u.user_metadata ?? {}) as { full_name?: string; name?: string };
+    const fullName = meta.full_name ?? meta.name ?? nameFromUser(u);
+    const [first, ...rest] = fullName.split(' ');
+    localStorage.setItem('immofreak_profile_name', fullName);
+    localStorage.setItem('immofreak_profile_firstname', first ?? '');
+    localStorage.setItem('immofreak_profile_lastname', rest.join(' '));
+    if (u.email) localStorage.setItem('immofreak_profile_email', u.email);
+  }, [session, isDemo]);
+
   const signIn = useCallback(async (email: string, password: string): Promise<AuthResult> => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error };
