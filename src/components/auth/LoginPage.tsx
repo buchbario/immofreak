@@ -49,7 +49,11 @@ export function LoginPage() {
     const target = getDefaultDashboard();
     localStorage.setItem('immofreak_mode', target);
     setMode(target);
-    navigate(getDashboardRoute(target));
+    // Vollständiger Page-Reload statt SPA-navigate: erzwingt, dass
+    // storage.ts mit aktualisiertem IS_DEMO-Flag (jetzt false) neu
+    // initialisiert wird und alle Stores als SupabaseAdapter laufen.
+    window.location.href = getDashboardRoute(target);
+    void navigate;
   };
 
   const handleDemo = () => {

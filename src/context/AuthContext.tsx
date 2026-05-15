@@ -101,6 +101,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (u.email) localStorage.setItem('immofreak_profile_email', u.email);
   }, [session, isDemo]);
 
+  // Inkonsistenz-Heilung: echte Supabase-Session vorhanden, aber alter
+  // Demo-Flag noch in localStorage → Stores wurden als LocalStorageAdapter
+  // initialisiert und zeigen Demo-Daten. Flag entfernen + Page-Reload, damit
+  // storage.ts mit IS_DEMO=false neu lädt und SupabaseAdapter nutzt.
+  useEffect(() => {
+    if (session && localStorage.getItem('immofreak_demo') === 'true') {
+      localStorage.removeItem('immofreak_demo');
+      // Geschäftsdaten aus localStorage löschen (alte Demo-Reste)
+      const toRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('immofreak_') && !key.startsWith('immofreak_profile_') && key !== 'immofreak_locale' && key !== 'immofreak_mode' && key !== 'immofreak_landlord_settings' && key !== 'immofreak_default_dashboard' && !key.startsWith('immofreak_ff_') && key !== 'immofreak_sidebar') {
+          toRemove.push(key);
+        }
+      }
+      toRemove.forEach((k) => localStorage.removeItem(k));
+      window.location.reload();
+    }
+  }, [session]);
+
   const signIn = useCallback(async (email: string, password: string): Promise<AuthResult> => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error };
