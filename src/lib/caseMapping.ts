@@ -35,8 +35,14 @@ export function rowToObject<T = unknown>(row: Record<string, unknown>): T {
 export function objectToRow<T extends Record<string, unknown>>(obj: T): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const k of Object.keys(obj)) {
-    if (obj[k] === undefined) continue;
-    out[camelToSnake(k)] = obj[k];
+    const v = obj[k];
+    // Leere Strings + undefined droppen — der Postgres-DEFAULT greift dann
+    // (z. B. NULL für `date`-Spalten, '' für `text not null default ''`,
+    // 0 für `numeric not null default 0`). Postgres akzeptiert keinen
+    // leeren String "" für DATE/NUMERIC. Wer explizit löschen will,
+    // schickt `null` — wird durchgeschickt.
+    if (v === undefined || v === '') continue;
+    out[camelToSnake(k)] = v;
   }
   return out;
 }
