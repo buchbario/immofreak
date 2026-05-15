@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { LogIn, Eye, EyeOff } from 'lucide-react';
+import { LogIn, Eye, EyeOff, Sparkles } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAppMode } from '../../context/AppModeContext';
+import { useTour } from '../../context/TourContext';
 import { useTranslation } from '../../context/LocaleContext';
+import { seedDemoData } from '../../lib/seedData';
 import { getDashboardRoute, getDefaultDashboard } from '../../lib/utils';
 
 export function LoginPage() {
-  const { signIn } = useAuth();
+  const { signIn, enterDemoMode } = useAuth();
   const { setMode } = useAppMode();
+  const { startTour } = useTour();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
@@ -44,14 +47,34 @@ export function LoginPage() {
     navigate(getDashboardRoute(target));
   };
 
+  const handleDemo = () => {
+    setLoading(true);
+    // Demo-Login: lokal, ohne Supabase. Frische Demo-Daten werden in den
+    // localStorage gelegt, der Storage-Adapter wird beim Page-Reload auf
+    // LocalStorageAdapter umgestellt.
+    setTimeout(() => {
+      seedDemoData();
+      const target = getDefaultDashboard();
+      localStorage.setItem('immofreak_mode', target);
+      // enterDemoMode macht reload zu '/', deshalb startTour danach starten
+      // (nach Mount auf der Dashboard-Seite). Wir setzen das per Flag.
+      localStorage.setItem('immofreak_start_tour', 'true');
+      enterDemoMode('Yan', 'yan@immofreak.de');
+      void target; // referenz fürs Lint, navigate übernimmt reload
+      void startTour;
+    }, 600);
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-[#fafbff] relative overflow-hidden">
+      {/* Subtle brand-tinted background — single very light wash, nothing busy */}
       <div
         aria-hidden
         className="absolute inset-0 -z-10 pointer-events-none"
         style={{
-          background:
-            'radial-gradient(ellipse 60% 50% at 50% 0%, rgba(79, 107, 255, 0.10) 0%, transparent 70%)',
+          background: `
+            radial-gradient(ellipse 60% 50% at 50% 0%, rgba(79, 107, 255, 0.10) 0%, transparent 70%)
+          `,
         }}
       />
 
@@ -63,6 +86,8 @@ export function LoginPage() {
 
       <main className="flex-1 flex items-center justify-center px-5 py-10">
         <div className="w-full max-w-[400px]">
+
+          {/* Headline */}
           <div className="text-center mb-8">
             <h1 className="text-[28px] sm:text-[32px] font-bold text-[#0f1430] tracking-tight leading-[1.1] mb-2.5">
               {t('auth.login.submit')}
@@ -72,11 +97,29 @@ export function LoginPage() {
             </p>
           </div>
 
+          {/* Demo button — clearly primary */}
+          <button
+            onClick={handleDemo}
+            disabled={loading}
+            className="group w-full flex items-center justify-center gap-2 px-4 py-3 mb-3 rounded-full bg-[#4F6BFF] hover:bg-[#3d57e0] text-white font-semibold text-[14px] shadow-[0_6px_16px_-4px_rgba(79,107,255,0.40)] hover:shadow-[0_8px_20px_-4px_rgba(79,107,255,0.50)] hover:-translate-y-px transition-all cursor-pointer disabled:opacity-60"
+          >
+            <Sparkles size={15} strokeWidth={2.2} />
+            {t('auth.login.demo')}
+          </button>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3 my-5">
+            <div className="flex-1 h-px bg-[#1e1b4b]/10" />
+            <span className="text-[10.5px] font-semibold text-[#1e1b4b]/40 uppercase tracking-[0.1em]">
+              {t('auth.login.email') === 'Email address' ? 'or' : 'oder'}
+            </span>
+            <div className="flex-1 h-px bg-[#1e1b4b]/10" />
+          </div>
+
+          {/* Login form */}
           <form onSubmit={handleLogin} className="space-y-3">
             <div>
-              <label className="block text-[12.5px] font-medium text-[#0f1430] mb-1.5">
-                {t('auth.login.email')}
-              </label>
+              <label className="block text-[12.5px] font-medium text-[#0f1430] mb-1.5">{t('auth.login.email')}</label>
               <input
                 type="email"
                 value={email}
@@ -146,17 +189,30 @@ export function LoginPage() {
             </button>
           </form>
 
-          <p className="text-center text-[12.5px] text-[#1e1b4b]/65 mt-6">
+          {/* Signup link */}
+          <p className="text-center text-[12.5px] text-[#1e1b4b]/65 mt-5">
             Noch kein Konto?{' '}
             <Link to="/signup" className="text-[#4F6BFF] font-semibold hover:underline">
               Jetzt registrieren
             </Link>
           </p>
+
+          {/* Demo hint */}
+          <p className="text-center text-[11.5px] text-[#1e1b4b]/55 mt-4">
+            Demo-Zugang: klick einfach{' '}
+            <span className="font-semibold text-[#4F6BFF]">„{t('auth.login.demo')}"</span>{' '}
+            — keine Registrierung nötig
+          </p>
         </div>
       </main>
 
+      {/* Footer */}
       <footer className="px-6 sm:px-8 pb-6 sm:pb-8 flex items-center justify-between flex-wrap gap-2 text-[11px] text-[#1e1b4b]/45">
         <span>© {new Date().getFullYear()} ImmoFreak</span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-1.5 rounded-full bg-emerald-500" />
+          Demo läuft lokal · echte Daten in der Cloud
+        </span>
       </footer>
     </div>
   );

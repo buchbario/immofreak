@@ -259,52 +259,66 @@ export class SupabaseAdapter<T extends { id: string }> implements StorageAdapter
 }
 
 // =====================================================================
-// Stores — Aktive Datenquelle ist Supabase. Wer auf LocalStorage
-// zurückwechseln will (z. B. Demo ohne DB), kann hier umstellen:
-//   const Store = USE_SUPABASE ? SupabaseAdapter : LocalStorageAdapter;
+// Stores — Routing zur Boot-Zeit:
+//   • Demo-Modus (immofreak_demo=true) → LocalStorageAdapter (offline, ohne DB)
+//   • Echter Login                    → SupabaseAdapter (Multi-Tenant, RLS)
+// Beim Wechsel zwischen den Modi wird die App komplett neu geladen
+// (window.location reload), damit die Store-Module neu initialisiert werden.
 // =====================================================================
 
-const Store = SupabaseAdapter;
+const IS_DEMO =
+  typeof window !== 'undefined' &&
+  window.localStorage.getItem('immofreak_demo') === 'true';
+
+function makeStore<T extends { id: string }>(
+  table: string,
+  localKey: string,
+  orderBy = 'created_at',
+): StorageAdapter<T> {
+  return IS_DEMO
+    ? new LocalStorageAdapter<T>(localKey)
+    : new SupabaseAdapter<T>(table, orderBy);
+}
 
 // Fix & Flip
-export const projectStore             = new Store<import('../types').Project>('projects');
-export const contractorStore          = new Store<import('../types').Contractor>('contractors');
-export const budgetItemStore          = new Store<import('../types').BudgetItem>('budget_items');
-export const projectContractorStore   = new Store<import('../types').ProjectContractor>('project_contractors', 'assigned_at');
-export const projectPhotoStore        = new Store<import('../types').ProjectPhoto>('project_photos');
-export const projectDocumentStore     = new Store<import('../types').ProjectDocument>('project_documents');
+export const projectStore             = makeStore<import('../types').Project>('projects', 'immofreak_projects');
+export const contractorStore          = makeStore<import('../types').Contractor>('contractors', 'immofreak_contractors');
+export const budgetItemStore          = makeStore<import('../types').BudgetItem>('budget_items', 'immofreak_budget_items');
+export const projectContractorStore   = makeStore<import('../types').ProjectContractor>('project_contractors', 'immofreak_project_contractors', 'assigned_at');
+export const projectPhotoStore        = makeStore<import('../types').ProjectPhoto>('project_photos', 'immofreak_project_photos');
+export const projectDocumentStore     = makeStore<import('../types').ProjectDocument>('project_documents', 'immofreak_project_documents');
 
 // Buy & Hold
-export const rentalPropertyStore      = new Store<import('../types').RentalProperty>('rental_properties');
-export const rentalUnitStore          = new Store<import('../types').RentalUnit>('rental_units');
-export const tenantStore              = new Store<import('../types').Tenant>('tenants');
-export const utilityStore             = new Store<import('../types').Utility>('utilities');
-export const utilityCostStore         = new Store<import('../types').UtilityCost>('utility_costs');
-export const tenantPaymentStore       = new Store<import('../types').TenantPayment>('tenant_payments');
-export const expenseStore             = new Store<import('../types').Expense>('expenses');
-export const meterReadingStore        = new Store<import('../types').MeterReading>('meter_readings');
-export const rentalContractStore      = new Store<import('../types').RentalContract>('rental_contracts');
-export const distributionKeyStore     = new Store<import('../types').DistributionKey>('distribution_keys');
-export const contractDocumentStore    = new Store<import('../types').ContractDocument>('contract_documents');
+export const rentalPropertyStore      = makeStore<import('../types').RentalProperty>('rental_properties', 'immofreak_rental_properties');
+export const rentalUnitStore          = makeStore<import('../types').RentalUnit>('rental_units', 'immofreak_rental_units');
+export const tenantStore              = makeStore<import('../types').Tenant>('tenants', 'immofreak_tenants');
+export const utilityStore             = makeStore<import('../types').Utility>('utilities', 'immofreak_utilities');
+export const utilityCostStore         = makeStore<import('../types').UtilityCost>('utility_costs', 'immofreak_utility_costs');
+export const tenantPaymentStore       = makeStore<import('../types').TenantPayment>('tenant_payments', 'immofreak_tenant_payments');
+export const expenseStore             = makeStore<import('../types').Expense>('expenses', 'immofreak_expenses');
+export const meterReadingStore        = makeStore<import('../types').MeterReading>('meter_readings', 'immofreak_meter_readings');
+export const rentalContractStore      = makeStore<import('../types').RentalContract>('rental_contracts', 'immofreak_rental_contracts');
+export const distributionKeyStore     = makeStore<import('../types').DistributionKey>('distribution_keys', 'immofreak_distribution_keys');
+export const contractDocumentStore    = makeStore<import('../types').ContractDocument>('contract_documents', 'immofreak_contract_documents');
 
 // Property Photos & Documents
-export const propertyPhotoStore       = new Store<import('../types').PropertyPhoto>('property_photos');
-export const propertyDocumentStore    = new Store<import('../types').PropertyDocument>('property_documents');
+export const propertyPhotoStore       = makeStore<import('../types').PropertyPhoto>('property_photos', 'immofreak_property_photos');
+export const propertyDocumentStore    = makeStore<import('../types').PropertyDocument>('property_documents', 'immofreak_property_documents');
 
 // Deal Analyzer
-export const dealAnalysisStore        = new Store<import('../types').DealAnalysis>('deal_analyses');
+export const dealAnalysisStore        = makeStore<import('../types').DealAnalysis>('deal_analyses', 'immofreak_deal_analyses');
 
 // Banking
-export const bankAccountStore         = new Store<import('../types').BankAccount>('bank_accounts');
-export const bankTransactionStore     = new Store<import('../types').BankTransaction>('bank_transactions');
+export const bankAccountStore         = makeStore<import('../types').BankAccount>('bank_accounts', 'immofreak_bank_accounts');
+export const bankTransactionStore     = makeStore<import('../types').BankTransaction>('bank_transactions', 'immofreak_bank_transactions');
 
 // Tasks
-export const taskStore                = new Store<import('../types').Task>('tasks');
+export const taskStore                = makeStore<import('../types').Task>('tasks', 'immofreak_tasks');
 
 // Trash
-export const trashStore               = new Store<import('../types').TrashItem>('trash', 'deleted_at');
+export const trashStore               = makeStore<import('../types').TrashItem>('trash', 'immofreak_trash', 'deleted_at');
 
 // Private Boards
-export const privateBoardStore        = new Store<import('../types').PrivateBoard>('private_boards');
-export const privateListStore         = new Store<import('../types').PrivateList>('private_lists');
-export const privateCardStore         = new Store<import('../types').PrivateCard>('private_cards');
+export const privateBoardStore        = makeStore<import('../types').PrivateBoard>('private_boards', 'immofreak_private_boards');
+export const privateListStore         = makeStore<import('../types').PrivateList>('private_lists', 'immofreak_private_lists');
+export const privateCardStore         = makeStore<import('../types').PrivateCard>('private_cards', 'immofreak_private_cards');

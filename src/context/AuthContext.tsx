@@ -7,6 +7,8 @@ type AuthResult = { error: AuthError | null };
 interface AuthContextType {
   loading: boolean;
   isLoggedIn: boolean;
+  /** true wenn der User im lokalen Demo-Modus ist (LocalStorage statt Supabase). */
+  isDemo: boolean;
   user: User | null;
   session: Session | null;
   userName: string;
@@ -15,6 +17,12 @@ interface AuthContextType {
   signUp: (email: string, password: string, fullName: string) => Promise<AuthResult>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<AuthResult>;
+  /**
+   * Demo-Modus starten: setzt das Demo-Flag, lädt Beispieldaten in den
+   * LocalStorage und macht einen vollständigen Seitenneuladen, damit die
+   * Storage-Module neu mit dem LocalStorageAdapter initialisiert werden.
+   */
+  enterDemoMode: (name: string, email: string) => void;
   /** Legacy-Alias für alte Callsites — wird auf signOut gemappt. */
   logout: () => void;
   /** Legacy-Alias für alte Callsites — no-op außer Profil-Update. */
@@ -24,6 +32,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   loading: true,
   isLoggedIn: false,
+  isDemo: false,
   user: null,
   session: null,
   userName: '',
@@ -32,6 +41,7 @@ const AuthContext = createContext<AuthContextType>({
   signUp: async () => ({ error: null }),
   signOut: async () => {},
   resetPassword: async () => ({ error: null }),
+  enterDemoMode: () => {},
   logout: () => {},
   login: () => {},
 });
@@ -50,8 +60,16 @@ function nameFromUser(u: User | null): string {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isDemo] = useState<boolean>(
+    () => typeof window !== 'undefined' && localStorage.getItem('immofreak_demo') === 'true',
+  );
 
   useEffect(() => {
+    // Im Demo-Modus überspringen wir Supabase komplett.
+    if (isDemo) {
+      setLoading(false);
+      return;
+    }
     let active = true;
     supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
@@ -65,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       active = false;
       sub.subscription.unsubscribe();
     };
-  }, []);
+  }, [isDemo]);
 
   const signIn = useCallback(async (email: string, password: string): Promise<AuthResult> => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -88,8 +106,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const signOut = useCallback(async () => {
+    if (isDemo) {
+      // Demo-Logout: Flag entfernen + Reload, damit Stores wieder mit Supabase laufen.
+      localStorage.removeItem('immofreak_demo');
+      localStorage.removeItem('immofreak_profile_name');
+      localStorage.removeItem('immofreak_profile_email');
+      window.location.href = '/login';
+      return;
+    }
     await supabase.auth.signOut();
-  }, []);
+  }, [isDemo]);
 
   const resetPassword = useCallback(async (email: string): Promise<AuthResult> => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -98,18 +124,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error };
   }, []);
 
+  const enterDemoMode = useCallback((name: string, email: string) => {
+    localStorage.setItem('immofreak_demo', 'true');
+    localStorage.setItem('immofreak_profile_name', name);
+    localStorage.setItem('immofreak_profile_email', email);
+    // Reload erzwingen, damit storage.ts den IS_DEMO-Flag liest und
+    // die Stores als LocalStorageAdapter initialisiert werden.
+    window.location.href = '/';
+  }, []);
+
   const user = session?.user ?? null;
+  const demoName = typeof window !== 'undefined' ? localStorage.getItem('immofreak_profile_name') ?? '' : '';
+  const demoEmail = typeof window !== 'undefined' ? localStorage.getItem('immofreak_profile_email') ?? '' : '';
+
   const value: AuthContextType = {
     loading,
-    isLoggedIn: !!session,
+    isLoggedIn: !!session || isDemo,
+    isDemo,
     user,
     session,
-    userName: nameFromUser(user),
-    userEmail: user?.email ?? '',
+    userName: isDemo ? demoName : nameFromUser(user),
+    userEmail: isDemo ? demoEmail : user?.email ?? '',
     signIn,
     signUp,
     signOut,
     resetPassword,
+    enterDemoMode,
     logout: () => {
       void signOut();
     },
