@@ -52,6 +52,49 @@ export interface PrivateCard {
   completedAt?: string;
 }
 
+// ============= Leads (Akquise-Pipeline) =============
+export type LeadStatus =
+  | 'Lead'
+  | 'Erstkontakt'
+  | 'Kalkulation'
+  | 'Besichtigung'
+  | 'Angebot'
+  | 'Unterlagenprüfung'
+  | 'Follow-Up'
+  | 'Deal'
+  | 'Archiv';
+
+export const LEAD_STATUSES: LeadStatus[] = [
+  'Lead',
+  'Erstkontakt',
+  'Kalkulation',
+  'Besichtigung',
+  'Angebot',
+  'Unterlagenprüfung',
+  'Follow-Up',
+  'Deal',
+  'Archiv',
+];
+
+export interface Lead {
+  id: string;
+  name: string;
+  status: LeadStatus;
+  address?: string;
+  rooms?: number;
+  area?: number;
+  askingPrice?: number;
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  notes?: string;
+  immoscoutUrl?: string;
+  /** Sortierung innerhalb der Spalte (Drag & Drop) */
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ============= Fix & Flip Types =============
 export type ProjectStatus = 'Akquise' | 'Planung' | 'Sanierung' | 'Verkauf' | 'Abgeschlossen';
 export type BudgetItemStatus = 'geplant' | 'beauftragt' | 'abgeschlossen';

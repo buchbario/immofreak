@@ -6,7 +6,7 @@ import {
   PanelLeftOpen, PanelLeftClose, Receipt, Wallet, BarChart3, Gauge, X,
   ArrowLeftRight,
   CreditCard, SearchCheck, Search, Landmark, Trash2,
-  Sparkles, ListTodo, FolderArchive,
+  Sparkles, ListTodo, FolderArchive, Target,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAppMode } from '../../context/AppModeContext';
@@ -43,6 +43,7 @@ const fixFlipSections: NavSection[] = [
   {
     title: 'nav.section.management',
     items: [
+      { to: '/leads', icon: Target, label: 'nav.item.leads' },
       { to: '/projekte', icon: Building2, label: 'nav.item.projects' },
       { to: '/handwerker', icon: HardHat, label: 'nav.item.contractors' },
     ],

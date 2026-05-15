@@ -315,6 +315,9 @@ export const bankTransactionStore     = makeStore<import('../types').BankTransac
 // Tasks
 export const taskStore                = makeStore<import('../types').Task>('tasks', 'immofreak_tasks');
 
+// Leads (Fix & Flip Akquise-Pipeline)
+export const leadStore                = makeStore<import('../types').Lead>('leads', 'immofreak_leads');
+
 // Trash
 export const trashStore               = makeStore<import('../types').TrashItem>('trash', 'immofreak_trash', 'deleted_at');
 

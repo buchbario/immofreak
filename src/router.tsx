@@ -4,6 +4,7 @@ import { AuthGuard } from './components/auth/AuthGuard';
 import { LoginPage } from './components/auth/LoginPage';
 import { SignupPage } from './components/auth/SignupPage';
 import { ResetPasswordPage } from './components/auth/ResetPasswordPage';
+import { LeadsPage } from './components/leads/LeadsPage';
 import { DashboardPage } from './components/dashboard/DashboardPage';
 import { getDefaultDashboard } from './lib/utils';
 import { ProjectListPage } from './components/projects/ProjectListPage';
@@ -105,6 +106,7 @@ export const router = createBrowserRouter([
     children: [
       // Fix & Flip
       { index: true, element: <RootRedirect /> },
+      { path: 'leads', element: <LeadsPage /> },
       { path: 'projekte', element: <ProjectListPage /> },
       { path: 'projekte/:id', element: <ProjectDetailPage /> },
       { path: 'projekte/:id/expose', element: <ExposeGenerator /> },

@@ -94,6 +94,7 @@ export const translations = {
 
     // Sidebar / Navigation items
     'nav.item.dashboard': 'Dashboard',
+    'nav.item.leads': 'Leads',
     'nav.item.projects': 'Projekte',
     'nav.item.contractors': 'Handwerker',
     'nav.item.calculator': 'Kalkulator',
@@ -374,6 +375,7 @@ export const translations = {
 
     // Nav items
     'nav.item.dashboard': 'Dashboard',
+    'nav.item.leads': 'Leads',
     'nav.item.projects': 'Projects',
     'nav.item.contractors': 'Contractors',
     'nav.item.calculator': 'Calculator',
