@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useAppMode } from '../../context/AppModeContext';
 import { useTour } from '../../context/TourContext';
 import { useTranslation } from '../../context/LocaleContext';
-import { seedDemoData } from '../../lib/seedData';
+import { seedDemoData, clearAllData } from '../../lib/seedData';
 import { getDashboardRoute, getDefaultDashboard } from '../../lib/utils';
 
 export function LoginPage() {
@@ -41,6 +41,11 @@ export function LoginPage() {
       }
       return;
     }
+    // Echter Login: alte Demo-Geschäftsdaten aus dem localStorage räumen,
+    // damit der Nutzer ausschließlich seine Supabase-Daten sieht
+    // (Profil, Locale, Vermieter-Settings bleiben erhalten — siehe
+    // PRESERVED_KEYS in seedData.ts).
+    clearAllData();
     const target = getDefaultDashboard();
     localStorage.setItem('immofreak_mode', target);
     setMode(target);
