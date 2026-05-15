@@ -91,11 +91,17 @@ export function DashboardPage() {
   if (projects.length === 0) {
     return (
       <div className="page-container">
-        <div className="page-header">
-          <div>
-            <h1 className="page-title">Dashboard</h1>
-            <p className="page-subtitle">Willkommen bei Fix &amp; Flip. Starte jetzt dein erstes Projekt.</p>
-          </div>
+        {/* WELCOME GREETING — auch im Empty-State, damit der User weiß wer er ist */}
+        <div className="mb-7 sm:mb-9 px-1">
+          <h1 className="text-[34px] sm:text-[42px] font-bold text-[#0f172a] tracking-tight leading-[1.1] mb-2 inline-flex items-center gap-3 flex-wrap">
+            <span className="bg-[#dbe5ff] px-3 py-1 rounded-lg inline-block">
+              {greeting}, {firstName}!
+            </span>
+            <span className="text-[30px] sm:text-[36px]" role="img" aria-label="wave">👋</span>
+          </h1>
+          <p className="text-[18px] sm:text-[22px] text-muted-foreground/80 leading-relaxed font-light">
+            Willkommen bei Fix &amp; Flip. Starte jetzt dein erstes Projekt.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
