@@ -1,15 +1,8 @@
 import { useCallback, useMemo } from 'react';
 import { useStorageAdapter } from './useLocalStorage';
 import { privateBoardStore, privateCardStore, privateListStore } from '../lib/storage';
+import { generateId as makeId } from '../lib/utils';
 import type { PrivateBoard, PrivateCard, PrivateList } from '../types';
-
-/**
- * Generates a UUID-ish ID without crypto.randomUUID dependency,
- * matching the convention of the rest of the codebase.
- */
-function makeId(): string {
-  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-}
 
 /**
  * Hook for the private todo-board feature (Trello-style).
