@@ -7,11 +7,11 @@ import {
 } from 'lucide-react';
 import { useProjects } from '../../hooks/useProjects';
 import { useBudgetItems } from '../../hooks/useBudgetItems';
-import { useTasks } from '../../hooks/useTasks';
 import { useContractors } from '../../hooks/useContractors';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from '../../context/LocaleContext';
 import { EmptyState } from '../ui/EmptyState';
+import { QuickTaskWidget } from '../shared/QuickTaskWidget';
 import { formatCurrency, cn, effectiveRenovationCost, calculateProjectedProfit } from '../../lib/utils';
 import { PROJECT_STATUSES } from '../../types';
 import type { ProjectStatus } from '../../types';
@@ -48,20 +48,6 @@ function formatRelative(iso: string): string {
   return dateFmtRelativeShort.format(day, 'day');
 }
 
-function formatDueDate(iso: string): { label: string; tone: 'overdue' | 'today' | 'soon' | 'normal' } {
-  const due = new Date(iso);
-  due.setHours(0, 0, 0, 0);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const days = Math.round((due.getTime() - today.getTime()) / 86400000);
-  if (days < 0) return { label: `${Math.abs(days)} Tage überfällig`, tone: 'overdue' };
-  if (days === 0) return { label: 'Heute fällig', tone: 'today' };
-  if (days === 1) return { label: 'Morgen fällig', tone: 'soon' };
-  if (days <= 7) return { label: `In ${days} Tagen`, tone: 'soon' };
-  const fmt = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit' });
-  return { label: fmt.format(due), tone: 'normal' };
-}
-
 export function DashboardPage() {
   const navigate = useNavigate();
   const { userName } = useAuth();
@@ -71,7 +57,6 @@ export function DashboardPage() {
   const greeting = hour < 11 ? t('greeting.morning') : hour < 18 ? t('greeting.day') : t('greeting.evening');
   const { projects } = useProjects();
   const { allBudgetItems } = useBudgetItems();
-  const { allTasks, toggleStatus } = useTasks();
   const { contractors } = useContractors();
 
   const activeProjects = projects.filter((p) => p.status !== 'Abgeschlossen');
@@ -97,21 +82,6 @@ export function DashboardPage() {
     acc[s] = projects.filter(p => p.status === s).length;
     return acc;
   }, {} as Record<ProjectStatus, number>);
-
-  // Tasks: nur offene / in Bearbeitung, sortiert nach Fälligkeit (offene zuerst).
-  const openTasks = [...allTasks]
-    .filter(t => t.status !== 'erledigt')
-    .sort((a, b) => {
-      if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
-      if (a.dueDate) return -1;
-      if (b.dueDate) return 1;
-      return a.createdAt.localeCompare(b.createdAt);
-    })
-    .slice(0, 4);
-  const overdueTasksCount = allTasks.filter(t => {
-    if (t.status === 'erledigt' || !t.dueDate) return false;
-    return new Date(t.dueDate).getTime() < Date.now();
-  }).length;
 
   // Aktivität: jüngste Budget-Positionen (max. 4) mit zugeordnetem Projekt + Handwerker
   const recentActivity = [...allBudgetItems]
@@ -377,66 +347,8 @@ export function DashboardPage() {
 
         {/* Side stack: Tasks + Activity */}
         <div className="flex flex-col gap-4 sm:gap-5">
-          {/* Aufgaben */}
-          <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">
-            <div className="flex items-center justify-between gap-3 px-5 sm:px-6 pt-4 pb-3">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <h2 className="text-[15px] font-semibold text-foreground tracking-tight">Aufgaben</h2>
-                {overdueTasksCount > 0 ? (
-                  <span className="text-[13px] font-semibold text-rose-600 dark:text-rose-400">{overdueTasksCount} fällig</span>
-                ) : (
-                  <span className="text-[13px] text-muted-foreground/80">{openTasks.length} offen</span>
-                )}
-              </div>
-              <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground/60">
-                {allTasks.length} gesamt
-              </span>
-            </div>
-            <div className="px-5 sm:px-6 pb-4">
-              {openTasks.length === 0 ? (
-                <div className="py-6 text-center">
-                  <p className="text-xs text-muted-foreground">Keine offenen Aufgaben.</p>
-                </div>
-              ) : (
-                <ul className="divide-y divide-card-divider">
-                  {openTasks.map((task) => {
-                    const due = task.dueDate ? formatDueDate(task.dueDate) : null;
-                    return (
-                      <li key={task.id} className="flex items-start gap-3 py-3">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleStatus(task.id, 'erledigt');
-                          }}
-                          className="mt-0.5 size-4 rounded-[5px] border-[1.5px] border-muted-foreground/40 hover:border-[#4F6BFF] hover:bg-[#4F6BFF]/10 grid place-items-center transition-colors shrink-0"
-                          title="Als erledigt markieren"
-                        >
-                          <Check size={10} className="opacity-0" />
-                        </button>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[13px] font-medium text-foreground leading-snug">{task.title}</p>
-                          <div className="flex items-center gap-1.5 mt-1 text-[11px] text-muted-foreground">
-                            {due && (
-                              <>
-                                <span className={cn(
-                                  'font-semibold',
-                                  due.tone === 'overdue' && 'text-rose-600 dark:text-rose-400',
-                                  due.tone === 'today' && 'text-rose-600 dark:text-rose-400',
-                                  due.tone === 'soon' && 'text-amber-600 dark:text-amber-400',
-                                )}>{due.label}</span>
-                                <span className="size-[3px] rounded-full bg-muted-foreground/40" />
-                              </>
-                            )}
-                            <span>{task.category}</span>
-                          </div>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-          </div>
+          {/* Aufgaben — Quick-Capture-Widget */}
+          <QuickTaskWidget mode="fixflip" viewAllHref="/aufgaben" accent="blue" />
 
           {/* Aktivität */}
           <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">

@@ -550,3 +550,59 @@ export function seedIfEmpty() {
   localStorage.setItem('immofreak_distribution_keys', JSON.stringify(distributionKeys));
   localStorage.setItem(SEED_KEY, 'true');
 }
+
+/**
+ * Schlüssel die bei `clearAllData()` (z. B. bei normalem Login) erhalten bleiben.
+ * Auth, Profil, Locale, Vermieter-Stammdaten und Calculator-Defaults sind
+ * User-Präferenzen und sollten NICHT mit den Geschäftsdaten gelöscht werden.
+ */
+const PRESERVED_KEYS = new Set<string>([
+  'immofreak_auth',
+  'immofreak_password',
+  'immofreak_locale',
+  'immofreak_mode',
+  'immofreak_sidebar',
+  'immofreak_default_dashboard',
+  'immofreak_landlord_settings',
+  'immofreak_profile_name',
+  'immofreak_profile_firstname',
+  'immofreak_profile_lastname',
+  'immofreak_profile_email',
+  'immofreak_ff_bundesland',
+  'immofreak_ff_purchase_tax',
+  'immofreak_ff_notar_fee',
+  'immofreak_ff_broker_fee',
+]);
+
+/**
+ * Löscht ALLE Geschäftsdaten aus dem localStorage (Projekte, Mieter, Banking,
+ * Tasks, Boards, etc.) — bleibt erhalten: Login, Profil, Spracheinstellung,
+ * Vermieter-Stammdaten, Kalkulator-Defaults.
+ *
+ * Wird beim normalen Login aufgerufen (frische, leere Arbeitsumgebung —
+ * Vorbereitung für die Anbindung an eine echte Datenbank).
+ */
+export function clearAllData() {
+  const toRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key) continue;
+    if (key.startsWith('immofreak_') && !PRESERVED_KEYS.has(key)) {
+      toRemove.push(key);
+    }
+  }
+  toRemove.forEach((k) => localStorage.removeItem(k));
+}
+
+/**
+ * Lädt frische Demo-Daten — wischt vorher alle Bestands-Geschäftsdaten,
+ * damit der User immer einen reproduzierbaren Demo-Stand bekommt.
+ * Wird vom „Demo starten"-Button auf der Login-Seite aufgerufen.
+ */
+export function seedDemoData() {
+  clearAllData();
+  // SEED_KEY entfernen, damit `seedIfEmpty()` wieder durchläuft
+  localStorage.removeItem(SEED_KEY);
+  localStorage.removeItem(DEMO_BALANCE_MIGRATION_KEY);
+  seedIfEmpty();
+}

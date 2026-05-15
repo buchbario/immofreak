@@ -10,7 +10,7 @@ import { useRentalUnits } from '../../hooks/useRentalUnits';
 import { useTenants } from '../../hooks/useTenants';
 import { useTrash } from '../../hooks/useTrash';
 import { TaskForm } from './TaskForm';
-import type { Task, TaskStatus, TaskPriority } from '../../types';
+import type { AppMode, Task, TaskStatus, TaskPriority } from '../../types';
 import { cn } from '../../lib/utils';
 
 type FilterKey = 'alle' | 'offen' | 'in-bearbeitung' | 'erledigt' | 'ueberfaellig';
@@ -50,12 +50,38 @@ const STATUS_LABEL: Record<TaskStatus, string> = {
 
 const STATUS_ORDER: TaskStatus[] = ['offen', 'in-bearbeitung', 'erledigt'];
 
-export function TaskListPage() {
-  const { allTasks, createTask, updateTask, toggleStatus, deleteTask } = useTasks();
+interface TaskListPageProps {
+  /** Filter & default-mode for newly created tasks. Omit to show every task
+   *  across all dashboards (Legacy-/Admin-Modus). */
+  mode?: AppMode;
+}
+
+export function TaskListPage({ mode }: TaskListPageProps = {}) {
+  const { allTasks: rawTasks, createTask, updateTask, toggleStatus, deleteTask } = useTasks();
   const { properties } = useRentalProperties();
   const { allUnits } = useRentalUnits();
   const { allTenants } = useTenants();
   const { moveToTrash } = useTrash();
+
+  // Tasks auf den jeweiligen Dashboard-Kontext einschränken. Legacy-Aufgaben
+  // (ohne `mode`-Feld) erscheinen weiterhin im Buy & Hold, weil dort historisch
+  // alle Vorgänge entstanden sind und an Properties hängen.
+  const allTasks = useMemo(() => {
+    if (!mode) return rawTasks;
+    return rawTasks.filter((t) => t.mode === mode || (!t.mode && mode === 'buyhold'));
+  }, [rawTasks, mode]);
+
+  const modeTitle =
+    mode === 'fixflip' ? 'Aufgaben – Fix & Flip' :
+    mode === 'private' ? 'Aufgaben – Privat' :
+    mode === 'buyhold' ? 'Aufgaben – Buy & Hold' :
+    'Aufgaben';
+
+  const modeSubtitle =
+    mode === 'fixflip' ? 'Aufgaben rund um deine Flip-Projekte — Termine, Beauftragungen, Behördengänge.' :
+    mode === 'private' ? 'Persönliche To-dos mit Fristen und Erinnerungen — privat sortiert.' :
+    mode === 'buyhold' ? 'Aufgaben rund um deine Mietobjekte — Wartung, Abrechnung, Vertragsverlängerung.' :
+    'Alle Aufgaben deiner Dashboards an einem Ort.';
 
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterKey>('alle');
@@ -124,7 +150,7 @@ export function TaskListPage() {
 
   const handleSave = (data: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (editing?.id) updateTask(editing.id, data);
-    else createTask(data);
+    else createTask({ ...data, mode: data.mode ?? mode });
     setShowForm(false);
     setEditing(null);
   };
@@ -132,7 +158,7 @@ export function TaskListPage() {
     if (!editing?.id) return;
     moveToTrash({
       entityType: 'task', entityId: editing.id, data: editing,
-      label: `Vorgang: ${editing.title}`, sublabel: editing.category,
+      label: `Aufgabe: ${editing.title}`, sublabel: editing.category,
     });
     deleteTask(editing.id);
     setShowForm(false); setEditing(null);
@@ -157,23 +183,25 @@ export function TaskListPage() {
       <div className="page-container">
         <div className="page-header">
           <div>
-            <h1 className="page-title">Vorgänge</h1>
+            <h1 className="page-title">{modeTitle}</h1>
             <p className="page-subtitle">Lege Aufgaben mit Fristen und Verantwortlichen an.</p>
           </div>
           <button onClick={() => openCreate()} className="btn btn-md btn-primary">
-            <Plus size={15} /> Vorgang anlegen
+            <Plus size={15} /> Aufgabe anlegen
           </button>
         </div>
         <div className="surface empty-state">
           <div className="size-12 rounded-xl bg-[#4F6BFF]/10 flex items-center justify-center mb-4">
             <CircleDot size={22} className="text-[#4F6BFF]" />
           </div>
-          <p className="text-sm font-semibold mb-1 text-foreground">Noch keine Vorgänge</p>
+          <p className="text-sm font-semibold mb-1 text-foreground">Noch keine Aufgaben</p>
           <p className="text-sm mb-5 text-muted-foreground-2">
-            Z.B. Heizungswartung, Nebenkostenabrechnung, Vertragsverlängerungen.
+            {mode === 'fixflip' ? 'Z.B. Notar-Termin, Handwerker beauftragen, Behördengang.' :
+             mode === 'private' ? 'Z.B. Reise planen, Steuer abgeben, Anrufe erledigen.' :
+             'Z.B. Heizungswartung, Nebenkostenabrechnung, Vertragsverlängerungen.'}
           </p>
           <button onClick={() => openCreate()} className="btn btn-md btn-primary">
-            <Plus size={15} /> Vorgang anlegen
+            <Plus size={15} /> Aufgabe anlegen
           </button>
         </div>
         {showForm && (
@@ -199,7 +227,7 @@ export function TaskListPage() {
             <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
               <div className="flex items-center gap-2 text-[11px] text-muted-foreground/80">
                 <Clock size={11} />
-                <span>{counts.total} {counts.total === 1 ? 'Vorgang' : 'Vorgänge'}</span>
+                <span>{counts.total} {counts.total === 1 ? 'Aufgabe' : 'Aufgaben'}</span>
                 {counts.ueberfaellig > 0 && (
                   <>
                     <span className="size-[3px] rounded-full bg-muted-foreground/40" />
@@ -210,14 +238,14 @@ export function TaskListPage() {
                 )}
               </div>
               <button onClick={() => openCreate()} className="btn btn-sm btn-primary">
-                <Plus size={14} /> Neuer Vorgang
+                <Plus size={14} /> Neue Aufgabe
               </button>
             </div>
             <h1 className="text-[26px] sm:text-[28px] font-bold text-foreground tracking-tight leading-tight mb-1">
-              Vorgänge
+              {modeTitle}
             </h1>
             <p className="text-[13px] text-muted-foreground max-w-2xl leading-relaxed">
-              Aufgaben rund um deine Mietobjekte — Wartung, Abrechnung, Vertragsverlängerung. Klicke einen Eintrag an, um Details rechts zu sehen.
+              {modeSubtitle} Klicke einen Eintrag an, um Details rechts zu sehen.
             </p>
           </div>
 
@@ -300,7 +328,7 @@ export function TaskListPage() {
                     <button
                       onClick={() => openCreate(status)}
                       className="size-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-card transition-colors cursor-pointer"
-                      title="Vorgang hinzufügen"
+                      title="Aufgabe hinzufügen"
                     >
                       <Plus size={13} strokeWidth={2.4} />
                     </button>
@@ -313,7 +341,7 @@ export function TaskListPage() {
                       {items.length > 0 && (
                         <div className="hidden sm:grid grid-cols-[24px_1fr_88px_140px_96px] gap-3 px-4 py-2 text-[10.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold">
                           <span></span>
-                          <span>Vorgang</span>
+                          <span>Aufgabe</span>
                           <span>Frist</span>
                           <span>Zuständig</span>
                           <span>Priorität</span>
@@ -435,7 +463,7 @@ export function TaskListPage() {
             {filtered.length === 0 && (
               <div className="text-center py-10">
                 <Search size={20} className="mx-auto mb-2 text-muted-foreground/60" />
-                <p className="text-[13px] text-muted-foreground">Keine Vorgänge gefunden.</p>
+                <p className="text-[13px] text-muted-foreground">Keine Aufgaben gefunden.</p>
               </div>
             )}
           </div>
@@ -458,7 +486,7 @@ export function TaskListPage() {
                   setTimeout(() => {
                     moveToTrash({
                       entityType: 'task', entityId: selectedTask.id, data: selectedTask,
-                      label: `Vorgang: ${selectedTask.title}`, sublabel: selectedTask.category,
+                      label: `Aufgabe: ${selectedTask.title}`, sublabel: selectedTask.category,
                     });
                     deleteTask(selectedTask.id);
                     setEditing(null);
@@ -473,9 +501,9 @@ export function TaskListPage() {
                 <div className="size-12 mx-auto rounded-xl bg-layer-hover flex items-center justify-center mb-3">
                   <FileText size={20} className="text-muted-foreground" />
                 </div>
-                <p className="text-[13px] font-semibold text-foreground mb-1">Kein Vorgang ausgewählt</p>
+                <p className="text-[13px] font-semibold text-foreground mb-1">Keine Aufgabe ausgewählt</p>
                 <p className="text-[12px] text-muted-foreground leading-relaxed">
-                  Wähle links einen Vorgang, um Details, Notizen und Verknüpfungen rechts zu sehen.
+                  Wähle links eine Aufgabe, um Details, Notizen und Verknüpfungen rechts zu sehen.
                 </p>
               </div>
             )}

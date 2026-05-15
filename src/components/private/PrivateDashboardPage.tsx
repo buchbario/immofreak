@@ -15,6 +15,7 @@ import { useTranslation } from '../../context/LocaleContext';
 import { usePrivateBoards } from '../../hooks/usePrivateBoards';
 import { EmptyState } from '../ui/EmptyState';
 import { Modal, Field, FormSection } from '../ui/Modal';
+import { QuickTaskWidget } from '../shared/QuickTaskWidget';
 import { cn } from '../../lib/utils';
 
 const ACCENT_PRESETS: Array<{ name: string; gradient: string; ring: string }> = [
@@ -134,99 +135,120 @@ export function PrivateDashboardPage() {
         />
       </div>
 
-      {/* Boards grid */}
-      {boards.length === 0 ? (
-        <div className="bg-card border border-card-line rounded-xl">
-          <EmptyState
-            icon={<Sparkles size={20} />}
-            title={t('private.board.empty.title')}
-            description={t('private.board.empty.desc')}
-            action={
-              <button onClick={() => setShowNewBoard(true)} className="btn btn-md btn-primary">
-                <Plus size={16} /> {t('private.board.empty.cta')}
-              </button>
-            }
-          />
-        </div>
-      ) : (
+      {/* Split-Layout — links die Boards, rechts die Aufgaben (analog F&F / B&H) */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1.7fr_1fr] gap-4 sm:gap-5">
+        {/* Boards panel */}
         <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-[15px] font-semibold text-foreground">{t('private.boards.title')}</h2>
-            <span className="text-xs text-muted-foreground">{boards.length} {t(boards.length === 1 ? 'word.board.singular' : 'word.board.plural')}</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {boards.map((b) => {
-              const lists = listsForBoard(b.id);
-              const cardCount = lists.reduce((sum, l) => sum + cardsForList(l.id).length, 0);
-              const openCount = lists.reduce(
-                (sum, l) => sum + cardsForList(l.id).filter((c) => !c.completedAt).length,
-                0,
-              );
-              const accentCfg = getAccent(b.accent);
-              return (
-                <div
-                  key={b.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => navigate(`/privat/boards/${b.id}`)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/privat/boards/${b.id}`); } }}
-                  className="group relative text-left bg-card border border-card-line rounded-xl overflow-hidden hover:border-[#4F6BFF]/40 hover:shadow-[0_4px_14px_rgba(15,23,42,0.06)] transition-all cursor-pointer"
+          {boards.length === 0 ? (
+            <div className="bg-card border border-card-line rounded-2xl">
+              <EmptyState
+                icon={<Sparkles size={20} />}
+                title={t('private.board.empty.title')}
+                description={t('private.board.empty.desc')}
+                action={
+                  <button onClick={() => setShowNewBoard(true)} className="btn btn-md btn-primary">
+                    <Plus size={16} /> {t('private.board.empty.cta')}
+                  </button>
+                }
+              />
+            </div>
+          ) : (
+            <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">
+              <div className="flex items-center justify-between gap-3 px-5 sm:px-6 pt-4 pb-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <h2 className="text-[15px] font-semibold text-foreground tracking-tight">{t('private.boards.title')}</h2>
+                  <span className="text-[13px] text-muted-foreground/80">
+                    {boards.length} {t(boards.length === 1 ? 'word.board.singular' : 'word.board.plural')}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setShowNewBoard(true)}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 >
-                  <div className={cn('h-20 relative bg-gradient-to-br', accentCfg.gradient)}>
-                    <div className="absolute inset-0 flex items-end p-4 pb-3 text-white/95">
-                      <span className="text-[28px]" role="img" aria-hidden>{b.icon || '📋'}</span>
-                    </div>
-                    {/* Pin-Toggle oben rechts auf dem Cover — sichtbarer Active-State, sonst nur on-hover */}
-                    <button
-                      onClick={(e) => { e.stopPropagation(); togglePinBoard(b.id); }}
-                      aria-label={b.pinned ? 'Pin aus Sidebar entfernen' : 'In Sidebar anpinnen'}
-                      title={b.pinned ? 'Pin aus Sidebar entfernen' : 'In Sidebar anpinnen'}
-                      className={cn(
-                        'absolute top-2 right-2 size-7 rounded-md flex items-center justify-center backdrop-blur-sm transition-all cursor-pointer',
-                        b.pinned
-                          ? 'bg-white/85 text-[#4F6BFF] ring-1 ring-white/70 shadow-[0_2px_6px_rgba(15,23,42,0.18)]'
-                          : 'bg-black/15 text-white/95 hover:bg-white/85 hover:text-[#4F6BFF] opacity-0 group-hover:opacity-100',
-                      )}
-                    >
-                      <Pin size={13} className={cn(b.pinned && 'fill-current')} strokeWidth={b.pinned ? 2 : 2.2} />
-                    </button>
-                  </div>
-                  <div className="p-4">
-                    <div className="flex items-start justify-between gap-3 mb-1">
-                      <p className="text-[15px] font-semibold text-foreground line-clamp-1">{b.name}</p>
-                      <ArrowRight size={14} className="text-muted-foreground group-hover:text-[#4F6BFF] group-hover:translate-x-0.5 transition-all flex-shrink-0 mt-0.5" />
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {lists.length} {t(lists.length === 1 ? 'word.list.singular' : 'word.list.plural')} · {cardCount} {t(cardCount === 1 ? 'word.card.singular' : 'word.card.plural')}
-                      {openCount > 0 && (
-                        <span className="ml-1 text-foreground/80 font-medium">· {openCount} {t('dashboard.kpi.open').toLowerCase()}</span>
-                      )}
-                      {b.pinned && (
-                        <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] font-semibold text-[#4F6BFF] align-middle">
-                          · <Pin size={9} className="fill-current" />
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* Add new card */}
-            <button
-              onClick={() => setShowNewBoard(true)}
-              className="bg-card/40 border-2 border-dashed border-card-line hover:border-[#4F6BFF]/40 hover:bg-card transition-all rounded-xl flex items-center justify-center min-h-[152px] cursor-pointer group"
-            >
-              <div className="flex flex-col items-center gap-1.5 text-muted-foreground group-hover:text-[#4F6BFF] transition-colors">
-                <div className="size-9 rounded-full bg-card-line/50 group-hover:bg-[#4F6BFF]/10 flex items-center justify-center transition-colors">
-                  <Plus size={16} />
-                </div>
-                <span className="text-xs font-semibold">{t('private.board.new')}</span>
+                  <Plus size={12} /> {t('private.board.new')}
+                </button>
               </div>
-            </button>
-          </div>
+              <div className="px-3 sm:px-4 pb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {boards.map((b) => {
+                    const lists = listsForBoard(b.id);
+                    const cardCount = lists.reduce((sum, l) => sum + cardsForList(l.id).length, 0);
+                    const openCount = lists.reduce(
+                      (sum, l) => sum + cardsForList(l.id).filter((c) => !c.completedAt).length,
+                      0,
+                    );
+                    const accentCfg = getAccent(b.accent);
+                    return (
+                      <div
+                        key={b.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => navigate(`/privat/boards/${b.id}`)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/privat/boards/${b.id}`); } }}
+                        className="group relative text-left bg-card border border-card-line rounded-xl overflow-hidden hover:border-[#4F6BFF]/40 hover:shadow-[0_4px_14px_rgba(15,23,42,0.06)] transition-all cursor-pointer"
+                      >
+                        <div className={cn('h-16 relative bg-gradient-to-br', accentCfg.gradient)}>
+                          <div className="absolute inset-0 flex items-end p-3 pb-2 text-white/95">
+                            <span className="text-[24px]" role="img" aria-hidden>{b.icon || '📋'}</span>
+                          </div>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); togglePinBoard(b.id); }}
+                            aria-label={b.pinned ? 'Pin aus Sidebar entfernen' : 'In Sidebar anpinnen'}
+                            title={b.pinned ? 'Pin aus Sidebar entfernen' : 'In Sidebar anpinnen'}
+                            className={cn(
+                              'absolute top-2 right-2 size-7 rounded-md flex items-center justify-center backdrop-blur-sm transition-all cursor-pointer',
+                              b.pinned
+                                ? 'bg-white/85 text-[#4F6BFF] ring-1 ring-white/70 shadow-[0_2px_6px_rgba(15,23,42,0.18)]'
+                                : 'bg-black/15 text-white/95 hover:bg-white/85 hover:text-[#4F6BFF] opacity-0 group-hover:opacity-100',
+                            )}
+                          >
+                            <Pin size={13} className={cn(b.pinned && 'fill-current')} strokeWidth={b.pinned ? 2 : 2.2} />
+                          </button>
+                        </div>
+                        <div className="p-3">
+                          <div className="flex items-start justify-between gap-2 mb-0.5">
+                            <p className="text-[13.5px] font-semibold text-foreground line-clamp-1">{b.name}</p>
+                            <ArrowRight size={13} className="text-muted-foreground group-hover:text-[#4F6BFF] group-hover:translate-x-0.5 transition-all flex-shrink-0 mt-0.5" />
+                          </div>
+                          <p className="text-[11.5px] text-muted-foreground">
+                            {lists.length} {t(lists.length === 1 ? 'word.list.singular' : 'word.list.plural')} · {cardCount} {t(cardCount === 1 ? 'word.card.singular' : 'word.card.plural')}
+                            {openCount > 0 && (
+                              <span className="ml-1 text-foreground/80 font-medium">· {openCount} {t('dashboard.kpi.open').toLowerCase()}</span>
+                            )}
+                            {b.pinned && (
+                              <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] font-semibold text-[#4F6BFF] align-middle">
+                                · <Pin size={9} className="fill-current" />
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Add new card */}
+                  <button
+                    onClick={() => setShowNewBoard(true)}
+                    className="bg-card/40 border-2 border-dashed border-card-line hover:border-[#4F6BFF]/40 hover:bg-card transition-all rounded-xl flex items-center justify-center min-h-[132px] cursor-pointer group"
+                  >
+                    <div className="flex flex-col items-center gap-1.5 text-muted-foreground group-hover:text-[#4F6BFF] transition-colors">
+                      <div className="size-9 rounded-full bg-card-line/50 group-hover:bg-[#4F6BFF]/10 flex items-center justify-center transition-colors">
+                        <Plus size={16} />
+                      </div>
+                      <span className="text-xs font-semibold">{t('private.board.new')}</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Side panel: Quick-Capture Aufgaben — schnell abhaken mit Bestätigung */}
+        <div className="flex flex-col gap-4 sm:gap-5">
+          <QuickTaskWidget mode="private" viewAllHref="/privat/aufgaben" accent="violet" maxOpen={6} />
+        </div>
+      </div>
 
       {/* Modal: New board */}
       <Modal

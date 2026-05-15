@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light only" />
+  <meta name="supported-color-schemes" content="light only" />
+  <title>Willkommen bei ImmoFreak</title>
+  <!--[if mso]>
+  <style>
+    table, td { font-family: Arial, sans-serif !important; }
+  </style>
+  <![endif]-->
+</head>
+<body style="margin:0;padding:0;background:#fafbff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;color:#0f1430;">
+  <!-- Preheader (Vorschautext im Posteingang) -->
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#fafbff;">
+    Hi {{ .Data.full_name }} — bestätige deine E-Mail und starte mit deiner Immobilien-Verwaltung. Projekte, Mieter, Nebenkosten und mehr warten.
+  </div>
+
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#fafbff;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;width:100%;">
+
+          <!-- Logo Header -->
+          <tr>
+            <td align="center" style="padding:8px 0 28px 0;">
+              <img src="https://immofreak.vercel.app/logo.png" alt="ImmoFreak" width="160" style="display:block;width:160px;max-width:160px;height:auto;border:0;outline:none;text-decoration:none;" />
+            </td>
+          </tr>
+
+          <!-- ============== HERO CARD ============== -->
+          <tr>
+            <td style="background:#ffffff;border-radius:24px;padding:44px 36px 36px;box-shadow:0 4px 24px -8px rgba(15,20,48,0.08);border:1px solid rgba(30,27,75,0.06);">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+
+                <!-- Brand-Pille oben -->
+                <tr>
+                  <td align="center" style="padding-bottom:20px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td align="center" style="background:rgba(79,107,255,0.10);border-radius:999px;padding:7px 14px;">
+                          <span style="font-size:11.5px;font-weight:600;color:#4F6BFF;letter-spacing:0.04em;text-transform:uppercase;">✨ Konto wird aktiviert</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Headline -->
+                <tr>
+                  <td align="center" style="padding-bottom:10px;">
+                    <h1 style="margin:0;font-size:30px;line-height:1.15;font-weight:700;color:#0f1430;letter-spacing:-0.02em;">
+                      Willkommen, {{ .Data.full_name }}! 👋
+                    </h1>
+                  </td>
+                </tr>
+
+                <!-- Subline -->
+                <tr>
+                  <td align="center" style="padding-bottom:28px;">
+                    <p style="margin:0;font-size:15.5px;line-height:1.6;color:rgba(30,27,75,0.65);">
+                      Wir freuen uns, dass du dabei bist. Ein letzter Schritt, dann gehört deine komplette Immobilien-Verwaltung dir.
+                    </p>
+                  </td>
+                </tr>
+
+                <!-- CTA Button -->
+                <tr>
+                  <td align="center" style="padding-bottom:14px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td align="center" style="border-radius:999px;background:#0f1430;box-shadow:0 6px 16px -4px rgba(15,20,48,0.40);">
+                          <a href="{{ .ConfirmationURL }}"
+                             style="display:inline-block;padding:15px 38px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:999px;letter-spacing:0.01em;">
+                            E-Mail bestätigen &amp; loslegen
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td align="center" style="padding-bottom:0;">
+                    <p style="margin:0;font-size:11.5px;color:rgba(30,27,75,0.45);">
+                      Klick öffnet ImmoFreak in deinem Browser
+                    </p>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+
+          <!-- ============== ABSTAND ============== -->
+          <tr><td style="height:24px;line-height:24px;font-size:0;">&nbsp;</td></tr>
+
+          <!-- ============== "WAS DICH ERWARTET" ============== -->
+          <tr>
+            <td style="padding:0 4px 12px 4px;">
+              <p style="margin:0;font-size:11.5px;font-weight:700;color:rgba(30,27,75,0.5);letter-spacing:0.08em;text-transform:uppercase;">
+                Das erwartet dich nach der Bestätigung
+              </p>
+            </td>
+          </tr>
+
+          <!-- Feature-Grid 2x2 -->
+          <tr>
+            <td>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <!-- Fix & Flip -->
+                  <td valign="top" width="50%" style="padding:0 6px 12px 0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#ffffff;border-radius:18px;border:1px solid rgba(30,27,75,0.06);padding:18px 18px;height:100%;">
+                      <tr>
+                        <td>
+                          <div style="font-size:22px;line-height:1;margin-bottom:10px;">🔨</div>
+                          <p style="margin:0 0 4px 0;font-size:14px;font-weight:700;color:#0f1430;">Fix &amp; Flip</p>
+                          <p style="margin:0;font-size:12.5px;line-height:1.5;color:rgba(30,27,75,0.65);">
+                            Projekte planen, Handwerker zuweisen, Budgets tracken — vom Kauf bis zum Verkauf.
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <!-- Buy & Hold -->
+                  <td valign="top" width="50%" style="padding:0 0 12px 6px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#ffffff;border-radius:18px;border:1px solid rgba(30,27,75,0.06);padding:18px 18px;height:100%;">
+                      <tr>
+                        <td>
+                          <div style="font-size:22px;line-height:1;margin-bottom:10px;">🏠</div>
+                          <p style="margin:0 0 4px 0;font-size:14px;font-weight:700;color:#0f1430;">Buy &amp; Hold</p>
+                          <p style="margin:0;font-size:12.5px;line-height:1.5;color:rgba(30,27,75,0.65);">
+                            Mietobjekte, Einheiten und Mieter im Griff — inkl. Nebenkostenabrechnung und Mietverträgen.
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <!-- Banking -->
+                  <td valign="top" width="50%" style="padding:0 6px 0 0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#ffffff;border-radius:18px;border:1px solid rgba(30,27,75,0.06);padding:18px 18px;height:100%;">
+                      <tr>
+                        <td>
+                          <div style="font-size:22px;line-height:1;margin-bottom:10px;">💳</div>
+                          <p style="margin:0 0 4px 0;font-size:14px;font-weight:700;color:#0f1430;">Banking &amp; Berichte</p>
+                          <p style="margin:0;font-size:12.5px;line-height:1.5;color:rgba(30,27,75,0.65);">
+                            Mieten automatisch zuordnen, Cashflow sehen, DATEV-Export für deinen Steuerberater.
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <!-- Tasks & Tools -->
+                  <td valign="top" width="50%" style="padding:0 0 0 6px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#ffffff;border-radius:18px;border:1px solid rgba(30,27,75,0.06);padding:18px 18px;height:100%;">
+                      <tr>
+                        <td>
+                          <div style="font-size:22px;line-height:1;margin-bottom:10px;">📊</div>
+                          <p style="margin:0 0 4px 0;font-size:14px;font-weight:700;color:#0f1430;">Deal-Analyzer &amp; Tools</p>
+                          <p style="margin:0;font-size:12.5px;line-height:1.5;color:rgba(30,27,75,0.65);">
+                            Renditen vor dem Kauf checken, Exposés generieren, Aufgaben &amp; Vorgänge im Blick.
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- ============== ABSTAND ============== -->
+          <tr><td style="height:28px;line-height:28px;font-size:0;">&nbsp;</td></tr>
+
+          <!-- ============== QUICK START ============== -->
+          <tr>
+            <td style="background:#ffffff;border-radius:20px;padding:28px 28px;border:1px solid rgba(30,27,75,0.06);">
+              <p style="margin:0 0 14px 0;font-size:14.5px;font-weight:700;color:#0f1430;">
+                🚀 So startest du in 3 Minuten
+              </p>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td valign="top" width="28" style="padding:0 12px 12px 0;">
+                    <div style="width:24px;height:24px;border-radius:999px;background:rgba(79,107,255,0.10);text-align:center;font-size:12px;font-weight:700;color:#4F6BFF;line-height:24px;">1</div>
+                  </td>
+                  <td valign="top" style="padding-bottom:12px;">
+                    <p style="margin:0;font-size:13.5px;line-height:1.55;color:rgba(30,27,75,0.75);">
+                      <strong style="color:#0f1430;">Wähle deinen Modus</strong> — Fix &amp; Flip oder Buy &amp; Hold (oder beides).
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td valign="top" width="28" style="padding:0 12px 12px 0;">
+                    <div style="width:24px;height:24px;border-radius:999px;background:rgba(79,107,255,0.10);text-align:center;font-size:12px;font-weight:700;color:#4F6BFF;line-height:24px;">2</div>
+                  </td>
+                  <td valign="top" style="padding-bottom:12px;">
+                    <p style="margin:0;font-size:13.5px;line-height:1.55;color:rgba(30,27,75,0.75);">
+                      <strong style="color:#0f1430;">Lege dein erstes Objekt an</strong> — Adresse, Kaufpreis, Status. Fertig.
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td valign="top" width="28" style="padding:0 12px 0 0;">
+                    <div style="width:24px;height:24px;border-radius:999px;background:rgba(79,107,255,0.10);text-align:center;font-size:12px;font-weight:700;color:#4F6BFF;line-height:24px;">3</div>
+                  </td>
+                  <td valign="top">
+                    <p style="margin:0;font-size:13.5px;line-height:1.55;color:rgba(30,27,75,0.75);">
+                      <strong style="color:#0f1430;">Behalte alles im Überblick</strong> — Dashboard, Aufgaben, Berichte. Alles an einem Ort.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- ============== ABSTAND ============== -->
+          <tr><td style="height:24px;line-height:24px;font-size:0;">&nbsp;</td></tr>
+
+          <!-- ============== TRUST + FALLBACK ============== -->
+          <tr>
+            <td style="background:#f7f8ff;border-radius:18px;padding:18px 22px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td valign="top" width="22" style="padding:1px 10px 0 0;font-size:14px;line-height:1;">🔒</td>
+                  <td>
+                    <p style="margin:0 0 4px 0;font-size:13px;font-weight:600;color:#0f1430;">Sicher &amp; DSGVO-konform</p>
+                    <p style="margin:0;font-size:12px;line-height:1.55;color:rgba(30,27,75,0.65);">
+                      Deine Daten liegen verschlüsselt in einem Rechenzentrum in Frankfurt. Nur du siehst deine Objekte, Mieter und Verträge.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Fallback link -->
+          <tr>
+            <td style="padding:24px 4px 0 4px;">
+              <p style="margin:0 0 6px 0;font-size:11.5px;color:rgba(30,27,75,0.55);">
+                Falls der Button nicht funktioniert, kopiere diesen Link in deinen Browser:
+              </p>
+              <p style="margin:0;font-size:11.5px;line-height:1.5;color:#4F6BFF;word-break:break-all;">
+                <a href="{{ .ConfirmationURL }}" style="color:#4F6BFF;text-decoration:underline;">{{ .ConfirmationURL }}</a>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td align="center" style="padding:32px 16px 8px 16px;">
+              <p style="margin:0 0 6px 0;font-size:11px;color:rgba(30,27,75,0.45);line-height:1.5;">
+                Du hast diese E-Mail erhalten, weil sich jemand mit der Adresse <strong style="color:rgba(30,27,75,0.7);">{{ .Email }}</strong> bei ImmoFreak registriert hat.<br/>
+                Falls du das nicht warst, ignoriere diese Mail einfach — der Link läuft in 24 Stunden ab.
+              </p>
+              <p style="margin:12px 0 0 0;font-size:11px;color:rgba(30,27,75,0.45);">
+                © 2026 ImmoFreak · Deine Immobilien-Verwaltung
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

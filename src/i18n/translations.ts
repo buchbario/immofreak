@@ -108,7 +108,7 @@ export const translations = {
     'nav.item.transactions': 'Transaktionen',
     'nav.item.expenses': 'Ausgaben',
     'nav.item.finance': 'Finanzen',
-    'nav.item.processes': 'Vorgänge',
+    'nav.item.processes': 'Aufgaben',
     'nav.item.letters': 'Schreiben',
     'nav.item.utility_billing': 'Nebenkosten',
     'nav.item.reports': 'Berichte',

@@ -3,13 +3,16 @@ import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router-dom'
 import './index.css'
 import { router } from './router'
-import { seedIfEmpty } from './lib/seedData'
 import { AppModeProvider } from './context/AppModeContext'
 import { AuthProvider } from './context/AuthContext'
 import { TourProvider } from './context/TourContext'
 import { LocaleProvider } from './context/LocaleContext'
 
-seedIfEmpty()
+// Seeding wird NICHT mehr automatisch beim App-Boot ausgeführt.
+// Stattdessen entscheidet die Login-Seite:
+//   - „Demo starten"-Button → `seedDemoData()`  (frische Demo-Daten)
+//   - Normaler Login        → `clearAllData()` (leere Arbeitsumgebung
+//                                                — Vorbereitung für die DB)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

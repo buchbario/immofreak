@@ -1,8 +1,9 @@
-import { nanoid } from 'nanoid';
 import type { AppMode } from '../types';
 
 export function generateId(): string {
-  return nanoid(12);
+  // UUID v4 — passt zur Supabase `uuid`-Spalte. crypto.randomUUID ist in
+  // allen aktuellen Browsern vorhanden (Vite-Targets).
+  return crypto.randomUUID();
 }
 
 /**

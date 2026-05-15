@@ -1,6 +1,6 @@
 import {
   Building2, ArrowRight, Home, Users, Wallet, Percent, Plus,
-  UserPlus, Receipt, BarChart3, Check, Clock,
+  UserPlus, Receipt, BarChart3, Clock,
   FileText, KeyRound,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -9,9 +9,9 @@ import { useRentalUnits } from '../../hooks/useRentalUnits';
 import { useTenants } from '../../hooks/useTenants';
 import { useUtilities } from '../../hooks/useUtilities';
 import { useRentalContracts } from '../../hooks/useRentalContracts';
-import { useTasks } from '../../hooks/useTasks';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from '../../context/LocaleContext';
+import { QuickTaskWidget } from '../shared/QuickTaskWidget';
 import { cn } from '../../lib/utils';
 
 const dateFmtRelativeShort = new Intl.RelativeTimeFormat('de-DE', { numeric: 'auto' });
@@ -26,20 +26,6 @@ function formatRelative(iso: string): string {
   if (Math.abs(min) < 60) return dateFmtRelativeShort.format(min, 'minute');
   if (Math.abs(hr) < 24)  return dateFmtRelativeShort.format(hr, 'hour');
   return dateFmtRelativeShort.format(day, 'day');
-}
-
-function formatDueDate(iso: string): { label: string; tone: 'overdue' | 'today' | 'soon' | 'normal' } {
-  const due = new Date(iso);
-  due.setHours(0, 0, 0, 0);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const days = Math.round((due.getTime() - today.getTime()) / 86400000);
-  if (days < 0) return { label: `${Math.abs(days)} Tage überfällig`, tone: 'overdue' };
-  if (days === 0) return { label: 'Heute fällig', tone: 'today' };
-  if (days === 1) return { label: 'Morgen fällig', tone: 'soon' };
-  if (days <= 7) return { label: `In ${days} Tagen`, tone: 'soon' };
-  const fmt = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit' });
-  return { label: fmt.format(due), tone: 'normal' };
 }
 
 const fmt = (n: number) => n.toLocaleString('de-DE', { maximumFractionDigits: 0 });
@@ -72,7 +58,6 @@ export function BHDashboardPage() {
   const { allTenants } = useTenants();
   const { totalMonthlyAdvance } = useUtilities();
   const { allContracts } = useRentalContracts();
-  const { allTasks, toggleStatus } = useTasks();
 
   void totalMonthlyAdvance;
 
@@ -103,21 +88,6 @@ export function BHDashboardPage() {
     teil: propertyOccupancy.filter(p => p.kind === 'teil').length,
     leer: propertyOccupancy.filter(p => p.kind === 'leer').length,
   };
-
-  // Tasks
-  const openTasks = [...allTasks]
-    .filter(t => t.status !== 'erledigt')
-    .sort((a, b) => {
-      if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
-      if (a.dueDate) return -1;
-      if (b.dueDate) return 1;
-      return a.createdAt.localeCompare(b.createdAt);
-    })
-    .slice(0, 4);
-  const overdueTasksCount = allTasks.filter(t => {
-    if (t.status === 'erledigt' || !t.dueDate) return false;
-    return new Date(t.dueDate).getTime() < Date.now();
-  }).length;
 
   // Aktivität — jüngste Mieter / Verträge
   const recentTenants = [...allTenants].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 2);
@@ -393,67 +363,8 @@ export function BHDashboardPage() {
 
         {/* Side stack: Tasks + Activity */}
         <div className="flex flex-col gap-4 sm:gap-5">
-          {/* Aufgaben */}
-          <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">
-            <div className="flex items-center justify-between gap-3 px-5 sm:px-6 pt-4 pb-3">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <h2 className="text-[15px] font-semibold text-foreground tracking-tight">Aufgaben</h2>
-                {overdueTasksCount > 0 ? (
-                  <span className="text-[13px] font-semibold text-rose-600 dark:text-rose-400">{overdueTasksCount} fällig</span>
-                ) : (
-                  <span className="text-[13px] text-muted-foreground/80">{openTasks.length} offen</span>
-                )}
-              </div>
-              <button onClick={() => navigate('/bh/vorgaenge')} className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
-                Alle <ArrowRight size={12} />
-              </button>
-            </div>
-            <div className="px-5 sm:px-6 pb-4">
-              {openTasks.length === 0 ? (
-                <div className="py-6 text-center">
-                  <p className="text-xs text-muted-foreground">Keine offenen Aufgaben.</p>
-                </div>
-              ) : (
-                <ul className="divide-y divide-card-divider">
-                  {openTasks.map((task) => {
-                    const due = task.dueDate ? formatDueDate(task.dueDate) : null;
-                    const taskProperty = task.propertyId ? properties.find(p => p.id === task.propertyId) : undefined;
-                    return (
-                      <li key={task.id} className="flex items-start gap-3 py-3">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleStatus(task.id, 'erledigt');
-                          }}
-                          className="mt-0.5 size-4 rounded-[5px] border-[1.5px] border-muted-foreground/40 hover:border-[#4F6BFF] hover:bg-[#4F6BFF]/10 grid place-items-center transition-colors shrink-0"
-                          title="Als erledigt markieren"
-                        >
-                          <Check size={10} className="opacity-0" />
-                        </button>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[13px] font-medium text-foreground leading-snug">{task.title}</p>
-                          <div className="flex items-center gap-1.5 mt-1 text-[11px] text-muted-foreground">
-                            {due && (
-                              <>
-                                <span className={cn(
-                                  'font-semibold',
-                                  due.tone === 'overdue' && 'text-rose-600 dark:text-rose-400',
-                                  due.tone === 'today' && 'text-rose-600 dark:text-rose-400',
-                                  due.tone === 'soon' && 'text-amber-600 dark:text-amber-400',
-                                )}>{due.label}</span>
-                                <span className="size-[3px] rounded-full bg-muted-foreground/40" />
-                              </>
-                            )}
-                            <span>{taskProperty?.name || task.category}</span>
-                          </div>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-          </div>
+          {/* Aufgaben — Quick-Capture-Widget */}
+          <QuickTaskWidget mode="buyhold" viewAllHref="/bh/aufgaben" accent="emerald" />
 
           {/* Aktivität */}
           <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">

@@ -55,6 +55,12 @@ const fixFlipSections: NavSection[] = [
     ],
   },
   {
+    title: 'nav.section.tasks_communication',
+    items: [
+      { to: '/aufgaben', icon: ListTodo, label: 'nav.item.processes' },
+    ],
+  },
+  {
     title: 'nav.section.system',
     items: [
       { to: '/papierkorb', icon: Trash2, label: 'nav.item.trash' },
@@ -68,6 +74,12 @@ const privateSectionsBase: NavSection[] = [
     items: [
       { to: '/privat', icon: LayoutDashboard, label: 'nav.item.dashboard' },
       { to: '/privat/boards', icon: ListTodo, label: 'nav.item.all_boards' },
+    ],
+  },
+  {
+    title: 'nav.section.tasks_communication',
+    items: [
+      { to: '/privat/aufgaben', icon: ListTodo, label: 'nav.item.processes' },
     ],
   },
 ];
@@ -101,7 +113,7 @@ const buyHoldSections: NavSection[] = [
   {
     title: 'nav.section.tasks_communication',
     items: [
-      { to: '/bh/vorgaenge', icon: ListTodo, label: 'nav.item.processes' },
+      { to: '/bh/aufgaben', icon: ListTodo, label: 'nav.item.processes' },
       { to: '/bh/schreiben', icon: FileText, label: 'nav.item.letters' },
       { to: '/bh/nebenkosten', icon: Receipt, label: 'nav.item.utility_billing' },
     ],

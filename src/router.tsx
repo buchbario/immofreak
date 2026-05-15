@@ -2,6 +2,8 @@ import { createBrowserRouter, Navigate, useNavigationType } from 'react-router-d
 import { AppLayout } from './components/layout/AppLayout';
 import { AuthGuard } from './components/auth/AuthGuard';
 import { LoginPage } from './components/auth/LoginPage';
+import { SignupPage } from './components/auth/SignupPage';
+import { ResetPasswordPage } from './components/auth/ResetPasswordPage';
 import { DashboardPage } from './components/dashboard/DashboardPage';
 import { getDefaultDashboard } from './lib/utils';
 import { ProjectListPage } from './components/projects/ProjectListPage';
@@ -94,6 +96,8 @@ function NotFoundPage() {
 export const router = createBrowserRouter([
   // Public routes
   { path: 'login', element: <LoginPage /> },
+  { path: 'signup', element: <SignupPage /> },
+  { path: 'reset-password', element: <ResetPasswordPage /> },
   { path: 'share/:id', element: <PropertySharePage /> },
   {
     path: '/',
@@ -108,6 +112,7 @@ export const router = createBrowserRouter([
       { path: 'handwerker/:id', element: <ContractorDetailPage /> },
       { path: 'kalkulator', element: <CalculatorPage /> },
       { path: 'deal-analyzer', element: <DealAnalyzerPage /> },
+      { path: 'aufgaben', element: <TaskListPage mode="fixflip" /> },
       { path: 'papierkorb', element: <TrashPage /> },
       // Buy & Hold
       { path: 'bh', element: <BHDashboardPage /> },
@@ -126,13 +131,16 @@ export const router = createBrowserRouter([
       { path: 'bh/mietvertraege/:id', element: <MietvertragDetailPage /> },
       { path: 'bh/zaehler', element: <ZaehlerPage /> },
       { path: 'bh/banking', element: <BankingPage /> },
-      { path: 'bh/vorgaenge', element: <TaskListPage /> },
+      { path: 'bh/aufgaben', element: <TaskListPage mode="buyhold" /> },
+      // Legacy-Alias: alte Bookmarks auf /bh/vorgaenge weiterhin bedienen.
+      { path: 'bh/vorgaenge', element: <TaskListPage mode="buyhold" /> },
       { path: 'bh/dokumente', element: <DokumenteArchivPage /> },
       { path: 'bh/papierkorb', element: <TrashPage /> },
       // Privat (Trello-style personal todos)
       { path: 'privat', element: <PrivateDashboardPage /> },
       { path: 'privat/boards', element: <PrivateDashboardPage /> },
       { path: 'privat/boards/:id', element: <PrivateBoardPage /> },
+      { path: 'privat/aufgaben', element: <TaskListPage mode="private" /> },
       // Shared
       { path: 'einstellungen', element: <SettingsPage /> },
       // 404: fängt alle unbekannten Pfade innerhalb des AppLayouts ab

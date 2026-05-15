@@ -45,8 +45,8 @@ export function TaskForm({ initial, properties, units, tenants, onClose, onSave,
       open
       onClose={onClose}
       size="xl"
-      title={isEdit ? 'Vorgang bearbeiten' : 'Neuer Vorgang'}
-      description="Halte fest, was zu tun ist — verknüpft mit Objekt, Einheit oder Mieter."
+      title={isEdit ? 'Aufgabe bearbeiten' : 'Neue Aufgabe'}
+      description="Halte fest, was zu tun ist — optional verknüpft mit Objekt, Einheit oder Mieter."
       footerLeft={
         onDelete && isEdit ? (
           <button onClick={onDelete} className="btn btn-md btn-ghost text-red-600 hover:bg-red-50">
@@ -58,12 +58,12 @@ export function TaskForm({ initial, properties, units, tenants, onClose, onSave,
         <>
           <button onClick={onClose} className="btn btn-md btn-secondary">Abbrechen</button>
           <button onClick={() => onSave(form)} disabled={!canSave} className="btn btn-md btn-primary">
-            {isEdit ? 'Speichern' : 'Vorgang anlegen'}
+            {isEdit ? 'Speichern' : 'Aufgabe anlegen'}
           </button>
         </>
       }
     >
-      <FormSection title="Vorgang">
+      <FormSection title="Aufgabe">
         <Field label="Titel" required htmlFor="task-title">
           <input
             id="task-title"
@@ -143,7 +143,7 @@ export function TaskForm({ initial, properties, units, tenants, onClose, onSave,
         </FormRow>
       </FormSection>
 
-      <FormSection title="Verknüpfung" description="Optional — verknüpfe den Vorgang mit einem Objekt oder Mieter.">
+      <FormSection title="Verknüpfung" description="Optional — verknüpfe die Aufgabe mit einem Objekt oder Mieter.">
         <FormRow cols={3}>
           <Field label="Objekt">
             <select

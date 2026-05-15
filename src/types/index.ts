@@ -405,6 +405,9 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   category: TaskCategory;
+  /** Dashboard-Kontext, in dem die Aufgabe sichtbar ist. Fehlt das Feld
+   *  (Altbestand), wird die Aufgabe weiterhin im Vorgänge-Center angezeigt. */
+  mode?: AppMode;
   propertyId?: string;
   unitId?: string;
   tenantId?: string;

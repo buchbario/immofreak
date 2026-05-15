@@ -74,6 +74,13 @@ const fixFlipSections: NavSection[] = [
     ],
   },
   {
+    title: 'nav.section.tasks_communication',
+    icon: ListTodo,
+    items: [
+      { to: '/aufgaben', icon: ListTodo, label: 'nav.item.processes' },
+    ],
+  },
+  {
     title: 'nav.section.system',
     icon: Trash2,
     items: [
@@ -115,7 +122,7 @@ const buyHoldSections: NavSection[] = [
     title: 'nav.section.tasks_communication',
     icon: ListTodo,
     items: [
-      { to: '/bh/vorgaenge', icon: ListTodo, label: 'nav.item.processes' },
+      { to: '/bh/aufgaben', icon: ListTodo, label: 'nav.item.processes' },
       { to: '/bh/schreiben', icon: FileText, label: 'nav.item.letters' },
       { to: '/bh/nebenkosten', icon: Receipt, label: 'nav.item.utility_billing' },
     ],
@@ -138,6 +145,13 @@ const privateSectionsBase: NavSection[] = [
     items: [
       { to: '/privat', icon: LayoutDashboard, label: 'nav.item.dashboard' },
       { to: '/privat/boards', icon: ListTodo, label: 'nav.item.all_boards' },
+    ],
+  },
+  {
+    title: 'nav.section.tasks_communication',
+    icon: ListTodo,
+    items: [
+      { to: '/privat/aufgaben', icon: ListTodo, label: 'nav.item.processes' },
     ],
   },
 ];
@@ -391,7 +405,7 @@ function ModeSwitch() {
         aria-label={t('mode.switch.aria', { label: modeLabel })}
         data-tour="mode-switch"
         className={cn(
-          'group inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer transition-all duration-150',
+          'group inline-flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-1.5 rounded-lg cursor-pointer transition-all duration-150',
           'bg-gradient-to-br', modeGradient,
           'shadow-[0_2px_8px_-2px_rgba(15,23,42,0.16)] hover:shadow-[0_4px_12px_-2px_rgba(15,23,42,0.22)]',
           'ring-1 ring-white/40',
@@ -400,7 +414,9 @@ function ModeSwitch() {
         <span className="size-5 rounded-md flex items-center justify-center bg-white/25 ring-1 ring-white/40 backdrop-blur-sm">
           <ModeIcon size={11} className="text-white drop-shadow-sm" strokeWidth={2.4} />
         </span>
-        <span className="text-[12.5px] font-semibold text-white drop-shadow-sm">{modeLabel}</span>
+        {/* Label wird auf sehr kleinen Screens (<420 px) ausgeblendet — dann
+            bleibt nur die Gradient-Pille mit Mode-Icon + Pfeil sichtbar. */}
+        <span className="hidden min-[420px]:inline text-[12.5px] font-semibold text-white drop-shadow-sm">{modeLabel}</span>
         <ArrowLeftRight size={10} className="text-white/85" strokeWidth={2.4} />
       </button>
 
@@ -527,13 +543,22 @@ function MobileNavDrawer({ open, onClose, sections, onSearchClick }: {
 }) {
   const { t } = useTranslation();
   const { startTour } = useTour();
+  const { mode, setMode } = useAppMode();
   const navigate = useNavigate();
+
+  const switchMode = (m: 'fixflip' | 'buyhold' | 'private') => {
+    if (m !== mode) {
+      setMode(m);
+      navigate(m === 'fixflip' ? '/' : m === 'private' ? '/privat' : '/bh');
+    }
+    onClose();
+  };
 
   if (!open) return null;
   return (
     <>
       <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={onClose} />
-      <aside className="fixed inset-y-0 left-0 w-[280px] bg-card border-r border-card-line z-50 lg:hidden flex flex-col">
+      <aside className="fixed inset-y-0 left-0 w-[300px] bg-card border-r border-card-line z-50 lg:hidden flex flex-col">
         <div className="flex items-center justify-between h-14 px-3 border-b border-card-divider flex-shrink-0">
           <img src="/logo.png" alt="ImmoFreak" className="h-7 object-contain" />
           <button
@@ -543,6 +568,54 @@ function MobileNavDrawer({ open, onClose, sections, onSearchClick }: {
           >
             <X size={18} />
           </button>
+        </div>
+
+        {/* Mode-Switch oben im Drawer — drei deutliche Karten, aktiver Modus
+            mit Gradient hervorgehoben. */}
+        <div className="px-3 pt-3 pb-2 border-b border-card-divider flex-shrink-0">
+          <p className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide px-1 mb-1.5">
+            Modus
+          </p>
+          <div className="grid grid-cols-3 gap-1.5">
+            {(['buyhold', 'fixflip', 'private'] as const).map((m) => {
+              const ItemIcon = m === 'fixflip' ? Zap : m === 'private' ? Sparkles : Home;
+              const gradient =
+                m === 'fixflip' ? 'from-amber-400 via-orange-500 to-orange-600' :
+                m === 'private' ? 'from-violet-400 via-fuchsia-500 to-rose-500' :
+                'from-emerald-400 via-emerald-500 to-teal-600';
+              const labelKey =
+                m === 'fixflip' ? 'mode.fixflip.label' :
+                m === 'private' ? 'mode.private.label' :
+                'mode.buyhold.label';
+              const active = mode === m;
+              return (
+                <button
+                  key={m}
+                  onClick={() => switchMode(m)}
+                  className={cn(
+                    'flex flex-col items-center gap-1 px-1.5 py-2 rounded-lg cursor-pointer transition-all duration-150',
+                    active
+                      ? cn('bg-gradient-to-br', gradient, 'ring-1 ring-white/40 shadow-[0_3px_10px_-2px_rgba(15,23,42,0.18)]')
+                      : 'bg-card-line/30 hover:bg-card-line/50',
+                  )}
+                  aria-pressed={active}
+                >
+                  <span className={cn(
+                    'size-7 rounded-md flex items-center justify-center',
+                    active ? 'bg-white/25 ring-1 ring-white/40' : cn('bg-gradient-to-br', gradient),
+                  )}>
+                    <ItemIcon size={14} className="text-white drop-shadow-sm" strokeWidth={2.4} />
+                  </span>
+                  <span className={cn(
+                    'text-[10.5px] font-semibold leading-tight truncate max-w-full',
+                    active ? 'text-white drop-shadow-sm' : 'text-foreground/80',
+                  )}>
+                    {t(labelKey)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <nav className="flex-1 overflow-y-auto p-3 space-y-3">
@@ -676,8 +749,9 @@ export function Navbar({ onSearchClick }: { onSearchClick?: () => void }) {
           <img src="/logo.png" alt="ImmoFreak" className="h-7 sm:h-8 object-contain" />
         </NavLink>
 
-        {/* Mode-Switch (sichtbar ab sm) */}
-        <div className="hidden sm:flex flex-shrink-0 ml-2">
+        {/* Mode-Switch — auch auf Mobile sichtbar; bei < 420 px wird das Label
+            ausgeblendet damit nur das Gradient-Icon-Pille bleibt. */}
+        <div className="flex-shrink-0 ml-1 sm:ml-2">
           <ModeSwitch />
         </div>
 
