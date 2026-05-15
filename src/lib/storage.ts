@@ -108,13 +108,15 @@ supabase.auth.onAuthStateChange((_event) => {
 
 export class SupabaseAdapter<T extends { id: string }> implements StorageAdapter<T> {
   table: string;
+  private orderBy: string;
   private cache: T[] = [];
   private fetched = false;
   private fetchInFlight: Promise<void> | null = null;
   private listeners = new Set<() => void>();
 
-  constructor(table: string) {
+  constructor(table: string, orderBy = 'created_at') {
     this.table = table;
+    this.orderBy = orderBy;
     ALL_SUPABASE_ADAPTERS.push(this as unknown as SupabaseAdapter<{ id: string }>);
   }
 
@@ -158,7 +160,7 @@ export class SupabaseAdapter<T extends { id: string }> implements StorageAdapter
       const { data, error } = await supabase
         .from(this.table)
         .select('*')
-        .order('created_at', { ascending: true });
+        .order(this.orderBy, { ascending: true });
       if (error) {
         // eslint-disable-next-line no-console
         console.error(`[supabase:${this.table}] fetch fehlgeschlagen:`, error.message);
@@ -268,7 +270,7 @@ const Store = SupabaseAdapter;
 export const projectStore             = new Store<import('../types').Project>('projects');
 export const contractorStore          = new Store<import('../types').Contractor>('contractors');
 export const budgetItemStore          = new Store<import('../types').BudgetItem>('budget_items');
-export const projectContractorStore   = new Store<import('../types').ProjectContractor>('project_contractors');
+export const projectContractorStore   = new Store<import('../types').ProjectContractor>('project_contractors', 'assigned_at');
 export const projectPhotoStore        = new Store<import('../types').ProjectPhoto>('project_photos');
 export const projectDocumentStore     = new Store<import('../types').ProjectDocument>('project_documents');
 
@@ -300,7 +302,7 @@ export const bankTransactionStore     = new Store<import('../types').BankTransac
 export const taskStore                = new Store<import('../types').Task>('tasks');
 
 // Trash
-export const trashStore               = new Store<import('../types').TrashItem>('trash');
+export const trashStore               = new Store<import('../types').TrashItem>('trash', 'deleted_at');
 
 // Private Boards
 export const privateBoardStore        = new Store<import('../types').PrivateBoard>('private_boards');
