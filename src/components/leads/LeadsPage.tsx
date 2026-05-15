@@ -23,18 +23,31 @@ import { useLeads } from '../../hooks/useLeads';
 import { LEAD_STATUSES, type Lead, type LeadStatus } from '../../types';
 import { cn, formatCurrency } from '../../lib/utils';
 
-// Farb-Akzente je Spalte (subtil, leicht erkennbar) ----------------
-const COLUMN_ACCENT: Record<LeadStatus, { dot: string; bg: string }> = {
-  Lead:               { dot: 'bg-slate-400',   bg: 'bg-slate-50/70' },
-  Erstkontakt:        { dot: 'bg-sky-400',     bg: 'bg-sky-50/60' },
-  Kalkulation:        { dot: 'bg-violet-400',  bg: 'bg-violet-50/60' },
-  Besichtigung:       { dot: 'bg-amber-400',   bg: 'bg-amber-50/60' },
-  Angebot:            { dot: 'bg-blue-400',    bg: 'bg-blue-50/60' },
-  Unterlagenprüfung:  { dot: 'bg-fuchsia-400', bg: 'bg-fuchsia-50/60' },
-  'Follow-Up':        { dot: 'bg-orange-400',  bg: 'bg-orange-50/60' },
-  Deal:               { dot: 'bg-emerald-500', bg: 'bg-emerald-50/60' },
-  Archiv:             { dot: 'bg-zinc-400',    bg: 'bg-zinc-50/70' },
+// Farb-System je Spalte: Akzent-Stripe oben auf Karte, Header-Pill,
+// dezenter Spalten-Hintergrund. Bewusst zurückhaltend, damit
+// Inhalt im Vordergrund bleibt — keine Bonbon-Optik.
+const COLUMN_ACCENT: Record<
+  LeadStatus,
+  { dot: string; bg: string; pill: string; stripe: string; ring: string }
+> = {
+  Lead:               { dot: 'bg-slate-400',   bg: 'bg-slate-50',   pill: 'bg-slate-100 text-slate-700',     stripe: 'bg-slate-400',   ring: 'ring-slate-200' },
+  Erstkontakt:        { dot: 'bg-sky-500',     bg: 'bg-sky-50/70',  pill: 'bg-sky-100 text-sky-700',         stripe: 'bg-sky-500',     ring: 'ring-sky-200' },
+  Kalkulation:        { dot: 'bg-violet-500',  bg: 'bg-violet-50/70', pill: 'bg-violet-100 text-violet-700', stripe: 'bg-violet-500',  ring: 'ring-violet-200' },
+  Besichtigung:       { dot: 'bg-amber-500',   bg: 'bg-amber-50/70', pill: 'bg-amber-100 text-amber-700',    stripe: 'bg-amber-500',   ring: 'ring-amber-200' },
+  Angebot:            { dot: 'bg-blue-500',    bg: 'bg-blue-50/70', pill: 'bg-blue-100 text-blue-700',       stripe: 'bg-blue-500',    ring: 'ring-blue-200' },
+  Unterlagenprüfung:  { dot: 'bg-fuchsia-500', bg: 'bg-fuchsia-50/70', pill: 'bg-fuchsia-100 text-fuchsia-700', stripe: 'bg-fuchsia-500', ring: 'ring-fuchsia-200' },
+  'Follow-Up':        { dot: 'bg-orange-500',  bg: 'bg-orange-50/70', pill: 'bg-orange-100 text-orange-700', stripe: 'bg-orange-500',  ring: 'ring-orange-200' },
+  Deal:               { dot: 'bg-emerald-500', bg: 'bg-emerald-50/80', pill: 'bg-emerald-100 text-emerald-700', stripe: 'bg-emerald-500', ring: 'ring-emerald-200' },
+  Archiv:             { dot: 'bg-zinc-400',    bg: 'bg-zinc-50',    pill: 'bg-zinc-100 text-zinc-600',       stripe: 'bg-zinc-400',    ring: 'ring-zinc-200' },
 };
+
+// Initialen aus Name oder Bezeichnung extrahieren (max. 2 Zeichen).
+function getInitials(name?: string): string {
+  if (!name) return '';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 // =============================================================
 // Hauptseite
@@ -163,8 +176,8 @@ export function LeadsPage() {
 
       {/* Kanban Board */}
       <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="overflow-x-auto -mx-2 sm:-mx-4 px-2 sm:px-4 pb-4">
-          <div className="flex gap-3 min-w-max">
+        <div className="overflow-x-auto -mx-2 sm:-mx-4 px-2 sm:px-4 pb-6">
+          <div className="flex gap-4 min-w-max">
             {LEAD_STATUSES.map((status) => (
               <Column
                 key={status}
@@ -182,7 +195,7 @@ export function LeadsPage() {
           </div>
         </div>
 
-        <DragOverlay>
+        <DragOverlay dropAnimation={{ duration: 220, easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)' }}>
           {activeLead ? <LeadCard lead={activeLead} onEdit={() => {}} dragging /> : null}
         </DragOverlay>
       </DndContext>
@@ -236,59 +249,110 @@ function Column({
   // Drop-Zone als sortable container — die Items selbst sind sortable.
   const ids = useMemo(() => leads.map((l) => l.id), [leads]);
 
+  // Wert-Summe der Spalte (alle asking_prices)
+  const totalValue = leads.reduce((s, l) => s + (l.askingPrice ?? 0), 0);
+
   return (
-    <div className={cn('w-[280px] shrink-0 rounded-2xl border border-card-line p-3', accent.bg)}>
-      {/* Spalten-Header */}
-      <div className="flex items-center justify-between mb-3 px-1">
+    <div
+      className={cn(
+        'w-[300px] shrink-0 rounded-2xl border border-black/[0.04] flex flex-col max-h-[calc(100vh-220px)]',
+        accent.bg,
+      )}
+    >
+      {/* Spalten-Header — sticky */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-3 sticky top-0 z-10 backdrop-blur-sm rounded-t-2xl">
         <div className="flex items-center gap-2 min-w-0">
           <span className={cn('size-2 rounded-full shrink-0', accent.dot)} />
-          <span className="text-[13px] font-semibold text-foreground truncate">{status}</span>
-          <span className="text-[11px] font-medium text-muted-foreground bg-card border border-card-line rounded-full px-1.5 py-0.5">
+          <span className="text-[12.5px] font-semibold text-foreground truncate uppercase tracking-wider">
+            {status}
+          </span>
+          <span className={cn('text-[11px] font-bold rounded-full px-2 py-0.5 tabular-nums', accent.pill)}>
             {leads.length}
           </span>
         </div>
-        <button onClick={onAddCard} className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-white/60 transition-colors" aria-label={`Lead in ${status} hinzufügen`}>
+        <button
+          onClick={onAddCard}
+          className="text-muted-foreground hover:text-foreground p-1 rounded-full hover:bg-white/80 transition-colors"
+          aria-label={`Lead in ${status} hinzufügen`}
+        >
           <Plus size={14} />
         </button>
       </div>
 
-      {/* Karten */}
+      {/* Wert-Indikator (wenn Preise vorhanden) */}
+      {totalValue > 0 && (
+        <div className="px-4 pb-2 -mt-1 text-[10.5px] font-medium text-muted-foreground tabular-nums">
+          ∑ {formatCurrency(totalValue)}
+        </div>
+      )}
+
+      {/* Karten — scrollbarer Inner-Container */}
       <SortableContext items={ids} strategy={verticalListSortingStrategy} id={`col:${status}`}>
         <DropZone status={status}>
-          <div className="flex flex-col gap-2 min-h-[20px]">
+          <div className="px-3 pb-3 flex flex-col gap-2.5 overflow-y-auto flex-1">
+            {leads.length === 0 && !creating && (
+              <button
+                onClick={onAddCard}
+                className="w-full flex flex-col items-center gap-1.5 py-6 px-3 rounded-xl border border-dashed border-black/10 text-muted-foreground hover:text-foreground hover:border-black/20 hover:bg-white/40 transition-all"
+              >
+                <Plus size={16} className="opacity-60" />
+                <span className="text-[11.5px]">Erster Lead</span>
+              </button>
+            )}
+
             {leads.map((lead) => (
-              <SortableLeadCard key={lead.id} lead={lead} onEdit={() => onEditCard(lead)} />
+              <SortableLeadCard
+                key={lead.id}
+                lead={lead}
+                accentStripe={accent.stripe}
+                onEdit={() => onEditCard(lead)}
+              />
             ))}
 
             {/* Inline-Add */}
             {creating ? (
-              <div className="rounded-xl bg-card border border-[#4F6BFF]/40 p-2.5 shadow-sm">
+              <div className="rounded-2xl bg-white border border-[#4F6BFF]/40 ring-1 ring-[#4F6BFF]/10 p-3 shadow-md">
                 <textarea
                   autoFocus
                   value={draftName}
                   onChange={(e) => setDraftName(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSubmitCreate(); }
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      onSubmitCreate();
+                    }
                     if (e.key === 'Escape') onCancelCreate();
                   }}
-                  placeholder="z. B. 3Z. 85m², Schwarzwaldstr. 25 Walldorf"
-                  className="w-full text-[13px] resize-none bg-transparent focus:outline-none placeholder:text-muted-foreground/70"
+                  placeholder="z. B. 3Z. 85m², Schwarzwaldstr. 25"
+                  className="w-full text-[13.5px] font-medium resize-none bg-transparent focus:outline-none placeholder:text-muted-foreground/60 leading-snug"
                   rows={2}
                 />
-                <div className="flex items-center gap-2 mt-2">
-                  <button onClick={onSubmitCreate} className="text-[12px] font-semibold rounded-full bg-[#0f1430] hover:bg-[#1a2050] text-white px-3 py-1.5 transition-colors">
-                    Hinzufügen
-                  </button>
-                  <button onClick={onCancelCreate} className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-card transition-colors">
-                    <X size={14} />
-                  </button>
+                <div className="flex items-center justify-between gap-2 mt-2.5 pt-2.5 border-t border-black/5">
+                  <span className="text-[10px] text-muted-foreground/70">↵ Hinzufügen · Esc abbrechen</span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={onCancelCreate}
+                      className="text-muted-foreground hover:text-foreground p-1.5 rounded-full hover:bg-black/5 transition-colors"
+                    >
+                      <X size={13} />
+                    </button>
+                    <button
+                      onClick={onSubmitCreate}
+                      className="text-[12px] font-semibold rounded-full bg-[#0f1430] hover:bg-[#1a2050] text-white px-3.5 py-1.5 transition-colors"
+                    >
+                      Hinzufügen
+                    </button>
+                  </div>
                 </div>
               </div>
-            ) : (
-              <button onClick={onAddCard} className="w-full flex items-center gap-2 text-[12px] text-muted-foreground hover:text-foreground py-1.5 px-2 rounded-lg hover:bg-white/60 transition-colors">
-                <Plus size={13} /> Eine Karte hinzufügen
+            ) : leads.length > 0 ? (
+              <button
+                onClick={onAddCard}
+                className="w-full flex items-center justify-center gap-1.5 text-[11.5px] text-muted-foreground hover:text-foreground py-2 px-2 rounded-xl hover:bg-white/60 transition-colors"
+              >
+                <Plus size={12} /> Karte hinzufügen
               </button>
-            )}
+            ) : null}
           </div>
         </DropZone>
       </SortableContext>
@@ -306,7 +370,15 @@ function DropZone({ status, children }: { status: LeadStatus; children: React.Re
 // Lead-Karte (Sortable + Display)
 // =============================================================
 
-function SortableLeadCard({ lead, onEdit }: { lead: Lead; onEdit: () => void }) {
+function SortableLeadCard({
+  lead,
+  accentStripe,
+  onEdit,
+}: {
+  lead: Lead;
+  accentStripe: string;
+  onEdit: () => void;
+}) {
   const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({ id: lead.id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -315,57 +387,118 @@ function SortableLeadCard({ lead, onEdit }: { lead: Lead; onEdit: () => void }) 
   };
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <LeadCard lead={lead} onEdit={onEdit} />
+      <LeadCard lead={lead} accentStripe={accentStripe} onEdit={onEdit} />
     </div>
   );
 }
 
-function LeadCard({ lead, onEdit, dragging }: { lead: Lead; onEdit: () => void; dragging?: boolean }) {
+function LeadCard({
+  lead,
+  accentStripe,
+  onEdit,
+  dragging,
+}: {
+  lead: Lead;
+  accentStripe?: string;
+  onEdit: () => void;
+  dragging?: boolean;
+}) {
+  const stripe = accentStripe ?? COLUMN_ACCENT[lead.status].stripe;
   const isDeal = lead.status === 'Deal';
+  const initials = getInitials(lead.contactName);
+
+  // Anzeige-Stats nur wenn vorhanden
+  const stats: Array<{ label: string; value: string }> = [];
+  if (typeof lead.rooms === 'number' && lead.rooms > 0) stats.push({ label: 'Zi', value: String(lead.rooms) });
+  if (typeof lead.area === 'number' && lead.area > 0) stats.push({ label: 'm²', value: String(lead.area) });
+
+  const hasPrice = typeof lead.askingPrice === 'number' && lead.askingPrice > 0;
+
   return (
     <div
       onClick={(e) => {
-        // Klick öffnet Edit-Modal — verhindert Konflikt mit Drag (das hat eigene activationConstraint)
         if ((e.target as HTMLElement).closest('a')) return;
         onEdit();
       }}
       className={cn(
-        'group rounded-xl bg-card border border-card-line p-2.5 cursor-pointer hover:border-[#4F6BFF]/40 hover:shadow-sm transition-all',
-        dragging && 'shadow-lg rotate-1 scale-[1.02]',
+        'group relative rounded-2xl bg-white border border-black/[0.05] cursor-pointer overflow-hidden',
+        'shadow-[0_1px_2px_rgba(15,20,48,0.04)] hover:shadow-[0_8px_24px_-8px_rgba(15,20,48,0.12)]',
+        'hover:border-black/[0.10] hover:-translate-y-0.5 transition-all duration-200',
+        dragging && '!shadow-[0_24px_48px_-12px_rgba(15,20,48,0.25)] rotate-[1.5deg] scale-[1.02] cursor-grabbing',
       )}
     >
-      <div className="flex items-start gap-2">
-        {isDeal && (
-          <CheckCircle2 size={14} className="text-emerald-600 shrink-0 mt-0.5" />
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-medium text-foreground leading-snug break-words">
+      {/* Akzent-Stripe links */}
+      <div className={cn('absolute left-0 top-0 bottom-0 w-[3px]', stripe)} />
+
+      <div className="pl-4 pr-3 py-3">
+        {/* Top: Title + Inserat-Link */}
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <p className="text-[13.5px] font-semibold text-foreground leading-snug break-words flex-1">
             {lead.name}
           </p>
-          {(lead.address || lead.askingPrice) && (
-            <div className="mt-1.5 space-y-0.5 text-[11.5px] text-muted-foreground">
-              {lead.address && (
-                <p className="flex items-start gap-1 truncate">
-                  <MapPin size={10} className="shrink-0 mt-0.5" /> {lead.address}
-                </p>
-              )}
-              {typeof lead.askingPrice === 'number' && lead.askingPrice > 0 && (
-                <p className="font-semibold text-foreground tabular-nums">{formatCurrency(lead.askingPrice)}</p>
-              )}
-            </div>
+          {lead.immoscoutUrl && (
+            <a
+              href={lead.immoscoutUrl}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="text-muted-foreground/70 hover:text-[#4F6BFF] shrink-0 -mr-1 -mt-0.5 p-1 rounded-md hover:bg-black/[0.03] transition-all opacity-0 group-hover:opacity-100"
+              aria-label="Inserat öffnen"
+            >
+              <ExternalLink size={12} />
+            </a>
           )}
         </div>
-        {lead.immoscoutUrl && (
-          <a
-            href={lead.immoscoutUrl}
-            target="_blank"
-            rel="noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="text-muted-foreground hover:text-[#4F6BFF] opacity-0 group-hover:opacity-100 transition-opacity"
-            aria-label="Inserat öffnen"
-          >
-            <ExternalLink size={12} />
-          </a>
+
+        {/* Adresse */}
+        {lead.address && (
+          <div className="flex items-start gap-1.5 mb-2.5 text-[11.5px] text-muted-foreground">
+            <MapPin size={11} className="shrink-0 mt-0.5 opacity-70" />
+            <span className="line-clamp-2 leading-snug">{lead.address}</span>
+          </div>
+        )}
+
+        {/* Stats-Reihe (Zimmer / Fläche als Pills) */}
+        {stats.length > 0 && (
+          <div className="flex items-center gap-1.5 mb-2.5">
+            {stats.map((s) => (
+              <span
+                key={s.label}
+                className="inline-flex items-baseline gap-0.5 text-[10.5px] font-medium text-foreground bg-black/[0.04] rounded-md px-1.5 py-0.5 tabular-nums"
+              >
+                <span className="font-bold">{s.value}</span>
+                <span className="text-muted-foreground/80">{s.label}</span>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Bottom: Preis + Kontakt */}
+        {(hasPrice || initials || isDeal) && (
+          <div className="flex items-center justify-between gap-2 pt-2 border-t border-black/[0.05]">
+            {hasPrice ? (
+              <span className="text-[12.5px] font-bold text-foreground tabular-nums">
+                {formatCurrency(lead.askingPrice!)}
+              </span>
+            ) : (
+              <span />
+            )}
+            <div className="flex items-center gap-1.5">
+              {isDeal && (
+                <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/80 rounded-full px-1.5 py-0.5">
+                  <CheckCircle2 size={9} strokeWidth={2.5} /> Deal
+                </span>
+              )}
+              {initials && (
+                <span
+                  title={lead.contactName}
+                  className="inline-flex items-center justify-center size-6 rounded-full bg-gradient-to-br from-[#4F6BFF] to-[#6B7FFF] text-white text-[10px] font-bold shadow-sm"
+                >
+                  {initials}
+                </span>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>
