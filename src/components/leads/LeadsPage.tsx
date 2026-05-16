@@ -19,32 +19,34 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
-  Plus, MoreHorizontal, X, Trash2, ExternalLink, CheckCircle2, MapPin,
-  Phone, Mail, User as UserIcon, Search, Maximize2,
+  Plus, MoreHorizontal, X, Trash2, ExternalLink, MapPin,
+  Phone, Mail, User as UserIcon, Search, Home, Ruler, BadgeEuro,
 } from 'lucide-react';
 import { useLeads } from '../../hooks/useLeads';
 import { LEAD_STATUSES, type Lead, type LeadStatus } from '../../types';
 import { cn, formatCurrency } from '../../lib/utils';
 
-// Farb-System je Spalte: Akzent-Stripe oben auf Karte, Header-Pill,
-// dezenter Spalten-Hintergrund. Bewusst zurückhaltend, damit
-// Inhalt im Vordergrund bleibt — keine Bonbon-Optik.
+// =====================================================================
+// Stratify-Style Farben — pastell, sehr dezent, hoher Whitespace
+// =====================================================================
+// Spalten-Hintergrund ist nahezu weiß; das visuelle "Status"-Signal
+// kommt aus dem Header-Dot, der Counter-Pill und einer dünnen
+// Bottom-Stripe auf der Karte. Keine intensiven Hintergründe.
 const COLUMN_ACCENT: Record<
   LeadStatus,
-  { dot: string; bg: string; pill: string; stripe: string; ring: string }
+  { dot: string; pill: string; stripe: string; tag: string }
 > = {
-  Lead:               { dot: 'bg-slate-400',   bg: 'bg-slate-50',   pill: 'bg-slate-100 text-slate-700',     stripe: 'bg-slate-400',   ring: 'ring-slate-200' },
-  Erstkontakt:        { dot: 'bg-sky-500',     bg: 'bg-sky-50/70',  pill: 'bg-sky-100 text-sky-700',         stripe: 'bg-sky-500',     ring: 'ring-sky-200' },
-  Kalkulation:        { dot: 'bg-violet-500',  bg: 'bg-violet-50/70', pill: 'bg-violet-100 text-violet-700', stripe: 'bg-violet-500',  ring: 'ring-violet-200' },
-  Besichtigung:       { dot: 'bg-amber-500',   bg: 'bg-amber-50/70', pill: 'bg-amber-100 text-amber-700',    stripe: 'bg-amber-500',   ring: 'ring-amber-200' },
-  Angebot:            { dot: 'bg-blue-500',    bg: 'bg-blue-50/70', pill: 'bg-blue-100 text-blue-700',       stripe: 'bg-blue-500',    ring: 'ring-blue-200' },
-  Unterlagenprüfung:  { dot: 'bg-fuchsia-500', bg: 'bg-fuchsia-50/70', pill: 'bg-fuchsia-100 text-fuchsia-700', stripe: 'bg-fuchsia-500', ring: 'ring-fuchsia-200' },
-  'Follow-Up':        { dot: 'bg-orange-500',  bg: 'bg-orange-50/70', pill: 'bg-orange-100 text-orange-700', stripe: 'bg-orange-500',  ring: 'ring-orange-200' },
-  Deal:               { dot: 'bg-emerald-500', bg: 'bg-emerald-50/80', pill: 'bg-emerald-100 text-emerald-700', stripe: 'bg-emerald-500', ring: 'ring-emerald-200' },
-  Archiv:             { dot: 'bg-zinc-400',    bg: 'bg-zinc-50',    pill: 'bg-zinc-100 text-zinc-600',       stripe: 'bg-zinc-400',    ring: 'ring-zinc-200' },
+  Lead:               { dot: 'bg-slate-400',   pill: 'bg-slate-100 text-slate-700',     stripe: 'bg-slate-300',   tag: 'bg-slate-100 text-slate-700' },
+  Erstkontakt:        { dot: 'bg-sky-500',     pill: 'bg-[#DCEBF5] text-[#1A3D52]',    stripe: 'bg-sky-300',     tag: 'bg-[#DCEBF5] text-[#1A3D52]' },
+  Kalkulation:        { dot: 'bg-violet-500',  pill: 'bg-[#E8DAFF] text-[#3D1F5A]',    stripe: 'bg-violet-300',  tag: 'bg-[#E8DAFF] text-[#3D1F5A]' },
+  Besichtigung:       { dot: 'bg-amber-500',   pill: 'bg-[#FFF1CC] text-[#5A4A1A]',    stripe: 'bg-amber-300',   tag: 'bg-[#FFF1CC] text-[#5A4A1A]' },
+  Angebot:            { dot: 'bg-blue-500',    pill: 'bg-[#DCE5F5] text-[#1A2D54]',    stripe: 'bg-blue-300',    tag: 'bg-[#DCE5F5] text-[#1A2D54]' },
+  Unterlagenprüfung:  { dot: 'bg-fuchsia-500', pill: 'bg-[#F5DCEC] text-[#5A1F45]',    stripe: 'bg-fuchsia-300', tag: 'bg-[#F5DCEC] text-[#5A1F45]' },
+  'Follow-Up':        { dot: 'bg-orange-500',  pill: 'bg-[#FFE0CC] text-[#5A2D1F]',    stripe: 'bg-orange-300',  tag: 'bg-[#FFE0CC] text-[#5A2D1F]' },
+  Deal:               { dot: 'bg-emerald-500', pill: 'bg-[#D6F0DC] text-[#1A4D2C]',    stripe: 'bg-emerald-300', tag: 'bg-[#D6F0DC] text-[#1A4D2C]' },
+  Archiv:             { dot: 'bg-zinc-400',    pill: 'bg-zinc-100 text-zinc-600',       stripe: 'bg-zinc-300',    tag: 'bg-zinc-100 text-zinc-600' },
 };
 
-// Initialen aus Name oder Bezeichnung extrahieren (max. 2 Zeichen).
 function getInitials(name?: string): string {
   if (!name) return '';
   const parts = name.trim().split(/\s+/);
@@ -52,9 +54,23 @@ function getInitials(name?: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-// =============================================================
+// =====================================================================
+// Custom Collision-Detection für Kanban
+// =====================================================================
+const collisionDetection: CollisionDetection = (args) => {
+  const pointerHits = pointerWithin(args);
+  if (pointerHits.length > 0) {
+    const cardHit = pointerHits.find(
+      (h) => !(LEAD_STATUSES as readonly string[]).includes(String(h.id)),
+    );
+    return cardHit ? [cardHit] : pointerHits;
+  }
+  return rectIntersection(args);
+};
+
+// =====================================================================
 // Hauptseite
-// =============================================================
+// =====================================================================
 
 export function LeadsPage() {
   const { leadsByStatus, createLead, updateLead, deleteLead } = useLeads();
@@ -64,28 +80,7 @@ export function LeadsPage() {
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
   const [search, setSearch] = useState('');
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
-
-  // Custom collision für Kanban-Board:
-  // 1. pointerWithin findet zuverlässig die DropZone unter dem Cursor —
-  //    auch über LEEREN Spalten (closestCorners tut das nicht, weil es
-  //    immer die nächste Karte einer anderen Spalte als "näher" sieht).
-  // 2. Karten haben Priorität vor Spalten-DropZones, wenn beides
-  //    getroffen wird (intra-Spalten-Sortierung).
-  // 3. Fallback rectIntersection für Edge-Cases am Spaltenrand.
-  const collisionDetection: CollisionDetection = (args) => {
-    const pointerHits = pointerWithin(args);
-    if (pointerHits.length > 0) {
-      const cardHit = pointerHits.find((h) => !String(h.id).startsWith('col:'));
-      return cardHit ? [cardHit] : pointerHits;
-    }
-    const rectHits = rectIntersection(args);
-    if (rectHits.length > 0) {
-      const cardHit = rectHits.find((h) => !String(h.id).startsWith('col:'));
-      return cardHit ? [cardHit] : rectHits;
-    }
-    return [];
-  };
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   const filteredByStatus = useMemo(() => {
     if (!search.trim()) return leadsByStatus;
@@ -107,14 +102,12 @@ export function LeadsPage() {
   );
   const dealCount = leadsByStatus.Deal.length;
 
-  // ─── DnD Handler ───────────────────────────────────────────
   const handleDragStart = (e: DragStartEvent) => {
     const id = String(e.active.id);
-    const all = Object.values(leadsByStatus).flat();
+    const all = LEAD_STATUSES.flatMap((s) => leadsByStatus[s]);
     setActiveLead(all.find((l) => l.id === id) ?? null);
   };
 
-  // Exakt der Pattern aus KanbanBoard.tsx (Projekte-Pipeline) — bewährt.
   const handleDragEnd = (e: DragEndEvent) => {
     setActiveLead(null);
     const { active, over } = e;
@@ -122,8 +115,6 @@ export function LeadsPage() {
     const activeId = String(active.id);
     const overId = String(over.id);
 
-    // over.id ist entweder ein Status-Name (Drop auf Spalte) oder eine
-    // Lead-ID (Drop auf andere Karte → in deren Spalte).
     let targetStatus: LeadStatus | undefined;
     if ((LEAD_STATUSES as readonly string[]).includes(overId)) {
       targetStatus = overId as LeadStatus;
@@ -135,8 +126,6 @@ export function LeadsPage() {
     const activeLeadObj = LEAD_STATUSES.flatMap((s) => leadsByStatus[s]).find((l) => l.id === activeId);
     if (!activeLeadObj || activeLeadObj.status === targetStatus) return;
 
-    // Nur Status updaten — order wird beim Filter neu sortiert.
-    // Neuer order = Ende der Ziel-Spalte.
     const newOrder = leadsByStatus[targetStatus].length;
     updateLead(activeId, { status: targetStatus, order: newOrder });
   };
@@ -158,17 +147,19 @@ export function LeadsPage() {
 
   return (
     <div className="page-container">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3 flex-wrap mb-5 px-1">
+      {/* ============== Header — Stratify-Stil: big title + sub mit dots ============== */}
+      <div className="flex items-end justify-between gap-4 flex-wrap mb-6 px-1">
         <div className="min-w-0">
-          <h1 className="text-[26px] sm:text-[30px] font-bold text-foreground tracking-tight leading-[1.1] mb-1">
+          <h1 className="text-[28px] sm:text-[34px] font-bold text-[#0f1430] tracking-tight leading-[1.1] mb-1.5">
             Leads
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Akquise-Pipeline · {totalLeads} {totalLeads === 1 ? 'Lead' : 'Leads'}
+          <p className="text-[13.5px] text-[#1e1b4b]/55">
+            Akquise-Pipeline
+            <span className="mx-2 inline-block size-1 rounded-full bg-[#1e1b4b]/25 align-middle" />
+            {totalLeads} {totalLeads === 1 ? 'Lead' : 'Leads'}
             {dealCount > 0 && (
               <>
-                {' · '}
+                <span className="mx-2 inline-block size-1 rounded-full bg-[#1e1b4b]/25 align-middle" />
                 <span className="text-emerald-700 font-semibold">{dealCount} im Deal</span>
               </>
             )}
@@ -176,26 +167,26 @@ export function LeadsPage() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Search — Stratify Pill mit dezenter Border, kein Schatten */}
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#1e1b4b]/40" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Leads durchsuchen…"
-              className="pl-9 pr-3 py-2 text-sm rounded-full bg-card border border-card-line focus:outline-none focus:ring-2 focus:ring-[#4F6BFF]/15 focus:border-[#4F6BFF] w-[220px]"
+              className="pl-10 pr-4 py-2.5 text-[13.5px] rounded-full bg-white border border-[#1e1b4b]/[0.08] focus:outline-none focus:ring-2 focus:ring-[#4F6BFF]/15 focus:border-[#4F6BFF]/40 w-[240px] placeholder:text-[#1e1b4b]/40"
             />
           </div>
           <button
             onClick={() => startCreate('Lead')}
-            className="btn btn-md btn-primary"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-[#0f1430] hover:bg-[#1a2050] text-white text-[13px] font-semibold transition-colors"
           >
-            <Plus size={15} /> Neuer Lead
+            <Plus size={14} strokeWidth={2.2} /> Neuer Lead
           </button>
         </div>
       </div>
 
-      {/* Kanban Board — Pattern aus KanbanBoard.tsx (Projekte) übernommen:
-          pro Spalte ein SortableContext, useDroppable direkt mit Status-ID. */}
+      {/* ============== Kanban Board ============== */}
       <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="overflow-x-auto -mx-2 sm:-mx-4 px-2 sm:px-4 pb-6">
           <div className="flex gap-4 min-w-max">
@@ -221,7 +212,6 @@ export function LeadsPage() {
         </DragOverlay>
       </DndContext>
 
-      {/* Edit-Modal */}
       {editing && (
         <LeadEditModal
           lead={editing}
@@ -240,9 +230,9 @@ export function LeadsPage() {
   );
 }
 
-// =============================================================
-// Spalte
-// =============================================================
+// =====================================================================
+// Spalte — Stratify clean weiß + dezenter Border, kein bg-tint
+// =====================================================================
 
 function Column({
   status,
@@ -266,57 +256,45 @@ function Column({
   onCancelCreate: () => void;
 }) {
   const accent = COLUMN_ACCENT[status];
-
-  // Wert-Summe der Spalte (alle asking_prices)
   const totalValue = leads.reduce((s, l) => s + (l.askingPrice ?? 0), 0);
 
   return (
-    <div
-      className={cn(
-        'w-[300px] shrink-0 rounded-2xl border border-black/[0.04] flex flex-col max-h-[calc(100vh-220px)]',
-        accent.bg,
-      )}
-    >
-      {/* Spalten-Header — sticky */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-3 sticky top-0 z-10 backdrop-blur-sm rounded-t-2xl">
+    <div className="w-[300px] shrink-0 flex flex-col max-h-[calc(100vh-200px)] rounded-3xl bg-white/60 border border-[#1e1b4b]/[0.06]">
+      {/* Header — Stratify-Style: Name + kleine Counter-Pill */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-3">
         <div className="flex items-center gap-2 min-w-0">
           <span className={cn('size-2 rounded-full shrink-0', accent.dot)} />
-          <span className="text-[12.5px] font-semibold text-foreground truncate uppercase tracking-wider">
-            {status}
-          </span>
-          <span className={cn('text-[11px] font-bold rounded-full px-2 py-0.5 tabular-nums', accent.pill)}>
+          <span className="text-[13.5px] font-semibold text-[#0f1430] truncate">{status}</span>
+          <span className={cn('text-[10.5px] font-bold rounded-full px-1.5 min-w-[20px] text-center py-0.5 tabular-nums', accent.pill)}>
             {leads.length}
           </span>
         </div>
         <button
           onClick={onAddCard}
-          className="text-muted-foreground hover:text-foreground p-1 rounded-full hover:bg-white/80 transition-colors"
+          className="text-[#1e1b4b]/45 hover:text-[#0f1430] p-1 rounded-full hover:bg-[#1e1b4b]/[0.04] transition-colors"
           aria-label={`Lead in ${status} hinzufügen`}
         >
           <Plus size={14} />
         </button>
       </div>
 
-      {/* Wert-Indikator (wenn Preise vorhanden) */}
+      {/* Wert-Summe (nur wenn Preise vorhanden) */}
       {totalValue > 0 && (
-        <div className="px-4 pb-2 -mt-1 text-[10.5px] font-medium text-muted-foreground tabular-nums">
-          ∑ {formatCurrency(totalValue)}
+        <div className="px-4 pb-2 -mt-1 text-[10.5px] text-[#1e1b4b]/45 tabular-nums">
+          Pipeline-Wert: <span className="font-semibold text-[#0f1430]/70">{formatCurrency(totalValue)}</span>
         </div>
       )}
 
-      {/* Karten — scrollbarer Inner-Container.
-          Pro Spalte ein SortableContext (Pattern aus KanbanBoard).
-          DropZone ist useDroppable mit Status als ID. */}
       <SortableContext items={leads.map((l) => l.id)} strategy={verticalListSortingStrategy}>
         <DropZone status={status} isEmpty={leads.length === 0}>
           <div className="px-3 pb-3 flex flex-col gap-2.5 overflow-y-auto flex-1">
             {leads.length === 0 && !creating && (
               <button
                 onClick={onAddCard}
-                className="w-full flex flex-col items-center gap-1.5 py-6 px-3 rounded-xl border border-dashed border-black/10 text-muted-foreground hover:text-foreground hover:border-black/20 hover:bg-white/40 transition-all"
+                className="w-full flex flex-col items-center gap-1.5 py-8 px-3 rounded-2xl border border-dashed border-[#1e1b4b]/15 text-[#1e1b4b]/45 hover:text-[#0f1430] hover:border-[#1e1b4b]/30 hover:bg-white transition-all"
               >
-                <Plus size={16} className="opacity-60" />
-                <span className="text-[11.5px]">Erster Lead</span>
+                <Plus size={15} className="opacity-70" />
+                <span className="text-[11.5px] font-medium">Erster Lead</span>
               </button>
             )}
 
@@ -324,14 +302,12 @@ function Column({
               <SortableLeadCard
                 key={lead.id}
                 lead={lead}
-                accentStripe={accent.stripe}
                 onEdit={() => onEditCard(lead)}
               />
             ))}
 
-            {/* Inline-Add */}
             {creating ? (
-              <div className="rounded-2xl bg-white border border-[#4F6BFF]/40 ring-1 ring-[#4F6BFF]/10 p-3 shadow-md">
+              <div className="rounded-2xl bg-white border border-[#4F6BFF]/30 ring-1 ring-[#4F6BFF]/10 p-3.5">
                 <textarea
                   autoFocus
                   value={draftName}
@@ -344,21 +320,21 @@ function Column({
                     if (e.key === 'Escape') onCancelCreate();
                   }}
                   placeholder="z. B. 3Z. 85m², Schwarzwaldstr. 25"
-                  className="w-full text-[13.5px] font-medium resize-none bg-transparent focus:outline-none placeholder:text-muted-foreground/60 leading-snug"
+                  className="w-full text-[13.5px] font-medium resize-none bg-transparent focus:outline-none placeholder:text-[#1e1b4b]/40 leading-snug"
                   rows={2}
                 />
-                <div className="flex items-center justify-between gap-2 mt-2.5 pt-2.5 border-t border-black/5">
-                  <span className="text-[10px] text-muted-foreground/70">↵ Hinzufügen · Esc abbrechen</span>
+                <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-[#1e1b4b]/[0.06]">
+                  <span className="text-[10px] text-[#1e1b4b]/45">↵ speichern · Esc abbrechen</span>
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={onCancelCreate}
-                      className="text-muted-foreground hover:text-foreground p-1.5 rounded-full hover:bg-black/5 transition-colors"
+                      className="text-[#1e1b4b]/45 hover:text-[#0f1430] p-1.5 rounded-full hover:bg-[#1e1b4b]/[0.04] transition-colors"
                     >
                       <X size={13} />
                     </button>
                     <button
                       onClick={onSubmitCreate}
-                      className="text-[12px] font-semibold rounded-full bg-[#0f1430] hover:bg-[#1a2050] text-white px-3.5 py-1.5 transition-colors"
+                      className="text-[11.5px] font-semibold rounded-full bg-[#0f1430] hover:bg-[#1a2050] text-white px-3.5 py-1.5 transition-colors"
                     >
                       Hinzufügen
                     </button>
@@ -368,7 +344,7 @@ function Column({
             ) : leads.length > 0 ? (
               <button
                 onClick={onAddCard}
-                className="w-full flex items-center justify-center gap-1.5 text-[11.5px] text-muted-foreground hover:text-foreground py-2 px-2 rounded-xl hover:bg-white/60 transition-colors"
+                className="w-full flex items-center justify-center gap-1.5 text-[11.5px] text-[#1e1b4b]/45 hover:text-[#0f1430] py-2 px-2 rounded-2xl hover:bg-white transition-colors"
               >
                 <Plus size={12} /> Karte hinzufügen
               </button>
@@ -380,22 +356,15 @@ function Column({
   );
 }
 
-// Drop-Zone für leere Spalten + Anker für Drop "ans Ende".
-// useDroppable (statt useSortable) — DropZone ist KEIN drag-item, sondern
-// nur ein Drop-Target. useSortable mit gleicher ID wie der umschließende
-// SortableContext kollidiert in dnd-kit und blockt das ganze DnD.
 function DropZone({ status, children, isEmpty }: { status: LeadStatus; children: React.ReactNode; isEmpty: boolean }) {
-  // useDroppable direkt mit Status-Name als ID — KanbanBoard-Pattern.
-  // In handleDragEnd prüfen wir über LEAD_STATUSES.includes(over.id), ob's
-  // ein Drop auf eine Spalte ist.
   const { setNodeRef, isOver } = useDroppable({ id: status });
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        'flex-1 rounded-xl transition-colors',
+        'flex-1 rounded-2xl transition-colors',
         isEmpty && 'min-h-[160px]',
-        isOver && 'ring-2 ring-[#4F6BFF]/30 bg-white/50',
+        isOver && 'ring-2 ring-[#4F6BFF]/30 bg-[#4F6BFF]/[0.04]',
       )}
     >
       {children}
@@ -403,151 +372,138 @@ function DropZone({ status, children, isEmpty }: { status: LeadStatus; children:
   );
 }
 
-// =============================================================
-// Lead-Karte (Sortable + Display)
-// =============================================================
+// =====================================================================
+// Lead-Karte — Stratify-Stil: weiß, große Border-Radius, dezenter Border,
+// Meta-Zeilen mit Icons, Avatar-Stack + Status-Pill rechts unten
+// =====================================================================
 
-function SortableLeadCard({
-  lead,
-  accentStripe,
-  onEdit,
-}: {
-  lead: Lead;
-  accentStripe: string;
-  onEdit: () => void;
-}) {
+function SortableLeadCard({ lead, onEdit }: { lead: Lead; onEdit: () => void }) {
   const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
     id: lead.id,
-    data: { status: lead.status }, // hilft beim Cross-Column-Drag
+    data: { status: lead.status },
   });
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0 : 1,
+    opacity: isDragging ? 0.3 : 1,
   };
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <LeadCard lead={lead} accentStripe={accentStripe} onEdit={onEdit} />
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
+      <LeadCard lead={lead} onEdit={onEdit} />
     </div>
   );
 }
 
-function LeadCard({
-  lead,
-  accentStripe,
-  onEdit,
-  dragging,
-}: {
-  lead: Lead;
-  accentStripe?: string;
-  onEdit: () => void;
-  dragging?: boolean;
-}) {
-  const stripe = accentStripe ?? COLUMN_ACCENT[lead.status].stripe;
-  const isDeal = lead.status === 'Deal';
+function LeadCard({ lead, onEdit, dragging }: { lead: Lead; onEdit: () => void; dragging?: boolean }) {
+  const accent = COLUMN_ACCENT[lead.status];
   const initials = getInitials(lead.contactName);
 
-  // Anzeige-Stats nur wenn vorhanden
-  const stats: Array<{ label: string; value: string }> = [];
-  if (typeof lead.rooms === 'number' && lead.rooms > 0) stats.push({ label: 'Zi', value: String(lead.rooms) });
-  if (typeof lead.area === 'number' && lead.area > 0) stats.push({ label: 'm²', value: String(lead.area) });
-
+  // Meta-Zeilen-Konstruktion
+  const hasArea = typeof lead.area === 'number' && lead.area > 0;
+  const hasRooms = typeof lead.rooms === 'number' && lead.rooms > 0;
   const hasPrice = typeof lead.askingPrice === 'number' && lead.askingPrice > 0;
 
   return (
     <div
       onClick={(e) => {
-        if ((e.target as HTMLElement).closest('a')) return;
+        if ((e.target as HTMLElement).closest('a, button[data-stop]')) return;
         onEdit();
       }}
       className={cn(
-        'group relative rounded-2xl bg-white border border-black/[0.05] cursor-pointer overflow-hidden',
-        'shadow-[0_1px_2px_rgba(15,20,48,0.04)] hover:shadow-[0_8px_24px_-8px_rgba(15,20,48,0.12)]',
-        'hover:border-black/[0.10] hover:-translate-y-0.5 transition-all duration-200',
-        dragging && '!shadow-[0_24px_48px_-12px_rgba(15,20,48,0.25)] rotate-[1.5deg] scale-[1.02] cursor-grabbing',
+        'group relative rounded-[20px] bg-white border border-[#1e1b4b]/[0.07] overflow-hidden',
+        'hover:border-[#1e1b4b]/[0.15] transition-all duration-200',
+        dragging && 'shadow-[0_20px_40px_-12px_rgba(15,20,48,0.25)] rotate-[1deg]',
       )}
     >
-      {/* Akzent-Stripe links */}
-      <div className={cn('absolute left-0 top-0 bottom-0 w-[3px]', stripe)} />
-
-      <div className="pl-4 pr-3 py-3">
-        {/* Top: Title + Inserat-Link */}
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <p className="text-[13.5px] font-semibold text-foreground leading-snug break-words flex-1">
+      <div className="px-4 pt-3.5 pb-3.5">
+        {/* Title + 3-Dots */}
+        <div className="flex items-start justify-between gap-2 mb-2.5">
+          <p className="text-[13.5px] font-semibold text-[#0f1430] leading-snug break-words flex-1">
             {lead.name}
           </p>
-          {lead.immoscoutUrl && (
-            <a
-              href={lead.immoscoutUrl}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="text-muted-foreground/70 hover:text-[#4F6BFF] shrink-0 -mr-1 -mt-0.5 p-1 rounded-md hover:bg-black/[0.03] transition-all opacity-0 group-hover:opacity-100"
-              aria-label="Inserat öffnen"
-            >
-              <ExternalLink size={12} />
-            </a>
-          )}
+          <button
+            data-stop
+            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+            className="text-[#1e1b4b]/40 hover:text-[#0f1430] -mr-1 -mt-0.5 p-1 rounded-md hover:bg-[#1e1b4b]/[0.04] transition-all opacity-0 group-hover:opacity-100"
+            aria-label="Optionen"
+          >
+            <MoreHorizontal size={14} />
+          </button>
         </div>
 
-        {/* Adresse */}
-        {lead.address && (
-          <div className="flex items-start gap-1.5 mb-2.5 text-[11.5px] text-muted-foreground">
-            <MapPin size={11} className="shrink-0 mt-0.5 opacity-70" />
-            <span className="line-clamp-2 leading-snug">{lead.address}</span>
-          </div>
-        )}
-
-        {/* Stats-Reihe (Zimmer / Fläche als Pills) */}
-        {stats.length > 0 && (
-          <div className="flex items-center gap-1.5 mb-2.5">
-            {stats.map((s) => (
-              <span
-                key={s.label}
-                className="inline-flex items-baseline gap-0.5 text-[10.5px] font-medium text-foreground bg-black/[0.04] rounded-md px-1.5 py-0.5 tabular-nums"
-              >
-                <span className="font-bold">{s.value}</span>
-                <span className="text-muted-foreground/80">{s.label}</span>
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Bottom: Preis + Kontakt */}
-        {(hasPrice || initials || isDeal) && (
-          <div className="flex items-center justify-between gap-2 pt-2 border-t border-black/[0.05]">
-            {hasPrice ? (
-              <span className="text-[12.5px] font-bold text-foreground tabular-nums">
-                {formatCurrency(lead.askingPrice!)}
-              </span>
-            ) : (
-              <span />
-            )}
-            <div className="flex items-center gap-1.5">
-              {isDeal && (
-                <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/80 rounded-full px-1.5 py-0.5">
-                  <CheckCircle2 size={9} strokeWidth={2.5} /> Deal
+        {/* Meta-Zeilen (Stratify-Style: Icon + Text in Reihen) */}
+        <div className="space-y-1.5 mb-3">
+          {lead.address && (
+            <div className="flex items-start gap-1.5 text-[12px] text-[#1e1b4b]/65">
+              <MapPin size={12} className="shrink-0 mt-0.5 text-[#1e1b4b]/40" strokeWidth={1.8} />
+              <span className="line-clamp-1 leading-snug">{lead.address}</span>
+            </div>
+          )}
+          {(hasRooms || hasArea) && (
+            <div className="flex items-center gap-3 text-[12px] text-[#1e1b4b]/65">
+              {hasRooms && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Home size={12} className="text-[#1e1b4b]/40" strokeWidth={1.8} />
+                  <span className="tabular-nums">{lead.rooms} Zimmer</span>
                 </span>
               )}
-              {initials && (
-                <span
-                  title={lead.contactName}
-                  className="inline-flex items-center justify-center size-6 rounded-full bg-gradient-to-br from-[#4F6BFF] to-[#6B7FFF] text-white text-[10px] font-bold shadow-sm"
-                >
-                  {initials}
+              {hasArea && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Ruler size={12} className="text-[#1e1b4b]/40" strokeWidth={1.8} />
+                  <span className="tabular-nums">{lead.area} m²</span>
                 </span>
               )}
             </div>
+          )}
+          {hasPrice && (
+            <div className="flex items-center gap-1.5 text-[12px] text-[#1e1b4b]/65">
+              <BadgeEuro size={12} className="text-[#1e1b4b]/40" strokeWidth={1.8} />
+              <span className="font-semibold text-[#0f1430] tabular-nums">
+                {formatCurrency(lead.askingPrice!)}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Bottom: Avatar / Tool-Link links + Status-Pill rechts (Stratify-Pattern) */}
+        <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-[#1e1b4b]/[0.06]">
+          <div className="flex items-center gap-1.5 min-w-0">
+            {initials && (
+              <span
+                title={lead.contactName}
+                className="inline-flex items-center justify-center size-6 rounded-full bg-gradient-to-br from-[#4F6BFF] to-[#3d57e0] text-white text-[10px] font-bold border-2 border-white shadow-[0_0_0_1px_rgba(15,20,48,0.06)]"
+              >
+                {initials}
+              </span>
+            )}
+            {lead.contactName && (
+              <span className="text-[11px] text-[#1e1b4b]/65 truncate">{lead.contactName}</span>
+            )}
+            {!initials && lead.immoscoutUrl && (
+              <a
+                href={lead.immoscoutUrl}
+                target="_blank"
+                rel="noreferrer"
+                data-stop
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 text-[11px] text-[#4F6BFF] hover:underline"
+              >
+                <ExternalLink size={11} /> Inserat
+              </a>
+            )}
           </div>
-        )}
+          <span className={cn('inline-flex items-center text-[10.5px] font-semibold rounded-full px-2 py-0.5', accent.tag)}>
+            {lead.status}
+          </span>
+        </div>
       </div>
     </div>
   );
 }
 
-// =============================================================
+// =====================================================================
 // Edit-Modal
-// =============================================================
+// =====================================================================
 
 function LeadEditModal({
   lead,
@@ -566,86 +522,84 @@ function LeadEditModal({
   const upd = <K extends keyof Lead>(k: K, v: Lead[K]) => setDraft((d) => ({ ...d, [k]: v }));
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
-      <div className="bg-card border border-card-line rounded-2xl shadow-xl max-w-[560px] w-full my-8" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-[#0f1430]/40 flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
+      <div className="bg-white border border-[#1e1b4b]/[0.06] rounded-3xl max-w-[560px] w-full my-8 overflow-hidden" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-card-line">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#1e1b4b]/[0.06]">
           <div className="flex items-center gap-2 min-w-0">
             <span className={cn('size-2 rounded-full shrink-0', COLUMN_ACCENT[draft.status].dot)} />
-            <span className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">{draft.status}</span>
+            <span className="text-[12px] font-semibold text-[#1e1b4b]/55 uppercase tracking-wider">{draft.status}</span>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-card-line/40">
+          <button onClick={onClose} className="text-[#1e1b4b]/45 hover:text-[#0f1430] p-1.5 rounded-full hover:bg-[#1e1b4b]/[0.04]">
             <X size={16} />
           </button>
         </div>
 
         {/* Body */}
-        <div className="px-5 py-4 space-y-4">
+        <div className="px-6 py-5 space-y-4">
           <div>
-            <label className="block text-[11.5px] font-semibold text-foreground mb-1">Bezeichnung</label>
+            <label className="block text-[11.5px] font-semibold text-[#0f1430] mb-1.5">Bezeichnung</label>
             <input
               value={draft.name}
               onChange={(e) => upd('name', e.target.value)}
-              className="input text-[14px] font-medium"
+              className="w-full px-3.5 py-2.5 rounded-full bg-white border border-[#1e1b4b]/[0.10] text-[14px] font-medium focus:outline-none focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15"
               placeholder="3Z. 85m², Schwarzwaldstr. 25 Walldorf"
               autoFocus
             />
           </div>
 
           <div>
-            <label className="block text-[11.5px] font-semibold text-foreground mb-1">Status (Spalte)</label>
+            <label className="block text-[11.5px] font-semibold text-[#0f1430] mb-1.5">Status</label>
             <select
               value={draft.status}
               onChange={(e) => upd('status', e.target.value as LeadStatus)}
-              className="input"
+              className="w-full px-3.5 py-2.5 rounded-full bg-white border border-[#1e1b4b]/[0.10] text-[14px] focus:outline-none focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15 appearance-none"
             >
               {LEAD_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
 
           <div>
-            <label className="block text-[11.5px] font-semibold text-foreground mb-1 flex items-center gap-1">
+            <label className="text-[11.5px] font-semibold text-[#0f1430] mb-1.5 flex items-center gap-1">
               <MapPin size={11} /> Adresse
             </label>
             <input
               value={draft.address ?? ''}
               onChange={(e) => upd('address', e.target.value)}
-              className="input"
+              className="w-full px-3.5 py-2.5 rounded-full bg-white border border-[#1e1b4b]/[0.10] text-[14px] focus:outline-none focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15"
               placeholder="Straße, Hausnummer, PLZ Ort"
             />
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-[11.5px] font-semibold text-foreground mb-1">Zimmer</label>
+              <label className="block text-[11.5px] font-semibold text-[#0f1430] mb-1.5">Zimmer</label>
               <input
                 type="number"
                 step="0.5"
                 value={draft.rooms ?? ''}
                 onChange={(e) => upd('rooms', e.target.value === '' ? undefined : Number(e.target.value))}
-                className="input tabular-nums"
+                className="w-full px-3.5 py-2.5 rounded-full bg-white border border-[#1e1b4b]/[0.10] text-[14px] tabular-nums focus:outline-none focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15"
                 placeholder="3"
               />
             </div>
             <div>
-              <label className="block text-[11.5px] font-semibold text-foreground mb-1 flex items-center gap-1">
-                <Maximize2 size={10} /> Fläche m²
-              </label>
+              <label className="block text-[11.5px] font-semibold text-[#0f1430] mb-1.5">Fläche m²</label>
               <input
                 type="number"
                 value={draft.area ?? ''}
                 onChange={(e) => upd('area', e.target.value === '' ? undefined : Number(e.target.value))}
-                className="input tabular-nums"
+                className="w-full px-3.5 py-2.5 rounded-full bg-white border border-[#1e1b4b]/[0.10] text-[14px] tabular-nums focus:outline-none focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15"
                 placeholder="85"
               />
             </div>
             <div>
-              <label className="block text-[11.5px] font-semibold text-foreground mb-1">Preis €</label>
+              <label className="block text-[11.5px] font-semibold text-[#0f1430] mb-1.5">Preis €</label>
               <input
                 type="number"
                 value={draft.askingPrice ?? ''}
                 onChange={(e) => upd('askingPrice', e.target.value === '' ? undefined : Number(e.target.value))}
-                className="input tabular-nums"
+                className="w-full px-3.5 py-2.5 rounded-full bg-white border border-[#1e1b4b]/[0.10] text-[14px] tabular-nums focus:outline-none focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15"
                 placeholder="350000"
               />
             </div>
@@ -653,70 +607,70 @@ function LeadEditModal({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11.5px] font-semibold text-foreground mb-1 flex items-center gap-1">
+              <label className="text-[11.5px] font-semibold text-[#0f1430] mb-1.5 flex items-center gap-1">
                 <UserIcon size={11} /> Kontakt
               </label>
               <input
                 value={draft.contactName ?? ''}
                 onChange={(e) => upd('contactName', e.target.value)}
-                className="input"
+                className="w-full px-3.5 py-2.5 rounded-full bg-white border border-[#1e1b4b]/[0.10] text-[14px] focus:outline-none focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15"
                 placeholder="Max Mustermann"
               />
             </div>
             <div>
-              <label className="block text-[11.5px] font-semibold text-foreground mb-1 flex items-center gap-1">
+              <label className="text-[11.5px] font-semibold text-[#0f1430] mb-1.5 flex items-center gap-1">
                 <Phone size={11} /> Telefon
               </label>
               <input
                 value={draft.contactPhone ?? ''}
                 onChange={(e) => upd('contactPhone', e.target.value)}
-                className="input"
+                className="w-full px-3.5 py-2.5 rounded-full bg-white border border-[#1e1b4b]/[0.10] text-[14px] focus:outline-none focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15"
                 placeholder="+49 …"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-[11.5px] font-semibold text-foreground mb-1 flex items-center gap-1">
+            <label className="text-[11.5px] font-semibold text-[#0f1430] mb-1.5 flex items-center gap-1">
               <Mail size={11} /> E-Mail
             </label>
             <input
               type="email"
               value={draft.contactEmail ?? ''}
               onChange={(e) => upd('contactEmail', e.target.value)}
-              className="input"
+              className="w-full px-3.5 py-2.5 rounded-full bg-white border border-[#1e1b4b]/[0.10] text-[14px] focus:outline-none focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15"
               placeholder="kontakt@example.com"
             />
           </div>
 
           <div>
-            <label className="block text-[11.5px] font-semibold text-foreground mb-1">Inserat-URL (optional)</label>
+            <label className="block text-[11.5px] font-semibold text-[#0f1430] mb-1.5">Inserat-URL</label>
             <input
               type="url"
               value={draft.immoscoutUrl ?? ''}
               onChange={(e) => upd('immoscoutUrl', e.target.value)}
-              className="input"
+              className="w-full px-3.5 py-2.5 rounded-full bg-white border border-[#1e1b4b]/[0.10] text-[14px] focus:outline-none focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15"
               placeholder="https://www.immobilienscout24.de/…"
             />
           </div>
 
           <div>
-            <label className="block text-[11.5px] font-semibold text-foreground mb-1">Notizen</label>
+            <label className="block text-[11.5px] font-semibold text-[#0f1430] mb-1.5">Notizen</label>
             <textarea
               value={draft.notes ?? ''}
               onChange={(e) => upd('notes', e.target.value)}
               rows={3}
-              className="input resize-none"
+              className="w-full px-3.5 py-2.5 rounded-2xl bg-white border border-[#1e1b4b]/[0.10] text-[14px] focus:outline-none focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15 resize-none"
               placeholder="Eigentümer-Situation, Verhandlungsstand, etc."
             />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between gap-2 px-5 py-3 border-t border-card-line">
+        <div className="flex items-center justify-between gap-2 px-6 py-4 border-t border-[#1e1b4b]/[0.06] bg-[#fafbff]">
           {confirmDelete ? (
             <div className="flex items-center gap-2">
-              <span className="text-[12px] text-foreground">Wirklich löschen?</span>
+              <span className="text-[12px] text-[#0f1430]">Wirklich löschen?</span>
               <button
                 onClick={onDelete}
                 className="text-[12px] font-semibold rounded-full bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5"
@@ -725,7 +679,7 @@ function LeadEditModal({
               </button>
               <button
                 onClick={() => setConfirmDelete(false)}
-                className="text-[12px] text-muted-foreground hover:text-foreground"
+                className="text-[12px] text-[#1e1b4b]/55 hover:text-[#0f1430]"
               >
                 Abbrechen
               </button>
@@ -739,21 +693,22 @@ function LeadEditModal({
             </button>
           )}
           <div className="flex items-center gap-2">
-            <button onClick={onClose} className="btn btn-md btn-outline rounded-full">Abbrechen</button>
+            <button
+              onClick={onClose}
+              className="text-[12.5px] font-semibold rounded-full bg-white border border-[#1e1b4b]/[0.10] text-[#0f1430] hover:bg-[#1e1b4b]/[0.04] px-4 py-2"
+            >
+              Abbrechen
+            </button>
             <button
               onClick={() => onSave(draft)}
-              className="btn btn-md btn-primary rounded-full"
               disabled={!draft.name.trim()}
+              className="text-[12.5px] font-semibold rounded-full bg-[#0f1430] hover:bg-[#1a2050] text-white px-4 py-2 disabled:opacity-50"
             >
               Speichern
             </button>
           </div>
         </div>
-
       </div>
     </div>
   );
 }
-
-// Vermeide unused-import warning für MoreHorizontal (für künftige Spalten-Aktionen)
-void MoreHorizontal;
