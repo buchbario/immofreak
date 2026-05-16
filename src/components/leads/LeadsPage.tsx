@@ -107,6 +107,13 @@ export function LeadsPage() {
   );
   const dealCount = leadsByStatus.Deal.length;
 
+  // Alle Lead-IDs in einem flat-Array für den globalen SortableContext.
+  // dnd-kit braucht das, damit Cards zwischen Spalten korrekt erkannt werden.
+  const allLeadIds = useMemo(
+    () => LEAD_STATUSES.flatMap((s) => filteredByStatus[s].map((l) => l.id)),
+    [filteredByStatus],
+  );
+
   // ─── DnD Handler ───────────────────────────────────────────
   const handleDragStart = (e: DragStartEvent) => {
     const id = String(e.active.id);
@@ -117,13 +124,19 @@ export function LeadsPage() {
   const handleDragEnd = (e: DragEndEvent) => {
     setActiveLead(null);
     const { active, over } = e;
-    if (!over) return;
+    // Debug-Log: hilft beim Diagnostizieren von DnD-Problemen.
+    // Schau in der Browser-Console nach "[leads:dnd]"-Zeilen während du draggst.
+    // eslint-disable-next-line no-console
+    console.log('[leads:dnd] dragEnd', { activeId: active?.id, overId: over?.id });
+    if (!over) {
+      // eslint-disable-next-line no-console
+      console.warn('[leads:dnd] no drop target — Cursor war nicht über einer Spalte/Karte');
+      return;
+    }
 
     const activeId = String(active.id);
     const overId = String(over.id);
 
-    // Drop-Target kann eine Lead-Karte (id = lead-id) oder eine
-    // Spalten-Drop-Zone (id = "col:<status>") sein.
     let targetStatus: LeadStatus | null = null;
     let targetIndex = 0;
 
@@ -131,7 +144,6 @@ export function LeadsPage() {
       targetStatus = overId.slice(4) as LeadStatus;
       targetIndex = leadsByStatus[targetStatus].length;
     } else {
-      // Drop auf Karte → in deren Spalte, an deren Position
       for (const s of LEAD_STATUSES) {
         const idx = leadsByStatus[s].findIndex((l) => l.id === overId);
         if (idx >= 0) {
@@ -141,7 +153,13 @@ export function LeadsPage() {
         }
       }
     }
-    if (!targetStatus) return;
+    // eslint-disable-next-line no-console
+    console.log('[leads:dnd] resolved', { targetStatus, targetIndex });
+    if (!targetStatus) {
+      // eslint-disable-next-line no-console
+      console.warn('[leads:dnd] could not resolve target column from overId=' + overId);
+      return;
+    }
     moveLead(activeId, targetStatus, targetIndex);
   };
 
@@ -198,26 +216,28 @@ export function LeadsPage() {
         </div>
       </div>
 
-      {/* Kanban Board */}
+      {/* Kanban Board — EIN SortableContext für ALLE Cards (Cross-Column-Drag). */}
       <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="overflow-x-auto -mx-2 sm:-mx-4 px-2 sm:px-4 pb-6">
-          <div className="flex gap-4 min-w-max">
-            {LEAD_STATUSES.map((status) => (
-              <Column
-                key={status}
-                status={status}
-                leads={filteredByStatus[status]}
-                onAddCard={() => startCreate(status)}
-                onEditCard={setEditing}
-                creating={creatingIn === status}
-                draftName={draftName}
-                setDraftName={setDraftName}
-                onSubmitCreate={() => submitCreate(status)}
-                onCancelCreate={() => { setCreatingIn(null); setDraftName(''); }}
-              />
-            ))}
+        <SortableContext items={allLeadIds} strategy={verticalListSortingStrategy}>
+          <div className="overflow-x-auto -mx-2 sm:-mx-4 px-2 sm:px-4 pb-6">
+            <div className="flex gap-4 min-w-max">
+              {LEAD_STATUSES.map((status) => (
+                <Column
+                  key={status}
+                  status={status}
+                  leads={filteredByStatus[status]}
+                  onAddCard={() => startCreate(status)}
+                  onEditCard={setEditing}
+                  creating={creatingIn === status}
+                  draftName={draftName}
+                  setDraftName={setDraftName}
+                  onSubmitCreate={() => submitCreate(status)}
+                  onCancelCreate={() => { setCreatingIn(null); setDraftName(''); }}
+                />
+              ))}
+            </div>
           </div>
-        </div>
+        </SortableContext>
 
         <DragOverlay dropAnimation={{ duration: 220, easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)' }}>
           {activeLead ? <LeadCard lead={activeLead} onEdit={() => {}} dragging /> : null}
@@ -270,9 +290,6 @@ function Column({
 }) {
   const accent = COLUMN_ACCENT[status];
 
-  // Drop-Zone als sortable container — die Items selbst sind sortable.
-  const ids = useMemo(() => leads.map((l) => l.id), [leads]);
-
   // Wert-Summe der Spalte (alle asking_prices)
   const totalValue = leads.reduce((s, l) => s + (l.askingPrice ?? 0), 0);
 
@@ -311,9 +328,10 @@ function Column({
       )}
 
       {/* Karten — scrollbarer Inner-Container.
-          SortableContext OHNE explizite id (sonst Kollision mit DropZone-Id);
+          Kein eigener SortableContext mehr — die Card-IDs werden in der
+          übergeordneten Page-SortableContext für Cross-Column-Drag verwaltet.
           DropZone ist useDroppable, akzeptiert Drops in leere Spalten + ans Spaltenende. */}
-      <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+      <div>
         <DropZone status={status} isEmpty={leads.length === 0}>
           <div className="px-3 pb-3 flex flex-col gap-2.5 overflow-y-auto flex-1">
             {leads.length === 0 && !creating && (
@@ -381,7 +399,7 @@ function Column({
             ) : null}
           </div>
         </DropZone>
-      </SortableContext>
+      </div>
     </div>
   );
 }
