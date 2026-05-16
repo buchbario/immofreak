@@ -7,10 +7,12 @@ import {
   ListTodo,
   Plus,
   Sparkles,
+  X,
 } from 'lucide-react';
 import { useTasks } from '../../hooks/useTasks';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
-import type { AppMode, Task, TaskPriority } from '../../types';
+import type { AppMode, Task, TaskCategory, TaskPriority } from '../../types';
+import { TASK_CATEGORIES, TASK_PRIORITIES } from '../../types';
 import { cn } from '../../lib/utils';
 
 type AccentTone = 'blue' | 'emerald' | 'violet';
@@ -26,24 +28,27 @@ interface QuickTaskWidgetProps {
   maxOpen?: number;
 }
 
-const ACCENTS: Record<AccentTone, { bg: string; text: string; ring: string; btn: string }> = {
+const ACCENTS: Record<AccentTone, { bg: string; text: string; ring: string; btn: string; pillActive: string }> = {
   blue: {
     bg: 'bg-[#4F6BFF]/10',
     text: 'text-[#4F6BFF]',
     ring: 'focus:border-[#4F6BFF]/40 focus:ring-[#4F6BFF]/15',
     btn: 'bg-[#4F6BFF] hover:bg-[#4361e8] text-white',
+    pillActive: 'bg-[#4F6BFF] text-white',
   },
   emerald: {
     bg: 'bg-emerald-100 dark:bg-emerald-500/15',
     text: 'text-emerald-700 dark:text-emerald-400',
     ring: 'focus:border-emerald-400/50 focus:ring-emerald-400/20',
     btn: 'bg-emerald-600 hover:bg-emerald-700 text-white',
+    pillActive: 'bg-emerald-600 text-white',
   },
   violet: {
     bg: 'bg-violet-100 dark:bg-violet-500/15',
     text: 'text-violet-700 dark:text-violet-400',
     ring: 'focus:border-violet-400/50 focus:ring-violet-400/20',
     btn: 'bg-violet-600 hover:bg-violet-700 text-white',
+    pillActive: 'bg-violet-600 text-white',
   },
 };
 
@@ -52,6 +57,28 @@ const PRIO_DOT: Record<TaskPriority, string> = {
   mittel: 'bg-amber-500',
   niedrig: 'bg-violet-500',
 };
+
+const PRIO_LABEL: Record<TaskPriority, string> = {
+  niedrig: 'Niedrig',
+  mittel: 'Mittel',
+  hoch: 'Hoch',
+};
+
+function categoriesForMode(mode: AppMode): TaskCategory[] {
+  if (mode === 'fixflip') {
+    return TASK_CATEGORIES.filter((c) =>
+      ['Instandhaltung', 'Besichtigung', 'Behörde', 'Vertragsmanagement', 'Sonstiges'].includes(c),
+    );
+  }
+  if (mode === 'private') return ['Sonstiges'];
+  return [...TASK_CATEGORIES];
+}
+
+function defaultCategoryForMode(mode: AppMode): TaskCategory {
+  if (mode === 'fixflip') return 'Instandhaltung';
+  if (mode === 'private') return 'Sonstiges';
+  return 'Instandhaltung';
+}
 
 function formatDueDate(iso: string): { label: string; tone: 'overdue' | 'today' | 'soon' | 'normal' } {
   const due = new Date(iso);
@@ -77,14 +104,9 @@ export function QuickTaskWidget({
   const { allTasks, createTask, toggleStatus } = useTasks();
   const tone = ACCENTS[accent];
 
-  const [title, setTitle] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [showDate, setShowDate] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [confirmFor, setConfirmFor] = useState<Task | null>(null);
 
-  // Aufgaben dieses Dashboards: explizit `mode === <mode>` ODER (für Altbestand)
-  // wenn das Feld noch leer ist und der Modus „buyhold" ist — dort sind alle
-  // historischen Vorgänge entstanden.
   const scopedTasks = useMemo(
     () => allTasks.filter((t) => t.mode === mode || (!t.mode && mode === 'buyhold')),
     [allTasks, mode],
@@ -105,23 +127,6 @@ export function QuickTaskWidget({
     if (t.status === 'erledigt' || !t.dueDate) return false;
     return new Date(t.dueDate).getTime() < Date.now();
   }).length;
-
-  const handleCreate = () => {
-    const trimmed = title.trim();
-    if (!trimmed) return;
-    createTask({
-      title: trimmed,
-      description: '',
-      status: 'offen',
-      priority: 'mittel',
-      category: 'Sonstiges',
-      mode,
-      dueDate: dueDate || undefined,
-    });
-    setTitle('');
-    setDueDate('');
-    setShowDate(false);
-  };
 
   const handleConfirmDone = () => {
     if (!confirmFor) return;
@@ -160,73 +165,20 @@ export function QuickTaskWidget({
         )}
       </div>
 
-      {/* Quick create — large rounded input */}
+      {/* Action: Neuer-Aufgabe-Button */}
       <div className="px-5 sm:px-6 pb-3">
-        <div className={cn(
-          'flex items-center gap-2 rounded-full bg-layer-hover/70 border border-transparent px-3 py-1 transition-colors focus-within:bg-card focus-within:ring-2',
-          tone.ring,
-        )}>
-          <Plus size={15} className="text-muted-foreground shrink-0" />
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleCreate();
-              }
-            }}
-            placeholder="Neue Aufgabe anlegen…"
-            className="flex-1 bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground/70 py-1.5 outline-none"
-          />
-          <button
-            type="button"
-            onClick={() => setShowDate((v) => !v)}
-            className={cn(
-              'size-7 rounded-full flex items-center justify-center transition-colors cursor-pointer',
-              showDate || dueDate ? cn(tone.bg, tone.text) : 'text-muted-foreground/70 hover:bg-card',
-            )}
-            title="Frist hinzufügen"
-            aria-label="Frist hinzufügen"
-          >
-            <Calendar size={13} />
-          </button>
-          <button
-            type="button"
-            onClick={handleCreate}
-            disabled={!title.trim()}
-            className={cn(
-              'rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed',
-              tone.btn,
-            )}
-          >
-            Anlegen
-          </button>
-        </div>
-        {showDate && (
-          <div className="mt-2 flex items-center gap-2 pl-1">
-            <label className="text-[11.5px] font-medium text-muted-foreground">Frist:</label>
-            <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="text-[12px] rounded-full bg-layer-hover/70 border border-transparent px-3 py-1 text-foreground outline-none focus:bg-card focus:ring-2 focus:ring-offset-0 focus:ring-[#4F6BFF]/15 focus:border-[#4F6BFF]/40"
-            />
-            {dueDate && (
-              <button
-                type="button"
-                onClick={() => setDueDate('')}
-                className="text-[11px] font-medium text-muted-foreground hover:text-foreground cursor-pointer"
-              >
-                löschen
-              </button>
-            )}
-          </div>
-        )}
+        <button
+          onClick={() => setModalOpen(true)}
+          className={cn(
+            'w-full inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-semibold transition-colors cursor-pointer',
+            tone.btn,
+          )}
+        >
+          <Plus size={14} strokeWidth={2.4} /> Neue Aufgabe anlegen
+        </button>
       </div>
 
-      {/* Tasks */}
+      {/* Tasks-Liste */}
       <div className="px-2 sm:px-3 pb-3">
         {visible.length === 0 ? (
           <div className="py-7 px-4 text-center">
@@ -295,7 +247,37 @@ export function QuickTaskWidget({
         )}
       </div>
 
-      {/* Confirmation dialog before completing a task */}
+      {/* New-Task Modal */}
+      {modalOpen && (
+        <QuickTaskModal
+          mode={mode}
+          tone={tone}
+          onClose={() => setModalOpen(false)}
+          onCreate={(data) => {
+            createTask({
+              title: data.title,
+              description: data.description,
+              status: 'offen',
+              priority: data.priority,
+              category: data.category,
+              mode,
+              dueDate: data.dueDate || undefined,
+              assignedTo: data.assignedTo || undefined,
+            });
+            setModalOpen(false);
+          }}
+          openFullForm={
+            viewAllHref
+              ? () => {
+                  setModalOpen(false);
+                  navigate(viewAllHref);
+                }
+              : undefined
+          }
+        />
+      )}
+
+      {/* Confirmation dialog */}
       <ConfirmDialog
         open={!!confirmFor}
         onClose={() => setConfirmFor(null)}
@@ -311,6 +293,197 @@ export function QuickTaskWidget({
         cancelLabel="Abbrechen"
         variant="primary"
       />
+    </div>
+  );
+}
+
+// =====================================================================
+// Quick-Task-Modal
+// =====================================================================
+
+interface QuickTaskFormData {
+  title: string;
+  description: string;
+  priority: TaskPriority;
+  category: TaskCategory;
+  dueDate: string;
+  assignedTo: string;
+}
+
+function QuickTaskModal({
+  mode,
+  tone,
+  onClose,
+  onCreate,
+  openFullForm,
+}: {
+  mode: AppMode;
+  tone: (typeof ACCENTS)[AccentTone];
+  onClose: () => void;
+  onCreate: (data: QuickTaskFormData) => void;
+  openFullForm?: () => void;
+}) {
+  const availableCategories = categoriesForMode(mode);
+  const [form, setForm] = useState<QuickTaskFormData>({
+    title: '',
+    description: '',
+    priority: 'mittel',
+    category: defaultCategoryForMode(mode),
+    dueDate: '',
+    assignedTo: '',
+  });
+  const set = <K extends keyof QuickTaskFormData>(k: K, v: QuickTaskFormData[K]) =>
+    setForm((f) => ({ ...f, [k]: v }));
+
+  const canSave = form.title.trim().length > 0;
+
+  const submit = () => {
+    if (!canSave) return;
+    onCreate({ ...form, title: form.title.trim(), description: form.description.trim(), assignedTo: form.assignedTo.trim() });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-[#0f1430]/40 flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
+      <div className="bg-white border border-[#1e1b4b]/[0.06] rounded-3xl max-w-[520px] w-full my-8 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#1e1b4b]/[0.06]">
+          <h3 className="text-[16px] font-bold text-[#0f1430]">Neue Aufgabe</h3>
+          <button onClick={onClose} className="text-[#1e1b4b]/45 hover:text-[#0f1430] p-1.5 rounded-full hover:bg-[#1e1b4b]/[0.04]">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5 space-y-4">
+          <div>
+            <label className="block text-[11.5px] font-semibold text-[#0f1430] mb-1.5">Titel</label>
+            <input
+              type="text"
+              autoFocus
+              value={form.title}
+              onChange={(e) => set('title', e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  submit();
+                }
+              }}
+              placeholder={mode === 'private' ? 'z. B. Steuererklärung vorbereiten' : 'z. B. Heizungswartung beauftragen'}
+              className={cn(
+                'w-full rounded-full bg-white border border-[#1e1b4b]/[0.10] px-3.5 py-2.5 text-[14px] font-medium outline-none transition-colors focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15',
+              )}
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11.5px] font-semibold text-[#0f1430] mb-1.5">Beschreibung</label>
+            <textarea
+              value={form.description}
+              onChange={(e) => set('description', e.target.value)}
+              rows={3}
+              placeholder="Notizen, Kontext, Fristen…"
+              className={cn(
+                'w-full rounded-2xl bg-white border border-[#1e1b4b]/[0.10] px-3.5 py-2.5 text-[13.5px] outline-none resize-none transition-colors focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15',
+              )}
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11.5px] font-semibold text-[#0f1430] mb-1.5">Priorität</label>
+            <div className="flex items-center gap-1.5">
+              {TASK_PRIORITIES.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => set('priority', p)}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium border transition-colors cursor-pointer',
+                    form.priority === p
+                      ? cn(tone.pillActive, 'border-transparent')
+                      : 'border-[#1e1b4b]/[0.10] bg-white text-[#1e1b4b]/65 hover:bg-[#1e1b4b]/[0.04] hover:text-[#0f1430]',
+                  )}
+                >
+                  <span className={cn('size-1.5 rounded-full', PRIO_DOT[p])} />
+                  {PRIO_LABEL[p]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {availableCategories.length > 1 && (
+              <div>
+                <label className="block text-[11.5px] font-semibold text-[#0f1430] mb-1.5">Kategorie</label>
+                <select
+                  value={form.category}
+                  onChange={(e) => set('category', e.target.value as TaskCategory)}
+                  className="w-full rounded-full bg-white border border-[#1e1b4b]/[0.10] px-3.5 py-2.5 text-[13.5px] outline-none cursor-pointer focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15"
+                >
+                  {availableCategories.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div>
+              <label className="text-[11.5px] font-semibold text-[#0f1430] mb-1.5 flex items-center gap-1">
+                <Calendar size={11} /> Frist
+              </label>
+              <input
+                type="date"
+                value={form.dueDate}
+                onChange={(e) => set('dueDate', e.target.value)}
+                className="w-full rounded-full bg-white border border-[#1e1b4b]/[0.10] px-3.5 py-2.5 text-[13.5px] outline-none focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15"
+              />
+            </div>
+          </div>
+
+          {mode !== 'private' && (
+            <div>
+              <label className="block text-[11.5px] font-semibold text-[#0f1430] mb-1.5">Zuständig</label>
+              <input
+                type="text"
+                value={form.assignedTo}
+                onChange={(e) => set('assignedTo', e.target.value)}
+                placeholder="z. B. Hausverwaltung, Eigentümer, Handwerker-Name"
+                className="w-full rounded-full bg-white border border-[#1e1b4b]/[0.10] px-3.5 py-2.5 text-[13.5px] outline-none focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between gap-2 px-6 py-4 border-t border-[#1e1b4b]/[0.06] bg-[#fafbff]">
+          {openFullForm ? (
+            <button
+              onClick={openFullForm}
+              className="text-[12px] font-medium text-[#1e1b4b]/55 hover:text-[#0f1430] inline-flex items-center gap-1"
+            >
+              Mehr Details (mit Verknüpfung) <ArrowRight size={11} />
+            </button>
+          ) : (
+            <span />
+          )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onClose}
+              className="text-[12.5px] font-semibold rounded-full bg-white border border-[#1e1b4b]/[0.10] text-[#0f1430] hover:bg-[#1e1b4b]/[0.04] px-4 py-2"
+            >
+              Abbrechen
+            </button>
+            <button
+              onClick={submit}
+              disabled={!canSave}
+              className={cn(
+                'text-[12.5px] font-semibold rounded-full px-4 py-2 disabled:opacity-50',
+                tone.btn,
+              )}
+            >
+              Aufgabe anlegen
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
