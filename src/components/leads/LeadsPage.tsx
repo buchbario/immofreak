@@ -5,6 +5,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
   closestCorners,
   type DragEndEvent,
   type DragStartEvent,
@@ -286,9 +287,11 @@ function Column({
         </div>
       )}
 
-      {/* Karten — scrollbarer Inner-Container */}
-      <SortableContext items={ids} strategy={verticalListSortingStrategy} id={`col:${status}`}>
-        <DropZone status={status}>
+      {/* Karten — scrollbarer Inner-Container.
+          SortableContext OHNE explizite id (sonst Kollision mit DropZone-Id);
+          DropZone ist useDroppable, akzeptiert Drops in leere Spalten + ans Spaltenende. */}
+      <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+        <DropZone status={status} isEmpty={leads.length === 0}>
           <div className="px-3 pb-3 flex flex-col gap-2.5 overflow-y-auto flex-1">
             {leads.length === 0 && !creating && (
               <button
@@ -360,10 +363,24 @@ function Column({
   );
 }
 
-// Drop-Zone für leere Spalten + Anker für Drop "ans Ende"
-function DropZone({ status, children }: { status: LeadStatus; children: React.ReactNode }) {
-  const { setNodeRef } = useSortable({ id: `col:${status}` });
-  return <div ref={setNodeRef}>{children}</div>;
+// Drop-Zone für leere Spalten + Anker für Drop "ans Ende".
+// useDroppable (statt useSortable) — DropZone ist KEIN drag-item, sondern
+// nur ein Drop-Target. useSortable mit gleicher ID wie der umschließende
+// SortableContext kollidiert in dnd-kit und blockt das ganze DnD.
+function DropZone({ status, children, isEmpty }: { status: LeadStatus; children: React.ReactNode; isEmpty: boolean }) {
+  const { setNodeRef, isOver } = useDroppable({ id: `col:${status}` });
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        'flex-1 rounded-xl transition-colors',
+        isOver && !isEmpty && 'bg-white/40',
+        isOver && isEmpty && 'bg-white/60',
+      )}
+    >
+      {children}
+    </div>
+  );
 }
 
 // =============================================================
@@ -379,7 +396,10 @@ function SortableLeadCard({
   accentStripe: string;
   onEdit: () => void;
 }) {
-  const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({ id: lead.id });
+  const { setNodeRef, attributes, listeners, transform, transition, isDragging } = useSortable({
+    id: lead.id,
+    data: { status: lead.status }, // hilft beim Cross-Column-Drag
+  });
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
