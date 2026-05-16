@@ -6,7 +6,9 @@ import {
   useSensor,
   useSensors,
   useDroppable,
-  closestCorners,
+  pointerWithin,
+  rectIntersection,
+  type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
@@ -63,6 +65,27 @@ export function LeadsPage() {
   const [search, setSearch] = useState('');
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+
+  // Custom collision für Kanban-Board:
+  // 1. pointerWithin findet zuverlässig die DropZone unter dem Cursor —
+  //    auch über LEEREN Spalten (closestCorners tut das nicht, weil es
+  //    immer die nächste Karte einer anderen Spalte als "näher" sieht).
+  // 2. Karten haben Priorität vor Spalten-DropZones, wenn beides
+  //    getroffen wird (intra-Spalten-Sortierung).
+  // 3. Fallback rectIntersection für Edge-Cases am Spaltenrand.
+  const collisionDetection: CollisionDetection = (args) => {
+    const pointerHits = pointerWithin(args);
+    if (pointerHits.length > 0) {
+      const cardHit = pointerHits.find((h) => !String(h.id).startsWith('col:'));
+      return cardHit ? [cardHit] : pointerHits;
+    }
+    const rectHits = rectIntersection(args);
+    if (rectHits.length > 0) {
+      const cardHit = rectHits.find((h) => !String(h.id).startsWith('col:'));
+      return cardHit ? [cardHit] : rectHits;
+    }
+    return [];
+  };
 
   const filteredByStatus = useMemo(() => {
     if (!search.trim()) return leadsByStatus;
@@ -176,7 +199,7 @@ export function LeadsPage() {
       </div>
 
       {/* Kanban Board */}
-      <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="overflow-x-auto -mx-2 sm:-mx-4 px-2 sm:px-4 pb-6">
           <div className="flex gap-4 min-w-max">
             {LEAD_STATUSES.map((status) => (
@@ -374,8 +397,10 @@ function DropZone({ status, children, isEmpty }: { status: LeadStatus; children:
       ref={setNodeRef}
       className={cn(
         'flex-1 rounded-xl transition-colors',
-        isOver && !isEmpty && 'bg-white/40',
-        isOver && isEmpty && 'bg-white/60',
+        // Mindesthöhe für leere Spalten, damit der Pointer eine echte
+        // Drop-Zone trifft — sonst kollabiert die Spalte auf 0px Höhe.
+        isEmpty && 'min-h-[160px]',
+        isOver && 'ring-2 ring-[#4F6BFF]/30 bg-white/50',
       )}
     >
       {children}
