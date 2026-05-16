@@ -57,7 +57,7 @@ function getInitials(name?: string): string {
 // =============================================================
 
 export function LeadsPage() {
-  const { leadsByStatus, createLead, updateLead, deleteLead, moveLead } = useLeads();
+  const { leadsByStatus, createLead, updateLead, deleteLead } = useLeads();
   const [editing, setEditing] = useState<Lead | null>(null);
   const [creatingIn, setCreatingIn] = useState<LeadStatus | null>(null);
   const [draftName, setDraftName] = useState('');
@@ -107,13 +107,6 @@ export function LeadsPage() {
   );
   const dealCount = leadsByStatus.Deal.length;
 
-  // Alle Lead-IDs in einem flat-Array für den globalen SortableContext.
-  // dnd-kit braucht das, damit Cards zwischen Spalten korrekt erkannt werden.
-  const allLeadIds = useMemo(
-    () => LEAD_STATUSES.flatMap((s) => filteredByStatus[s].map((l) => l.id)),
-    [filteredByStatus],
-  );
-
   // ─── DnD Handler ───────────────────────────────────────────
   const handleDragStart = (e: DragStartEvent) => {
     const id = String(e.active.id);
@@ -121,46 +114,31 @@ export function LeadsPage() {
     setActiveLead(all.find((l) => l.id === id) ?? null);
   };
 
+  // Exakt der Pattern aus KanbanBoard.tsx (Projekte-Pipeline) — bewährt.
   const handleDragEnd = (e: DragEndEvent) => {
     setActiveLead(null);
     const { active, over } = e;
-    // Debug-Log: hilft beim Diagnostizieren von DnD-Problemen.
-    // Schau in der Browser-Console nach "[leads:dnd]"-Zeilen während du draggst.
-    // eslint-disable-next-line no-console
-    console.log('[leads:dnd] dragEnd', { activeId: active?.id, overId: over?.id });
-    if (!over) {
-      // eslint-disable-next-line no-console
-      console.warn('[leads:dnd] no drop target — Cursor war nicht über einer Spalte/Karte');
-      return;
-    }
-
+    if (!over) return;
     const activeId = String(active.id);
     const overId = String(over.id);
 
-    let targetStatus: LeadStatus | null = null;
-    let targetIndex = 0;
-
-    if (overId.startsWith('col:')) {
-      targetStatus = overId.slice(4) as LeadStatus;
-      targetIndex = leadsByStatus[targetStatus].length;
+    // over.id ist entweder ein Status-Name (Drop auf Spalte) oder eine
+    // Lead-ID (Drop auf andere Karte → in deren Spalte).
+    let targetStatus: LeadStatus | undefined;
+    if ((LEAD_STATUSES as readonly string[]).includes(overId)) {
+      targetStatus = overId as LeadStatus;
     } else {
-      for (const s of LEAD_STATUSES) {
-        const idx = leadsByStatus[s].findIndex((l) => l.id === overId);
-        if (idx >= 0) {
-          targetStatus = s;
-          targetIndex = idx;
-          break;
-        }
-      }
+      const overLead = LEAD_STATUSES.flatMap((s) => leadsByStatus[s]).find((l) => l.id === overId);
+      targetStatus = overLead?.status;
     }
-    // eslint-disable-next-line no-console
-    console.log('[leads:dnd] resolved', { targetStatus, targetIndex });
-    if (!targetStatus) {
-      // eslint-disable-next-line no-console
-      console.warn('[leads:dnd] could not resolve target column from overId=' + overId);
-      return;
-    }
-    moveLead(activeId, targetStatus, targetIndex);
+    if (!targetStatus) return;
+    const activeLeadObj = LEAD_STATUSES.flatMap((s) => leadsByStatus[s]).find((l) => l.id === activeId);
+    if (!activeLeadObj || activeLeadObj.status === targetStatus) return;
+
+    // Nur Status updaten — order wird beim Filter neu sortiert.
+    // Neuer order = Ende der Ziel-Spalte.
+    const newOrder = leadsByStatus[targetStatus].length;
+    updateLead(activeId, { status: targetStatus, order: newOrder });
   };
 
   const startCreate = (status: LeadStatus) => {
@@ -216,28 +194,27 @@ export function LeadsPage() {
         </div>
       </div>
 
-      {/* Kanban Board — EIN SortableContext für ALLE Cards (Cross-Column-Drag). */}
+      {/* Kanban Board — Pattern aus KanbanBoard.tsx (Projekte) übernommen:
+          pro Spalte ein SortableContext, useDroppable direkt mit Status-ID. */}
       <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <SortableContext items={allLeadIds} strategy={verticalListSortingStrategy}>
-          <div className="overflow-x-auto -mx-2 sm:-mx-4 px-2 sm:px-4 pb-6">
-            <div className="flex gap-4 min-w-max">
-              {LEAD_STATUSES.map((status) => (
-                <Column
-                  key={status}
-                  status={status}
-                  leads={filteredByStatus[status]}
-                  onAddCard={() => startCreate(status)}
-                  onEditCard={setEditing}
-                  creating={creatingIn === status}
-                  draftName={draftName}
-                  setDraftName={setDraftName}
-                  onSubmitCreate={() => submitCreate(status)}
-                  onCancelCreate={() => { setCreatingIn(null); setDraftName(''); }}
-                />
-              ))}
-            </div>
+        <div className="overflow-x-auto -mx-2 sm:-mx-4 px-2 sm:px-4 pb-6">
+          <div className="flex gap-4 min-w-max">
+            {LEAD_STATUSES.map((status) => (
+              <Column
+                key={status}
+                status={status}
+                leads={filteredByStatus[status]}
+                onAddCard={() => startCreate(status)}
+                onEditCard={setEditing}
+                creating={creatingIn === status}
+                draftName={draftName}
+                setDraftName={setDraftName}
+                onSubmitCreate={() => submitCreate(status)}
+                onCancelCreate={() => { setCreatingIn(null); setDraftName(''); }}
+              />
+            ))}
           </div>
-        </SortableContext>
+        </div>
 
         <DragOverlay dropAnimation={{ duration: 220, easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)' }}>
           {activeLead ? <LeadCard lead={activeLead} onEdit={() => {}} dragging /> : null}
@@ -328,10 +305,9 @@ function Column({
       )}
 
       {/* Karten — scrollbarer Inner-Container.
-          Kein eigener SortableContext mehr — die Card-IDs werden in der
-          übergeordneten Page-SortableContext für Cross-Column-Drag verwaltet.
-          DropZone ist useDroppable, akzeptiert Drops in leere Spalten + ans Spaltenende. */}
-      <div>
+          Pro Spalte ein SortableContext (Pattern aus KanbanBoard).
+          DropZone ist useDroppable mit Status als ID. */}
+      <SortableContext items={leads.map((l) => l.id)} strategy={verticalListSortingStrategy}>
         <DropZone status={status} isEmpty={leads.length === 0}>
           <div className="px-3 pb-3 flex flex-col gap-2.5 overflow-y-auto flex-1">
             {leads.length === 0 && !creating && (
@@ -399,7 +375,7 @@ function Column({
             ) : null}
           </div>
         </DropZone>
-      </div>
+      </SortableContext>
     </div>
   );
 }
@@ -409,14 +385,15 @@ function Column({
 // nur ein Drop-Target. useSortable mit gleicher ID wie der umschließende
 // SortableContext kollidiert in dnd-kit und blockt das ganze DnD.
 function DropZone({ status, children, isEmpty }: { status: LeadStatus; children: React.ReactNode; isEmpty: boolean }) {
-  const { setNodeRef, isOver } = useDroppable({ id: `col:${status}` });
+  // useDroppable direkt mit Status-Name als ID — KanbanBoard-Pattern.
+  // In handleDragEnd prüfen wir über LEAD_STATUSES.includes(over.id), ob's
+  // ein Drop auf eine Spalte ist.
+  const { setNodeRef, isOver } = useDroppable({ id: status });
   return (
     <div
       ref={setNodeRef}
       className={cn(
         'flex-1 rounded-xl transition-colors',
-        // Mindesthöhe für leere Spalten, damit der Pointer eine echte
-        // Drop-Zone trifft — sonst kollabiert die Spalte auf 0px Höhe.
         isEmpty && 'min-h-[160px]',
         isOver && 'ring-2 ring-[#4F6BFF]/30 bg-white/50',
       )}
