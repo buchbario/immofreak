@@ -7,6 +7,7 @@ import { useRentalUnits } from '../../hooks/useRentalUnits';
 import type { MeterReading } from '../../types';
 import { NumberInput } from '../ui/NumberInput';
 import { PageCard } from '../ui/PageCard';
+import { DateInput } from '../ui/DateInput';
 
 export function ZaehlerPage() {
   const { allReadings, createReading } = useMeterReadings();
@@ -265,13 +266,7 @@ export function ZaehlerPage() {
 
                 <div>
                   <label className="input-label">Datum</label>
-                  <input
-                    type="date"
-                    value={formDate}
-                    onChange={(e) => setFormDate(e.target.value)}
-                    required
-                    className="input"
-                  />
+                  <DateInput value={formDate} onChange={setFormDate} />
                 </div>
 
                 <div>

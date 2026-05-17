@@ -38,6 +38,7 @@ import {
 import { usePrivateBoards } from '../../hooks/usePrivateBoards';
 import type { PrivateCard, PrivateCardPriority } from '../../types';
 import { Modal, Field, FormSection, FormRow } from '../ui/Modal';
+import { DateInput } from '../ui/DateInput';
 import { cn } from '../../lib/utils';
 
 const PRIORITY_LABEL: Record<PrivateCardPriority, string> = {
@@ -770,12 +771,7 @@ function CardModal({ card, onClose, onSave, onDelete }: CardModalProps) {
           <Field
             label={<span className="inline-flex items-center gap-1.5"><Calendar size={12} /> Fällig am</span>}
           >
-            <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="input"
-            />
+            <DateInput value={dueDate} onChange={setDueDate} />
           </Field>
           <Field
             label={<span className="inline-flex items-center gap-1.5"><Flag size={12} /> Priorität</span>}

@@ -7,8 +7,10 @@ import {
   ListTodo,
   Plus,
   Sparkles,
+  Trash2,
   X,
 } from 'lucide-react';
+import { DateInput } from '../ui/DateInput';
 import { useTasks } from '../../hooks/useTasks';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import type { AppMode, Task, TaskCategory, TaskPriority } from '../../types';
@@ -273,7 +275,10 @@ export function QuickTaskWidget({
             setModalOpen(false);
           }}
           openFullForm={
-            viewAllHref
+            // Im Private-Modus gibt es keine "vollständige Verknüpfung" mit
+            // Objekt/Einheit/Mieter — also auch keinen Sinn auf das volle
+            // Form zu verweisen.
+            viewAllHref && mode !== 'private'
               ? () => {
                   setModalOpen(false);
                   navigate(viewAllHref);
@@ -304,10 +309,11 @@ export function QuickTaskWidget({
 }
 
 // =====================================================================
-// Quick-Task-Modal
+// Quick-Task-Modal — exportiert, damit TaskListPage es im Private-Modus
+// wiederverwenden kann (statt des Buyhold-fokussierten TaskForm).
 // =====================================================================
 
-interface QuickTaskFormData {
+export interface QuickTaskFormData {
   title: string;
   description: string;
   priority: TaskPriority;
@@ -316,28 +322,39 @@ interface QuickTaskFormData {
   assignedTo: string;
 }
 
-function QuickTaskModal({
+const BLUE_TONE: (typeof ACCENTS)[AccentTone] = ACCENTS.blue;
+
+export function QuickTaskModal({
   mode,
-  tone,
+  tone = BLUE_TONE,
+  initial,
+  isEdit,
   onClose,
   onCreate,
+  onDelete,
   openFullForm,
 }: {
   mode: AppMode;
-  tone: (typeof ACCENTS)[AccentTone];
+  tone?: (typeof ACCENTS)[AccentTone];
+  /** Werte für Edit-Modus. Bei undefined: leeres Create-Formular. */
+  initial?: Partial<QuickTaskFormData>;
+  /** Schaltet Header-Titel auf "Aufgabe bearbeiten" + zeigt Lösch-Button im Footer. */
+  isEdit?: boolean;
   onClose: () => void;
   onCreate: (data: QuickTaskFormData) => void;
+  onDelete?: () => void;
   openFullForm?: () => void;
 }) {
   const availableCategories = categoriesForMode(mode);
   const [form, setForm] = useState<QuickTaskFormData>({
-    title: '',
-    description: '',
-    priority: 'mittel',
-    category: defaultCategoryForMode(mode),
-    dueDate: '',
-    assignedTo: '',
+    title: initial?.title ?? '',
+    description: initial?.description ?? '',
+    priority: initial?.priority ?? 'mittel',
+    category: initial?.category ?? defaultCategoryForMode(mode),
+    dueDate: initial?.dueDate ?? '',
+    assignedTo: initial?.assignedTo ?? '',
   });
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const set = <K extends keyof QuickTaskFormData>(k: K, v: QuickTaskFormData[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
@@ -359,7 +376,9 @@ function QuickTaskModal({
       >
         {/* Header — sticky */}
         <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-[#1e1b4b]/[0.06] flex-shrink-0">
-          <h3 className="text-[16px] font-bold text-[#0f1430]">Neue Aufgabe</h3>
+          <h3 className="text-[16px] font-bold text-[#0f1430]">
+            {isEdit ? 'Aufgabe bearbeiten' : 'Neue Aufgabe'}
+          </h3>
           <button onClick={onClose} className="text-[#1e1b4b]/45 hover:text-[#0f1430] p-1.5 rounded-full hover:bg-[#1e1b4b]/[0.04]">
             <X size={16} />
           </button>
@@ -441,12 +460,7 @@ function QuickTaskModal({
               <label className="text-[11.5px] font-semibold text-[#0f1430] mb-1.5 flex items-center gap-1">
                 <Calendar size={11} /> Frist
               </label>
-              <input
-                type="date"
-                value={form.dueDate}
-                onChange={(e) => set('dueDate', e.target.value)}
-                className="w-full rounded-full bg-white border border-[#1e1b4b]/[0.10] px-3.5 py-2.5 text-[13.5px] outline-none focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15"
-              />
+              <DateInput value={form.dueDate} onChange={(v) => set('dueDate', v)} placeholder="Datum wählen" />
             </div>
           </div>
 
@@ -465,9 +479,37 @@ function QuickTaskModal({
         </div>
 
         {/* Footer — sticky */}
-        <div className="flex items-center justify-between gap-2 px-5 sm:px-6 py-3.5 border-t border-[#1e1b4b]/[0.06] bg-[#fafbff] flex-shrink-0"
-        style={{ paddingBottom: 'max(0.875rem, env(safe-area-inset-bottom, 0))' }}>
-          {openFullForm ? (
+        <div
+          className="flex items-center justify-between gap-2 px-5 sm:px-6 py-3.5 border-t border-[#1e1b4b]/[0.06] bg-[#fafbff] flex-shrink-0"
+          style={{ paddingBottom: 'max(0.875rem, env(safe-area-inset-bottom, 0))' }}
+        >
+          {/* Links: entweder Lösch-Button (Edit-Modus) oder "Mehr Details"-Link */}
+          {isEdit && onDelete ? (
+            confirmDelete ? (
+              <div className="flex items-center gap-2">
+                <span className="text-[12px] text-[#0f1430]">Wirklich löschen?</span>
+                <button
+                  onClick={onDelete}
+                  className="text-[12px] font-semibold rounded-full bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5"
+                >
+                  Ja, löschen
+                </button>
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  className="text-[12px] text-[#1e1b4b]/55 hover:text-[#0f1430]"
+                >
+                  Abbrechen
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className="text-[12px] inline-flex items-center gap-1 text-rose-600 hover:text-rose-700 font-semibold"
+              >
+                <Trash2 size={12} /> Löschen
+              </button>
+            )
+          ) : openFullForm ? (
             <button
               onClick={openFullForm}
               className="text-[12px] font-medium text-[#1e1b4b]/55 hover:text-[#0f1430] inline-flex items-center gap-1"
@@ -492,7 +534,7 @@ function QuickTaskModal({
                 tone.btn,
               )}
             >
-              Aufgabe anlegen
+              {isEdit ? 'Speichern' : 'Aufgabe anlegen'}
             </button>
           </div>
         </div>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { MeterReading } from '../../types';
 import { NumberInput } from '../ui/NumberInput';
 import { Modal, Field, FormRow } from '../ui/Modal';
+import { DateInput } from '../ui/DateInput';
 
 interface Props {
   propertyId: string;
@@ -62,7 +63,7 @@ export function MeterReadingForm({ propertyId, onClose, onSave }: Props) {
       </FormRow>
       <FormRow cols={2}>
         <Field label="Datum">
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input" />
+          <DateInput value={date} onChange={setDate} />
         </Field>
         <Field label="Abgelesen von">
           <input value={readBy} onChange={(e) => setReadBy(e.target.value)} className="input" placeholder="Name" />

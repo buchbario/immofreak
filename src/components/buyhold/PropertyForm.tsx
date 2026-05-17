@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { RentalProperty } from '../../types';
 import { NumberInput } from '../ui/NumberInput';
 import { Modal, Field, FormSection, FormRow } from '../ui/Modal';
+import { DateInput } from '../ui/DateInput';
 
 type PropertyData = Omit<RentalProperty, 'id' | 'createdAt' | 'updatedAt'>;
 
@@ -91,12 +92,7 @@ export function PropertyForm({ initial, onClose, onSave }: Props) {
       <FormSection title="Objekt-Details">
         <FormRow cols={3}>
           <Field label="Kaufdatum">
-            <input
-              type="date"
-              value={form.purchaseDate}
-              onChange={(e) => set('purchaseDate', e.target.value)}
-              className="input"
-            />
+            <DateInput value={form.purchaseDate} onChange={(v) => set('purchaseDate', v)} />
           </Field>
           <Field label="Einheiten">
             <NumberInput

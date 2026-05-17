@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Tenant, RentalProperty, RentalUnit } from '../../types';
 import { NumberInput } from '../ui/NumberInput';
 import { Modal, Field, FormSection, FormRow } from '../ui/Modal';
+import { DateInput } from '../ui/DateInput';
 
 type TenantData = Omit<Tenant, 'id' | 'createdAt'>;
 
@@ -120,28 +121,13 @@ export function TenantForm({ initial, properties, units, onClose, onSave }: Prop
       <FormSection title="Mietverhältnis">
         <FormRow cols={3}>
           <Field label="Einzug">
-            <input
-              type="date"
-              value={form.moveInDate}
-              onChange={(e) => set('moveInDate', e.target.value)}
-              className="input"
-            />
+            <DateInput value={form.moveInDate} onChange={(v) => set('moveInDate', v)} />
           </Field>
           <Field label="Mietbeginn">
-            <input
-              type="date"
-              value={form.leaseStart}
-              onChange={(e) => set('leaseStart', e.target.value)}
-              className="input"
-            />
+            <DateInput value={form.leaseStart} onChange={(v) => set('leaseStart', v)} />
           </Field>
           <Field label="Mietende" help="Leer lassen für unbefristet">
-            <input
-              type="date"
-              value={form.leaseEnd || ''}
-              onChange={(e) => set('leaseEnd', e.target.value)}
-              className="input"
-            />
+            <DateInput value={form.leaseEnd || ''} onChange={(v) => set('leaseEnd', v)} />
           </Field>
         </FormRow>
         <Field label="Kaution">

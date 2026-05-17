@@ -3,6 +3,7 @@ import { Wallet, Building2, User } from 'lucide-react';
 import type { TenantPayment, Tenant, RentalProperty, RentalUnit } from '../../types';
 import { NumberInput } from '../ui/NumberInput';
 import { Modal, Field, FormSection, FormRow } from '../ui/Modal';
+import { DateInput } from '../ui/DateInput';
 
 const PAYMENT_TYPES: TenantPayment['type'][] = ['Miete', 'Kaution', 'Nachzahlung', 'Gutschrift'];
 const PAYMENT_STATUSES: TenantPayment['status'][] = ['eingegangen', 'ausstehend', 'überfällig'];
@@ -161,13 +162,7 @@ export function PaymentForm({ tenant, tenants = [], properties = [], units = [],
             />
           </Field>
           <Field label="Datum" required>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              required
-              className="input"
-            />
+            <DateInput value={date} onChange={setDate} />
           </Field>
         </FormRow>
         <FormRow cols={2}>

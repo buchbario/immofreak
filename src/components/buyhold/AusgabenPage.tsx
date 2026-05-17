@@ -4,6 +4,7 @@ import { useRentalProperties } from '../../hooks/useRentalProperties';
 import { Modal } from '../ui/Modal';
 import { NumberInput } from '../ui/NumberInput';
 import { PageCard, PageCardNoResults } from '../ui/PageCard';
+import { DateInput } from '../ui/DateInput';
 
 type ExpenseCategory =
   | 'Instandhaltung'
@@ -276,12 +277,7 @@ export function AusgabenPage() {
             </div>
             <div>
               <label className="input-label">Datum</label>
-              <input
-                type="date"
-                value={formDate}
-                onChange={(e) => setFormDate(e.target.value)}
-                className="input"
-              />
+              <DateInput value={formDate} onChange={setFormDate} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">

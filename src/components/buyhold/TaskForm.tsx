@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Task, RentalProperty, RentalUnit, Tenant } from '../../types';
 import { TASK_STATUSES, TASK_PRIORITIES, TASK_CATEGORIES } from '../../types';
 import { Modal, Field, FormSection, FormRow } from '../ui/Modal';
+import { DateInput } from '../ui/DateInput';
 
 type TaskData = Omit<Task, 'id' | 'createdAt' | 'updatedAt'>;
 
@@ -125,12 +126,7 @@ export function TaskForm({ initial, properties, units, tenants, onClose, onSave,
       <FormSection title="Termin & Zuständigkeit">
         <FormRow cols={2}>
           <Field label="Fälligkeitsdatum">
-            <input
-              type="date"
-              value={form.dueDate || ''}
-              onChange={(e) => set('dueDate', e.target.value)}
-              className="input"
-            />
+            <DateInput value={form.dueDate || ''} onChange={(v) => set('dueDate', v)} />
           </Field>
           <Field label="Zuständig">
             <input

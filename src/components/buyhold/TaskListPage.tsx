@@ -10,6 +10,7 @@ import { useRentalUnits } from '../../hooks/useRentalUnits';
 import { useTenants } from '../../hooks/useTenants';
 import { useTrash } from '../../hooks/useTrash';
 import { TaskForm } from './TaskForm';
+import { QuickTaskModal } from '../shared/QuickTaskWidget';
 import type { AppMode, Task, TaskStatus, TaskPriority } from '../../types';
 import { cn } from '../../lib/utils';
 
@@ -205,13 +206,40 @@ export function TaskListPage({ mode }: TaskListPageProps = {}) {
           </button>
         </div>
         {showForm && (
-          <TaskForm
-            initial={editing || { status: createDefaultStatus } as any}
-            properties={properties} units={allUnits} tenants={allTenants}
-            onClose={() => { setShowForm(false); setEditing(null); }}
-            onSave={handleSave}
-            onDelete={editing ? handleDelete : undefined}
-          />
+          mode === 'private' ? (
+            <QuickTaskModal
+              mode="private"
+              isEdit={!!editing}
+              initial={editing ? {
+                title: editing.title,
+                description: editing.description,
+                priority: editing.priority,
+                category: editing.category,
+                dueDate: editing.dueDate ?? '',
+                assignedTo: editing.assignedTo ?? '',
+              } : undefined}
+              onClose={() => { setShowForm(false); setEditing(null); }}
+              onCreate={(data) => handleSave({
+                title: data.title,
+                description: data.description,
+                status: editing?.status ?? createDefaultStatus,
+                priority: data.priority,
+                category: data.category,
+                mode: 'private',
+                dueDate: data.dueDate || undefined,
+                assignedTo: data.assignedTo || undefined,
+              })}
+              onDelete={editing ? handleDelete : undefined}
+            />
+          ) : (
+            <TaskForm
+              initial={editing || { status: createDefaultStatus } as any}
+              properties={properties} units={allUnits} tenants={allTenants}
+              onClose={() => { setShowForm(false); setEditing(null); }}
+              onSave={handleSave}
+              onDelete={editing ? handleDelete : undefined}
+            />
+          )
         )}
       </div>
     );
