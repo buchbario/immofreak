@@ -76,8 +76,8 @@ export function TrashPage() {
           <div className="px-5 sm:px-7 pt-4">
             <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/70 dark:border-amber-500/30 dark:bg-amber-500/10 p-3">
               <AlertTriangle size={15} className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
-              <p className="text-[12.5px] leading-relaxed text-black dark:text-white">
-                Gelöschte Elemente bleiben <strong className="font-semibold">30 Tage</strong> im Papierkorb und werden dann automatisch endgültig entfernt.
+              <p className="text-[12.5px] leading-relaxed" style={{ color: '#000' }}>
+                Gelöschte Elemente bleiben <strong className="font-semibold" style={{ color: '#000' }}>30 Tage</strong> im Papierkorb und werden dann automatisch endgültig entfernt.
               </p>
             </div>
           </div>
