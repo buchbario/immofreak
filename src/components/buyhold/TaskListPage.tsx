@@ -5,6 +5,7 @@ import {
   CircleDot,
 } from 'lucide-react';
 import { useTasks } from '../../hooks/useTasks';
+import { useProjects } from '../../hooks/useProjects';
 import { useRentalProperties } from '../../hooks/useRentalProperties';
 import { useRentalUnits } from '../../hooks/useRentalUnits';
 import { useTenants } from '../../hooks/useTenants';
@@ -59,6 +60,7 @@ interface TaskListPageProps {
 
 export function TaskListPage({ mode }: TaskListPageProps = {}) {
   const { allTasks: rawTasks, createTask, updateTask, toggleStatus, deleteTask } = useTasks();
+  const { projects: ffProjects } = useProjects();
   const { properties } = useRentalProperties();
   const { allUnits } = useRentalUnits();
   const { allTenants } = useTenants();
@@ -206,10 +208,11 @@ export function TaskListPage({ mode }: TaskListPageProps = {}) {
           </button>
         </div>
         {showForm && (
-          mode === 'private' ? (
+          mode === 'private' || mode === 'fixflip' ? (
             <QuickTaskModal
-              mode="private"
+              mode={mode}
               isEdit={!!editing}
+              projects={mode === 'fixflip' ? ffProjects : undefined}
               initial={editing ? {
                 title: editing.title,
                 description: editing.description,
@@ -217,6 +220,7 @@ export function TaskListPage({ mode }: TaskListPageProps = {}) {
                 category: editing.category,
                 dueDate: editing.dueDate ?? '',
                 assignedTo: editing.assignedTo ?? '',
+                projectId: editing.projectId,
               } : undefined}
               onClose={() => { setShowForm(false); setEditing(null); }}
               onCreate={(data) => handleSave({
@@ -225,9 +229,10 @@ export function TaskListPage({ mode }: TaskListPageProps = {}) {
                 status: editing?.status ?? createDefaultStatus,
                 priority: data.priority,
                 category: data.category,
-                mode: 'private',
+                mode,
                 dueDate: data.dueDate || undefined,
                 assignedTo: data.assignedTo || undefined,
+                projectId: data.projectId,
               })}
               onDelete={editing ? handleDelete : undefined}
             />

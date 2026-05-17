@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { DateInput } from '../ui/DateInput';
 import { useTasks } from '../../hooks/useTasks';
+import { useProjects } from '../../hooks/useProjects';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import type { AppMode, Task, TaskCategory, TaskPriority } from '../../types';
 import { TASK_CATEGORIES, TASK_PRIORITIES } from '../../types';
@@ -110,6 +111,9 @@ export function QuickTaskWidget({
 }: QuickTaskWidgetProps) {
   const navigate = useNavigate();
   const { allTasks, createTask, toggleStatus } = useTasks();
+  // Projekte nur bei Fix-&-Flip-Dashboard laden — werden als optionale
+  // Verknüpfung im QuickTaskModal angezeigt.
+  const { projects: ffProjects } = useProjects();
   const tone = ACCENTS[accent];
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -260,6 +264,7 @@ export function QuickTaskWidget({
         <QuickTaskModal
           mode={mode}
           tone={tone}
+          projects={mode === 'fixflip' ? ffProjects : undefined}
           onClose={() => setModalOpen(false)}
           onCreate={(data) => {
             createTask({
@@ -271,14 +276,14 @@ export function QuickTaskWidget({
               mode,
               dueDate: data.dueDate || undefined,
               assignedTo: data.assignedTo || undefined,
+              projectId: data.projectId,
             });
             setModalOpen(false);
           }}
           openFullForm={
-            // Im Private-Modus gibt es keine "vollständige Verknüpfung" mit
-            // Objekt/Einheit/Mieter — also auch keinen Sinn auf das volle
-            // Form zu verweisen.
-            viewAllHref && mode !== 'private'
+            // Für Fix-&-Flip und Privat gibt es kein vollständiges Form mit
+            // BH-Verknüpfungen (Objekt/Einheit/Mieter). Nur Buy & Hold.
+            viewAllHref && mode === 'buyhold'
               ? () => {
                   setModalOpen(false);
                   navigate(viewAllHref);
@@ -320,6 +325,14 @@ export interface QuickTaskFormData {
   category: TaskCategory;
   dueDate: string;
   assignedTo: string;
+  /** Fix-&-Flip-Projekt-Verknüpfung (nur wenn `projects` übergeben wurde). */
+  projectId?: string;
+}
+
+/** Minimaler Project-Shape — wir brauchen hier nur id+name. */
+export interface QuickTaskProject {
+  id: string;
+  name: string;
 }
 
 const BLUE_TONE: (typeof ACCENTS)[AccentTone] = ACCENTS.blue;
@@ -329,6 +342,7 @@ export function QuickTaskModal({
   tone = BLUE_TONE,
   initial,
   isEdit,
+  projects,
   onClose,
   onCreate,
   onDelete,
@@ -340,6 +354,8 @@ export function QuickTaskModal({
   initial?: Partial<QuickTaskFormData>;
   /** Schaltet Header-Titel auf "Aufgabe bearbeiten" + zeigt Lösch-Button im Footer. */
   isEdit?: boolean;
+  /** Wenn übergeben, erscheint ein Projekt-Dropdown (Fix-&-Flip-Verknüpfung). */
+  projects?: QuickTaskProject[];
   onClose: () => void;
   onCreate: (data: QuickTaskFormData) => void;
   onDelete?: () => void;
@@ -353,6 +369,7 @@ export function QuickTaskModal({
     category: initial?.category ?? defaultCategoryForMode(mode),
     dueDate: initial?.dueDate ?? '',
     assignedTo: initial?.assignedTo ?? '',
+    projectId: initial?.projectId,
   });
   const [confirmDelete, setConfirmDelete] = useState(false);
   const set = <K extends keyof QuickTaskFormData>(k: K, v: QuickTaskFormData[K]) =>
@@ -474,6 +491,23 @@ export function QuickTaskModal({
                 placeholder="z. B. Hausverwaltung, Eigentümer, Handwerker-Name"
                 className="w-full rounded-full bg-white border border-[#1e1b4b]/[0.10] px-3.5 py-2.5 text-[13.5px] outline-none focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15"
               />
+            </div>
+          )}
+
+          {/* Projekt-Verknüpfung (nur Fix-&-Flip, wenn Projekte übergeben wurden) */}
+          {projects && projects.length > 0 && (
+            <div>
+              <label className="block text-[11.5px] font-semibold text-[#0f1430] mb-1.5">Projekt (optional)</label>
+              <select
+                value={form.projectId ?? ''}
+                onChange={(e) => set('projectId', e.target.value || undefined)}
+                className="w-full rounded-full bg-white border border-[#1e1b4b]/[0.10] px-3.5 py-2.5 text-[13.5px] outline-none cursor-pointer focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15"
+              >
+                <option value="">— Kein Projekt verknüpft —</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
             </div>
           )}
         </div>

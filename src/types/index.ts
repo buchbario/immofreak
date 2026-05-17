@@ -451,6 +451,9 @@ export interface Task {
   /** Dashboard-Kontext, in dem die Aufgabe sichtbar ist. Fehlt das Feld
    *  (Altbestand), wird die Aufgabe weiterhin im Vorgänge-Center angezeigt. */
   mode?: AppMode;
+  /** Fix-&-Flip-Projekt-Verknüpfung (nur im fixflip-Modus relevant). */
+  projectId?: string;
+  /** Buy-&-Hold-Verknüpfungen (nur im buyhold-Modus relevant). */
   propertyId?: string;
   unitId?: string;
   tenantId?: string;
