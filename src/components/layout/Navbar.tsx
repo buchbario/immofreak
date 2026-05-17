@@ -737,37 +737,22 @@ export function Navbar({ onSearchClick }: { onSearchClick?: () => void }) {
 
   return (
     <>
-      <header className="bg-card border-b border-card-line h-16 flex-shrink-0 flex items-center px-3 sm:px-4 gap-2 z-30 relative">
-        {/* DESKTOP: Logo links, Mode-Switch, dann horizontale Section-Nav */}
+      {/* DESKTOP-Header */}
+      <header className="hidden lg:flex bg-card border-b border-card-line h-16 flex-shrink-0 items-center px-4 gap-2 z-30 relative">
         <NavLink
           to={mode === 'fixflip' ? '/' : mode === 'private' ? '/privat' : '/bh'}
-          className="hidden lg:flex flex-shrink-0 items-center"
+          className="flex-shrink-0 flex items-center"
         >
           <img src="/logo.png" alt="ImmoFreak" className="h-8 object-contain" />
         </NavLink>
-        <div className="hidden lg:block flex-shrink-0 ml-2">
+        <div className="flex-shrink-0 ml-2">
           <ModeSwitch />
         </div>
-        <nav className="hidden lg:flex items-center gap-0.5 ml-3 flex-1 min-w-0 overflow-x-auto no-scrollbar">
+        <nav className="flex items-center gap-0.5 ml-3 flex-1 min-w-0 overflow-x-auto no-scrollbar">
           {sections.map((section) => (
             <SectionDropdown key={section.title} section={section} />
           ))}
         </nav>
-
-        {/* MOBILE: Switch links, Logo mittig (absolut zentriert), Actions rechts */}
-        <div className="lg:hidden flex-shrink-0">
-          <ModeSwitch />
-        </div>
-        <NavLink
-          to={mode === 'fixflip' ? '/' : mode === 'private' ? '/privat' : '/bh'}
-          aria-label="ImmoFreak"
-          className="lg:hidden absolute left-1/2 -translate-x-1/2 flex items-center pointer-events-auto"
-        >
-          <img src="/logo.png" alt="ImmoFreak" className="h-7 object-contain" />
-        </NavLink>
-        <div className="lg:hidden flex-1" />
-
-        {/* Right side actions — auf beiden Layouts gleich */}
         <div className="flex items-center gap-1 flex-shrink-0">
           {onSearchClick && (
             <Tip label={`${t('common.search')} (⌘K)`}>
@@ -784,11 +769,33 @@ export function Navbar({ onSearchClick }: { onSearchClick?: () => void }) {
             <button
               onClick={handleStartTour}
               aria-label={t('sidebar.tour')}
-              className="hidden sm:flex size-9 rounded-lg items-center justify-center text-[#4F6BFF] hover:bg-[#4F6BFF]/10 transition-colors cursor-pointer"
+              className="size-9 rounded-lg flex items-center justify-center text-[#4F6BFF] hover:bg-[#4F6BFF]/10 transition-colors cursor-pointer"
             >
               <Sparkles size={17} strokeWidth={2} />
             </button>
           </Tip>
+          <NotificationBell />
+          <ProfileDropdown />
+        </div>
+      </header>
+
+      {/* MOBILE-Header — Grid 3 gleichbreite Spalten ⇒ Logo immer exakt mittig.
+          Search/Tour ausgeblendet, damit Logo nicht mit Actions kollidiert. */}
+      <header
+        className="lg:hidden bg-card border-b border-card-line h-14 flex-shrink-0 grid items-center px-3 z-30 relative"
+        style={{ gridTemplateColumns: '1fr auto 1fr' }}
+      >
+        <div className="justify-self-start min-w-0">
+          <ModeSwitch />
+        </div>
+        <NavLink
+          to={mode === 'fixflip' ? '/' : mode === 'private' ? '/privat' : '/bh'}
+          aria-label="ImmoFreak"
+          className="justify-self-center flex items-center min-w-0"
+        >
+          <img src="/logo.png" alt="ImmoFreak" className="h-6 object-contain" />
+        </NavLink>
+        <div className="justify-self-end flex items-center gap-1">
           <NotificationBell />
           <ProfileDropdown />
         </div>
