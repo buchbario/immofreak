@@ -349,18 +349,24 @@ function QuickTaskModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0f1430]/40 flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
-      <div className="bg-white border border-[#1e1b4b]/[0.06] rounded-3xl max-w-[520px] w-full my-8 overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#1e1b4b]/[0.06]">
+    <div
+      className="fixed inset-0 z-50 bg-[#0f1430]/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white border border-[#1e1b4b]/[0.06] rounded-t-3xl sm:rounded-3xl max-w-[520px] w-full max-h-[calc(100dvh-1rem)] sm:max-h-[min(88vh,720px)] flex flex-col overflow-hidden shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header — sticky */}
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-[#1e1b4b]/[0.06] flex-shrink-0">
           <h3 className="text-[16px] font-bold text-[#0f1430]">Neue Aufgabe</h3>
           <button onClick={onClose} className="text-[#1e1b4b]/45 hover:text-[#0f1430] p-1.5 rounded-full hover:bg-[#1e1b4b]/[0.04]">
             <X size={16} />
           </button>
         </div>
 
-        {/* Body */}
-        <div className="px-6 py-5 space-y-4">
+        {/* Body — scrollbar, Rest vom Modal bleibt sichtbar */}
+        <div className="px-5 sm:px-6 py-5 space-y-4 overflow-y-auto flex-1 min-h-0">
           <div>
             <label className="block text-[11.5px] font-semibold text-[#0f1430] mb-1.5">Titel</label>
             <input
@@ -458,8 +464,9 @@ function QuickTaskModal({
           )}
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between gap-2 px-6 py-4 border-t border-[#1e1b4b]/[0.06] bg-[#fafbff]">
+        {/* Footer — sticky */}
+        <div className="flex items-center justify-between gap-2 px-5 sm:px-6 py-3.5 border-t border-[#1e1b4b]/[0.06] bg-[#fafbff] flex-shrink-0"
+        style={{ paddingBottom: 'max(0.875rem, env(safe-area-inset-bottom, 0))' }}>
           {openFullForm ? (
             <button
               onClick={openFullForm}

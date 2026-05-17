@@ -522,10 +522,16 @@ function LeadEditModal({
   const upd = <K extends keyof Lead>(k: K, v: Lead[K]) => setDraft((d) => ({ ...d, [k]: v }));
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0f1430]/40 flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
-      <div className="bg-white border border-[#1e1b4b]/[0.06] rounded-3xl max-w-[560px] w-full my-8 overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#1e1b4b]/[0.06]">
+    <div
+      className="fixed inset-0 z-50 bg-[#0f1430]/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white border border-[#1e1b4b]/[0.06] rounded-t-3xl sm:rounded-3xl max-w-[560px] w-full max-h-[calc(100dvh-1rem)] sm:max-h-[min(88vh,820px)] flex flex-col overflow-hidden shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header — sticky */}
+        <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-[#1e1b4b]/[0.06] flex-shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             <span className={cn('size-2 rounded-full shrink-0', COLUMN_ACCENT[draft.status].dot)} />
             <span className="text-[12px] font-semibold text-[#1e1b4b]/55 uppercase tracking-wider">{draft.status}</span>
@@ -535,8 +541,8 @@ function LeadEditModal({
           </button>
         </div>
 
-        {/* Body */}
-        <div className="px-6 py-5 space-y-4">
+        {/* Body — scrollbar */}
+        <div className="px-5 sm:px-6 py-5 space-y-4 overflow-y-auto flex-1 min-h-0">
           <div>
             <label className="block text-[11.5px] font-semibold text-[#0f1430] mb-1.5">Bezeichnung</label>
             <input
@@ -666,8 +672,11 @@ function LeadEditModal({
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between gap-2 px-6 py-4 border-t border-[#1e1b4b]/[0.06] bg-[#fafbff]">
+        {/* Footer — sticky */}
+        <div
+          className="flex items-center justify-between gap-2 px-5 sm:px-6 py-3.5 border-t border-[#1e1b4b]/[0.06] bg-[#fafbff] flex-shrink-0"
+          style={{ paddingBottom: 'max(0.875rem, env(safe-area-inset-bottom, 0))' }}
+        >
           {confirmDelete ? (
             <div className="flex items-center gap-2">
               <span className="text-[12px] text-[#0f1430]">Wirklich löschen?</span>
