@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Pencil, Trash2, Plus, CheckCircle2, Circle, ExternalLink, Wrench, StickyNote, ChevronDown, ChevronUp, FileText, MapPin, Mail, Phone, ArrowLeft, TrendingUp, Wallet, BarChart3, Calculator, SearchCheck, Check, X } from 'lucide-react';
+import { Pencil, Trash2, Plus, CheckCircle2, Circle, ExternalLink, Wrench, StickyNote, ChevronDown, ChevronUp, FileText, MapPin, Mail, Phone, ArrowLeft, TrendingUp, Wallet, BarChart3, Calculator, SearchCheck, Check, X, ListTodo, Calendar as CalendarIcon } from 'lucide-react';
 import { useProjects } from '../../hooks/useProjects';
 import { useContractors } from '../../hooks/useContractors';
 import { useProjectContractors } from '../../hooks/useProjectContractors';
 import { useBudgetItems } from '../../hooks/useBudgetItems';
 import { useProjectPhotos } from '../../hooks/useProjectPhotos';
 import { useProjectDocuments } from '../../hooks/useProjectDocuments';
+import { useTasks } from '../../hooks/useTasks';
 import { useTrash } from '../../hooks/useTrash';
+import { QuickTaskModal } from '../shared/QuickTaskWidget';
 import { cascadeProjectToTrash } from '../../lib/cascadeDelete';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { ProjectForm } from './ProjectForm';
@@ -136,19 +138,37 @@ export function ProjectDetailPage() {
   const { totalActual } = useBudgetItems(id);
   const { photos, addPhoto, deletePhoto } = useProjectPhotos(id);
   const { documents, addDocument, deleteDocument } = useProjectDocuments(id);
+  const { allTasks, createTask, toggleStatus } = useTasks();
   const { moveToTrash } = useTrash();
 
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [showAssign, setShowAssign] = useState(false);
-  // ID des Handwerkers, dessen Zuweisung gerade per Bestätigungs-Dialog
-  // entfernt werden soll. Null = kein Dialog offen.
   const [removeContractorId, setRemoveContractorId] = useState<string | null>(null);
   const [notes, setNotes] = useState<string | null>(null);
   const [linksOpen, setLinksOpen] = useState(true);
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [tasksOpen, setTasksOpen] = useState(true);
   const [notesOpen, setNotesOpen] = useState(true);
+  const [showTaskModal, setShowTaskModal] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>('handwerker');
+
+  // Aufgaben die mit diesem FF-Projekt verknüpft sind, sortiert nach Frist.
+  const projectTasks = useMemo(
+    () =>
+      [...allTasks]
+        .filter((t) => t.projectId === id)
+        .sort((a, b) => {
+          if (a.status === 'erledigt' && b.status !== 'erledigt') return 1;
+          if (a.status !== 'erledigt' && b.status === 'erledigt') return -1;
+          if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+          if (a.dueDate) return -1;
+          if (b.dueDate) return 1;
+          return b.createdAt.localeCompare(a.createdAt);
+        }),
+    [allTasks, id],
+  );
+  const openTaskCount = projectTasks.filter((t) => t.status !== 'erledigt').length;
 
   const project = getProject(id!);
   if (!project) {
@@ -670,6 +690,103 @@ export function ProjectDetailPage() {
           )}
         </div>
 
+        {/* Tasks section — projektbezogene Aufgaben */}
+        <div>
+          <button
+            onClick={() => setTasksOpen(!tasksOpen)}
+            className="w-full flex items-center justify-between px-5 py-4 cursor-pointer"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--accent-dim)' }}>
+                <ListTodo size={14} className="text-blue-400" />
+              </div>
+              <span className="section-title">Aufgaben</span>
+              {openTaskCount > 0 && (
+                <span className="text-[11px] font-bold rounded-full bg-[#4F6BFF]/12 text-[#4F6BFF] px-2 py-0.5 tabular-nums">
+                  {openTaskCount} {openTaskCount === 1 ? 'offen' : 'offen'}
+                </span>
+              )}
+            </div>
+            {tasksOpen ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
+          </button>
+          {tasksOpen && (
+            <div className="px-5 pb-4">
+              {projectTasks.length === 0 ? (
+                <p className="text-xs text-muted-foreground-2">Noch keine Aufgaben verknüpft.</p>
+              ) : (
+                <div className="space-y-2">
+                  {projectTasks.slice(0, 5).map((t) => {
+                    const isDone = t.status === 'erledigt';
+                    const isOverdue =
+                      !isDone && t.dueDate && new Date(t.dueDate).getTime() < Date.now();
+                    return (
+                      <div
+                        key={t.id}
+                        className="flex items-center gap-3 rounded-xl border border-card-line bg-card hover:border-[#4F6BFF]/30 transition-colors px-3 py-2.5"
+                      >
+                        <button
+                          onClick={() => toggleStatus(t.id, isDone ? 'offen' : 'erledigt')}
+                          className={`size-[18px] rounded-md border-[1.5px] flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
+                            isDone ? 'bg-[#4F6BFF] border-[#4F6BFF]' : 'border-muted-foreground/40 hover:border-[#4F6BFF]'
+                          }`}
+                          aria-label={isDone ? 'Wieder öffnen' : 'Als erledigt markieren'}
+                        >
+                          {isDone && (
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                              <path d="M5 12l5 5L20 7" />
+                            </svg>
+                          )}
+                        </button>
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-[13px] font-medium leading-tight truncate ${isDone ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                            {t.title}
+                          </p>
+                          {t.dueDate && (
+                            <p
+                              className={`text-[11px] mt-0.5 inline-flex items-center gap-1 ${
+                                isOverdue ? 'text-rose-600 font-semibold' : 'text-muted-foreground'
+                              }`}
+                            >
+                              <CalendarIcon size={10} />
+                              {new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: 'short' }).format(new Date(t.dueDate))}
+                            </p>
+                          )}
+                        </div>
+                        <span
+                          className={`text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5 shrink-0 ${
+                            t.priority === 'hoch'
+                              ? 'bg-rose-100 text-rose-700'
+                              : t.priority === 'mittel'
+                                ? 'bg-amber-100 text-amber-700'
+                                : 'bg-violet-100 text-violet-700'
+                          }`}
+                        >
+                          {t.priority}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  {projectTasks.length > 5 && (
+                    <button
+                      onClick={() => navigate('/aufgaben')}
+                      className="w-full text-[11.5px] text-muted-foreground hover:text-foreground py-1 cursor-pointer"
+                    >
+                      +{projectTasks.length - 5} weitere
+                    </button>
+                  )}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowTaskModal(true)}
+                className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 font-semibold mt-3 cursor-pointer"
+              >
+                <Plus size={12} /> Neue Aufgabe
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* Notes section */}
         <div>
           <button
@@ -753,6 +870,30 @@ export function ProjectDetailPage() {
       )}
 
       {showEdit && <ProjectForm project={project} onClose={() => setShowEdit(false)} />}
+
+      {/* Quick-Task-Modal mit vorausgewähltem Projekt */}
+      {showTaskModal && (
+        <QuickTaskModal
+          mode="fixflip"
+          projects={[{ id: project.id, name: project.name }]}
+          initial={{ projectId: project.id }}
+          onClose={() => setShowTaskModal(false)}
+          onCreate={(data) => {
+            createTask({
+              title: data.title,
+              description: data.description,
+              status: 'offen',
+              priority: data.priority,
+              category: data.category,
+              mode: 'fixflip',
+              dueDate: data.dueDate || undefined,
+              assignedTo: data.assignedTo || undefined,
+              projectId: project.id,
+            });
+            setShowTaskModal(false);
+          }}
+        />
+      )}
       <ConfirmDialog
         open={showDelete}
         onClose={() => setShowDelete(false)}

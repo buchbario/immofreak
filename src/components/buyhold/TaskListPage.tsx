@@ -367,125 +367,115 @@ export function TaskListPage({ mode }: TaskListPageProps = {}) {
                     </button>
                   </div>
 
-                  {/* Task rows */}
+                  {/* Task rows — kompakte Full-Width-Cards */}
                   {!collapsed && (
                     <>
-                      {/* Column header */}
-                      {items.length > 0 && (
-                        <div className="hidden sm:grid grid-cols-[24px_1fr_88px_140px_96px] gap-3 px-4 py-2 text-[10.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold">
-                          <span></span>
-                          <span>Aufgabe</span>
-                          <span>Frist</span>
-                          <span>Zuständig</span>
-                          <span>Priorität</span>
-                        </div>
-                      )}
                       {items.length === 0 ? (
                         <div className="px-4 py-3 text-[12px] text-muted-foreground/70 italic">
                           Keine Einträge in dieser Gruppe.
                         </div>
                       ) : (
-                        items.map((t) => {
-                          const property = properties.find((p) => p.id === t.propertyId);
-                          const days = daysUntil(t.dueDate);
-                          const isOverdue = t.status !== 'erledigt' && days !== null && days < 0;
-                          const isSoon = t.status !== 'erledigt' && days !== null && days >= 0 && days <= 7;
-                          const isDone = t.status === 'erledigt';
-                          const prio = PRIO_CHIP[t.priority];
-                          const isSelected = t.id === selectedId;
+                        <div className="space-y-2 px-2 sm:px-3">
+                          {items.map((t) => {
+                            const property = properties.find((p) => p.id === t.propertyId);
+                            const project = ffProjects.find((p) => p.id === t.projectId);
+                            const days = daysUntil(t.dueDate);
+                            const isOverdue = t.status !== 'erledigt' && days !== null && days < 0;
+                            const isSoon = t.status !== 'erledigt' && days !== null && days >= 0 && days <= 7;
+                            const isDone = t.status === 'erledigt';
+                            const prio = PRIO_CHIP[t.priority];
+                            const isSelected = t.id === selectedId;
 
-                          return (
-                            <div
-                              key={t.id}
-                              onClick={() => setSelectedId(t.id)}
-                              className={cn(
-                                'group grid grid-cols-[24px_1fr_auto] sm:grid-cols-[24px_1fr_88px_140px_96px] items-center gap-3 px-3 sm:px-4 py-2.5 rounded-md cursor-pointer transition-colors',
-                                isSelected
-                                  ? 'bg-[#4F6BFF]/8 ring-1 ring-inset ring-[#4F6BFF]/20'
-                                  : 'hover:bg-layer-hover',
-                                isSelected && 'relative',
-                              )}
-                            >
-                              {isSelected && (
-                                <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[2.5px] rounded-r-full bg-[#4F6BFF]" />
-                              )}
-
-                              {/* Checkbox */}
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleQuickToggle(t); }}
+                            return (
+                              <div
+                                key={t.id}
+                                onClick={() => setSelectedId(t.id)}
                                 className={cn(
-                                  'size-[18px] rounded-md border-[1.5px] flex items-center justify-center flex-shrink-0 transition-colors cursor-pointer',
-                                  isDone
-                                    ? 'bg-[#4F6BFF] border-[#4F6BFF]'
-                                    : 'border-muted-foreground/40 hover:border-[#4F6BFF] hover:bg-[#4F6BFF]/5',
+                                  'group relative flex items-center gap-3 sm:gap-4 rounded-xl border bg-card px-3 sm:px-4 py-3 cursor-pointer transition-all overflow-hidden',
+                                  isSelected
+                                    ? 'border-[#4F6BFF]/40 bg-[#4F6BFF]/[0.04] shadow-[0_4px_12px_-4px_rgba(79,107,255,0.20)]'
+                                    : 'border-card-line hover:border-[#4F6BFF]/30 hover:shadow-[0_2px_8px_-2px_rgba(15,23,42,0.06)]',
                                 )}
                               >
-                                {isDone && (
-                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
-                                    <path d="M5 12l5 5L20 7" />
-                                  </svg>
-                                )}
-                              </button>
-
-                              {/* Title + sub-line */}
-                              <div className="min-w-0">
-                                <p className={cn(
-                                  'text-[13.5px] font-medium text-foreground truncate tracking-tight',
-                                  isDone && 'line-through text-muted-foreground',
-                                )}>
-                                  {t.title}
-                                </p>
-                                <div className="sm:hidden flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
-                                  {t.dueDate && (
-                                    <span className={cn(
-                                      isOverdue && 'text-rose-600 dark:text-rose-400 font-medium',
-                                      isSoon && !isOverdue && 'text-amber-600 dark:text-amber-400 font-medium',
-                                    )}>
-                                      <Calendar size={10} className="inline mr-1" />
-                                      {fmtDate(t.dueDate)}
-                                    </span>
+                                {/* Linker Akzent-Strich für Priorität (subtil) */}
+                                <span
+                                  className={cn(
+                                    'absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full',
+                                    t.priority === 'hoch' && 'bg-rose-400',
+                                    t.priority === 'mittel' && 'bg-amber-400',
+                                    t.priority === 'niedrig' && 'bg-violet-400',
                                   )}
-                                  {t.assignedTo && <span>{t.assignedTo}</span>}
-                                </div>
-                              </div>
+                                />
 
-                              {/* Frist (Deadline) */}
-                              <div className="hidden sm:block text-[12.5px] text-muted-foreground tabular-nums">
-                                {t.dueDate ? (
-                                  <span className={cn(
-                                    isOverdue && 'text-rose-600 dark:text-rose-400 font-medium',
-                                    isSoon && !isOverdue && 'text-amber-600 dark:text-amber-400 font-medium',
+                                {/* Checkbox */}
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleQuickToggle(t); }}
+                                  className={cn(
+                                    'size-[20px] rounded-md border-[1.5px] flex items-center justify-center flex-shrink-0 transition-colors cursor-pointer ml-1',
+                                    isDone
+                                      ? 'bg-[#4F6BFF] border-[#4F6BFF]'
+                                      : 'border-muted-foreground/40 hover:border-[#4F6BFF] hover:bg-[#4F6BFF]/5',
+                                  )}
+                                  aria-label={isDone ? 'Wieder öffnen' : 'Als erledigt markieren'}
+                                >
+                                  {isDone && (
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                                      <path d="M5 12l5 5L20 7" />
+                                    </svg>
+                                  )}
+                                </button>
+
+                                {/* Title + Meta-Reihe */}
+                                <div className="min-w-0 flex-1">
+                                  <p className={cn(
+                                    'text-[14px] font-semibold leading-tight tracking-tight truncate',
+                                    isDone ? 'line-through text-muted-foreground' : 'text-foreground',
                                   )}>
-                                    {fmtDate(t.dueDate)}
-                                  </span>
-                                ) : '—'}
-                              </div>
+                                    {t.title}
+                                  </p>
+                                  <div className="flex items-center gap-x-3 gap-y-1 flex-wrap mt-1 text-[11.5px] text-muted-foreground">
+                                    {t.dueDate && (
+                                      <span className={cn(
+                                        'inline-flex items-center gap-1',
+                                        isOverdue && 'text-rose-600 dark:text-rose-400 font-semibold',
+                                        isSoon && !isOverdue && 'text-amber-600 dark:text-amber-400 font-semibold',
+                                      )}>
+                                        <Calendar size={11} />
+                                        {fmtDate(t.dueDate)}
+                                      </span>
+                                    )}
+                                    {t.assignedTo && (
+                                      <span className="inline-flex items-center gap-1">
+                                        <User size={11} /> {t.assignedTo}
+                                      </span>
+                                    )}
+                                    {project && (
+                                      <span className="inline-flex items-center gap-1">
+                                        <FileText size={11} /> {project.name}
+                                      </span>
+                                    )}
+                                    {!project && property && (
+                                      <span className="inline-flex items-center gap-1">
+                                        <FileText size={11} /> {property.name}
+                                      </span>
+                                    )}
+                                    <span className="inline-flex items-center text-[10px] font-medium uppercase tracking-wider opacity-70">
+                                      {t.category}
+                                    </span>
+                                  </div>
+                                </div>
 
-                              {/* Assignee */}
-                              <div className="hidden sm:block text-[12.5px] text-muted-foreground truncate">
-                                {t.assignedTo || (property ? property.name : '—')}
-                              </div>
-
-                              {/* Priority chip */}
-                              <div className="hidden sm:block">
+                                {/* Priority chip */}
                                 <span className={cn(
-                                  'inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[10.5px] font-bold tracking-wider',
+                                  'shrink-0 inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider',
                                   prio.bg,
                                 )}>
                                   {prio.label}
                                 </span>
                               </div>
-
-                              {/* Mobile: priority chip */}
-                              <span className={cn(
-                                'sm:hidden inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider justify-self-end',
-                                prio.bg,
-                              )}>
-                                {prio.label}
-                              </span>
-                            </div>
-                          );
-                        })
+                            );
+                          })}
+                        </div>
                       )}
                     </>
                   )}
