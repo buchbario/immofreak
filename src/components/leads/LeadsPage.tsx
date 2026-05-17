@@ -179,7 +179,7 @@ export function LeadsPage() {
           </div>
           <button
             onClick={() => startCreate('Lead')}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-[#0f1430] hover:bg-[#1a2050] text-white text-[13px] font-semibold transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-[#4F6BFF] hover:bg-[#3D56E0] text-white text-[13px] font-semibold transition-colors"
           >
             <Plus size={14} strokeWidth={2.2} /> Neuer Lead
           </button>
@@ -334,7 +334,7 @@ function Column({
                     </button>
                     <button
                       onClick={onSubmitCreate}
-                      className="text-[11.5px] font-semibold rounded-full bg-[#0f1430] hover:bg-[#1a2050] text-white px-3.5 py-1.5 transition-colors"
+                      className="text-[11.5px] font-semibold rounded-full bg-[#4F6BFF] hover:bg-[#3D56E0] text-white px-3.5 py-1.5 transition-colors"
                     >
                       Hinzufügen
                     </button>
@@ -702,7 +702,7 @@ function LeadEditModal({
             <button
               onClick={() => onSave(draft)}
               disabled={!draft.name.trim()}
-              className="text-[12.5px] font-semibold rounded-full bg-[#0f1430] hover:bg-[#1a2050] text-white px-4 py-2 disabled:opacity-50"
+              className="text-[12.5px] font-semibold rounded-full bg-[#4F6BFF] hover:bg-[#3D56E0] text-white px-4 py-2 disabled:opacity-50"
             >
               Speichern
             </button>

@@ -28,27 +28,33 @@ interface QuickTaskWidgetProps {
   maxOpen?: number;
 }
 
+// Primärer CTA-Button (Anlegen) ist app-weit konsistent in Brand-Blau —
+// nur Header-Icon-Tints und Pill-Active-Farben können pro Dashboard
+// variieren (Visual-Variety), damit man im Multi-Dashboard-Kontext sieht
+// wo man ist. Der Action-Button selbst bleibt Brand für Wiedererkennbarkeit.
+const PRIMARY_BTN = 'bg-[#4F6BFF] hover:bg-[#3D56E0] text-white';
+
 const ACCENTS: Record<AccentTone, { bg: string; text: string; ring: string; btn: string; pillActive: string }> = {
   blue: {
     bg: 'bg-[#4F6BFF]/10',
     text: 'text-[#4F6BFF]',
     ring: 'focus:border-[#4F6BFF]/40 focus:ring-[#4F6BFF]/15',
-    btn: 'bg-[#4F6BFF] hover:bg-[#4361e8] text-white',
+    btn: PRIMARY_BTN,
     pillActive: 'bg-[#4F6BFF] text-white',
   },
   emerald: {
     bg: 'bg-emerald-100 dark:bg-emerald-500/15',
     text: 'text-emerald-700 dark:text-emerald-400',
     ring: 'focus:border-emerald-400/50 focus:ring-emerald-400/20',
-    btn: 'bg-emerald-600 hover:bg-emerald-700 text-white',
-    pillActive: 'bg-emerald-600 text-white',
+    btn: PRIMARY_BTN,
+    pillActive: 'bg-[#4F6BFF] text-white',
   },
   violet: {
     bg: 'bg-violet-100 dark:bg-violet-500/15',
     text: 'text-violet-700 dark:text-violet-400',
     ring: 'focus:border-violet-400/50 focus:ring-violet-400/20',
-    btn: 'bg-violet-600 hover:bg-violet-700 text-white',
-    pillActive: 'bg-violet-600 text-white',
+    btn: PRIMARY_BTN,
+    pillActive: 'bg-[#4F6BFF] text-white',
   },
 };
 

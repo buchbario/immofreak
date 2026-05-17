@@ -128,6 +128,7 @@ export const translations = {
 
     // Mobile bottom nav (kurze Labels)
     'mobilenav.start': 'Start',
+    'mobilenav.leads': 'Leads',
     'mobilenav.projects': 'Projekte',
     'mobilenav.contractors': 'Handwerker',
     'mobilenav.calculator': 'Rechner',
@@ -136,6 +137,7 @@ export const translations = {
     'mobilenav.tenants': 'Mieter',
     'mobilenav.payments': 'Zahlungen',
     'mobilenav.finance': 'Finanzen',
+    'mobilenav.tasks': 'Aufgaben',
     'mobilenav.boards': 'Boards',
 
     // Settings page
@@ -407,6 +409,7 @@ export const translations = {
     'sidebar.logout': 'Sign out',
 
     'mobilenav.start': 'Home',
+    'mobilenav.leads': 'Leads',
     'mobilenav.projects': 'Projects',
     'mobilenav.contractors': 'Trades',
     'mobilenav.calculator': 'Calc',
@@ -415,6 +418,7 @@ export const translations = {
     'mobilenav.tenants': 'Tenants',
     'mobilenav.payments': 'Payments',
     'mobilenav.finance': 'Finance',
+    'mobilenav.tasks': 'Tasks',
     'mobilenav.boards': 'Boards',
 
     // Settings

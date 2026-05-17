@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard, Building2, HardHat, Calculator, SearchCheck,
-  Home, Users, Receipt, Wallet, ListTodo, Sparkles,
+  LayoutDashboard, Building2, Calculator, SearchCheck,
+  Home, Wallet, ListTodo, Sparkles, Target,
 } from 'lucide-react';
 import { useAppMode } from '../../context/AppModeContext';
 import { useTranslation } from '../../context/LocaleContext';
@@ -20,20 +20,24 @@ interface NavItem {
 // Labels sind hier Translation-Keys (siehe `i18n/translations.ts`).
 // Der Renderer ruft t(item.label) auf — Pinned-Boards mit User-Namen
 // fallen automatisch auf den unveränderten String zurück.
+// Fix & Flip Mobile: Dashboard, Leads, Projekte, Kalkulator, Deal Analyzer,
+// Aufgaben. Alles andere (Handwerker, Settings etc.) bewusst desktop-only.
 const fixFlipItems: NavItem[] = [
   { to: '/', icon: LayoutDashboard, label: 'mobilenav.start', end: true },
+  { to: '/leads', icon: Target, label: 'mobilenav.leads' },
   { to: '/projekte', icon: Building2, label: 'mobilenav.projects' },
-  { to: '/handwerker', icon: HardHat, label: 'mobilenav.contractors' },
   { to: '/kalkulator', icon: Calculator, label: 'mobilenav.calculator' },
   { to: '/deal-analyzer', icon: SearchCheck, label: 'mobilenav.analyzer' },
+  { to: '/aufgaben', icon: ListTodo, label: 'mobilenav.tasks' },
 ];
 
+// Buy & Hold Mobile: Dashboard, Objekte, Finanzen, Aufgaben — reduzierte Set,
+// Mieter / Verträge / Versorger etc. nur am Desktop.
 const buyHoldItems: NavItem[] = [
   { to: '/bh', icon: LayoutDashboard, label: 'mobilenav.start', end: true },
   { to: '/bh/objekte', icon: Home, label: 'mobilenav.objects' },
-  { to: '/bh/mieter', icon: Users, label: 'mobilenav.tenants' },
-  { to: '/bh/transaktionen', icon: Receipt, label: 'mobilenav.payments' },
   { to: '/bh/finanzen', icon: Wallet, label: 'mobilenav.finance' },
+  { to: '/bh/aufgaben', icon: ListTodo, label: 'mobilenav.tasks' },
 ];
 
 /**

@@ -115,24 +115,30 @@ export function BHDashboardPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
           {[
-            { icon: Plus,      label: 'Objekt anlegen',     desc: 'Starte dein Portfolio',                to: '/bh/objekte',       primary: true },
-            { icon: UserPlus,  label: 'Mieter anlegen',     desc: 'Mieter-Stammdaten erfassen',           to: '/bh/mieter' },
-            { icon: Receipt,   label: 'Transaktionen',      desc: 'Banking & Buchungen',                  to: '/bh/transaktionen' },
-            { icon: BarChart3, label: 'Berichte',           desc: 'Auswertungen & Analysen',              to: '/bh/berichte' },
+            { icon: Plus,      label: 'Objekt anlegen', desc: 'Starte dein Portfolio', to: '/bh/objekte', primary: true, bg: 'bg-[#4F6BFF] hover:bg-[#3D56E0]', iconBg: 'bg-white/15', iconText: 'text-white', titleText: 'text-white', subText: 'text-white/65' },
+            { icon: UserPlus,  label: 'Mieter anlegen', desc: 'Mieter-Stammdaten erfassen', to: '/bh/mieter', bg: 'bg-[#E8DAFF] hover:bg-[#DAC5FF]', iconBg: 'bg-white/60', iconText: 'text-[#3D1F5A]', titleText: 'text-[#3D1F5A]', subText: 'text-[#3D1F5A]/65' },
+            { icon: Receipt,   label: 'Transaktionen', desc: 'Banking & Buchungen', to: '/bh/transaktionen', bg: 'bg-[#D6F0DC] hover:bg-[#BFE6C9]', iconBg: 'bg-white/60', iconText: 'text-[#1A4D2C]', titleText: 'text-[#1A4D2C]', subText: 'text-[#1A4D2C]/65' },
+            { icon: BarChart3, label: 'Berichte', desc: 'Auswertungen & Analysen', to: '/bh/berichte', bg: 'bg-[#FFF1CC] hover:bg-[#FCE9B4]', iconBg: 'bg-white/60', iconText: 'text-[#5A4A1A]', titleText: 'text-[#5A4A1A]', subText: 'text-[#5A4A1A]/65' },
           ].map(a => (
-            <button key={a.to} onClick={() => navigate(a.to)} className={cn(
-              'flex flex-col items-start gap-3 p-4 sm:p-5 rounded-xl border text-left transition-all cursor-pointer',
-              a.primary
-                ? 'bg-gradient-to-br from-[#4F6BFF] to-[#6B7FFF] border-[#4F6BFF] text-white shadow-md hover:shadow-lg hover:-translate-y-0.5'
-                : 'bg-card border-card-line hover:border-[#4F6BFF]/30 hover:shadow-md hover:-translate-y-0.5'
-            )}>
-              <div className={cn('size-10 rounded-xl flex items-center justify-center', a.primary ? 'bg-white/20' : 'bg-[#4F6BFF]/10')}>
-                <a.icon size={18} className={a.primary ? 'text-white' : 'text-[#4F6BFF]'} />
+            <button
+              key={a.to}
+              onClick={() => navigate(a.to)}
+              className={cn(
+                'group relative flex flex-col items-start text-left p-5 rounded-2xl transition-all cursor-pointer min-h-[128px] hover:-translate-y-0.5',
+                a.bg,
+              )}
+            >
+              <div className={cn('size-10 rounded-xl flex items-center justify-center mb-3', a.iconBg, a.iconText)}>
+                <a.icon size={18} strokeWidth={2.1} />
               </div>
-              <div>
-                <p className={cn('text-sm font-semibold', !a.primary && 'text-foreground')}>{a.label}</p>
-                <p className={cn('text-xs mt-0.5', a.primary ? 'text-white/70' : 'text-muted-foreground')}>{a.desc}</p>
-              </div>
+              <p className={cn('text-[14.5px] font-semibold leading-tight mb-1', a.titleText)}>{a.label}</p>
+              <p className={cn('text-[12px] leading-relaxed', a.subText)}>{a.desc}</p>
+              <span className={cn(
+                'absolute right-4 bottom-4 size-7 rounded-full flex items-center justify-center transition-all opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5',
+                a.primary ? 'bg-white/15 text-white' : 'bg-white/70 text-current',
+              )}>
+                <ArrowRight size={13} strokeWidth={2.2} />
+              </span>
             </button>
           ))}
         </div>
@@ -246,28 +252,36 @@ export function BHDashboardPage() {
         </KpiCard>
       </div>
 
-      {/* SUGGESTED ACTIONS — Stratify-style: 4 prominent cards with icon, title, content */}
+      {/* SUGGESTED ACTIONS — pastell-getönte Action-Cards mit Arrow rechts unten */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
         {[
-          { icon: Plus,      title: 'Neues Objekt', sub: `${properties.length} ${properties.length === 1 ? 'Objekt' : 'Objekte'} im Portfolio`, to: '/bh/objekte', tint: 'bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400' },
-          { icon: UserPlus,  title: 'Neuer Mieter', sub: `${allTenants.length} ${allTenants.length === 1 ? 'Mieter' : 'Mieter'} verwaltet`, to: '/bh/mieter', tint: 'bg-violet-50 text-violet-600 dark:bg-violet-500/15 dark:text-violet-400' },
-          { icon: Receipt,   title: 'Transaktionen', sub: 'Banking & Mieteingänge tracken', to: '/bh/transaktionen', tint: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400' },
-          { icon: BarChart3, title: 'Berichte', sub: 'Auswertungen & Renditeanalyse', to: '/bh/berichte', tint: 'bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400' },
+          { icon: Plus,      title: 'Neues Objekt', sub: `${properties.length} ${properties.length === 1 ? 'Objekt' : 'Objekte'} im Portfolio`, to: '/bh/objekte', primary: true, bg: 'bg-[#4F6BFF] hover:bg-[#3D56E0]', iconBg: 'bg-white/15', iconText: 'text-white', titleText: 'text-white', subText: 'text-white/65' },
+          { icon: UserPlus,  title: 'Neuer Mieter', sub: `${allTenants.length} ${allTenants.length === 1 ? 'Mieter' : 'Mieter'} verwaltet`, to: '/bh/mieter', bg: 'bg-[#E8DAFF] hover:bg-[#DAC5FF]', iconBg: 'bg-white/60', iconText: 'text-[#3D1F5A]', titleText: 'text-[#3D1F5A]', subText: 'text-[#3D1F5A]/65' },
+          { icon: Receipt,   title: 'Transaktionen', sub: 'Banking & Mieteingänge tracken', to: '/bh/transaktionen', bg: 'bg-[#D6F0DC] hover:bg-[#BFE6C9]', iconBg: 'bg-white/60', iconText: 'text-[#1A4D2C]', titleText: 'text-[#1A4D2C]', subText: 'text-[#1A4D2C]/65' },
+          { icon: BarChart3, title: 'Berichte', sub: 'Auswertungen & Renditeanalyse', to: '/bh/berichte', bg: 'bg-[#FFF1CC] hover:bg-[#FCE9B4]', iconBg: 'bg-white/60', iconText: 'text-[#5A4A1A]', titleText: 'text-[#5A4A1A]', subText: 'text-[#5A4A1A]/65' },
         ].map(a => (
           <button
             key={a.to}
             onClick={() => navigate(a.to)}
-            className="group flex flex-col items-start text-left p-4 sm:p-5 bg-card border border-card-line rounded-2xl hover:-translate-y-px transition-all cursor-pointer hover:border-[#4F6BFF]/25 hover:shadow-[0_4px_16px_rgba(15,23,42,0.06)] min-h-[124px]"
+            className={cn(
+              'group relative flex flex-col items-start text-left p-5 rounded-2xl transition-all cursor-pointer min-h-[128px] hover:-translate-y-0.5',
+              a.bg,
+            )}
           >
-            <div className={cn('size-10 rounded-xl flex items-center justify-center mb-3 transition-colors', a.tint)}>
-              <a.icon size={18} />
+            <div className={cn('size-10 rounded-xl flex items-center justify-center mb-3 transition-colors', a.iconBg, a.iconText)}>
+              <a.icon size={18} strokeWidth={2.1} />
             </div>
-            <p className="text-[14px] font-semibold text-foreground leading-tight mb-1">{a.title}</p>
-            <p className="text-[12px] text-muted-foreground leading-relaxed">{a.sub}</p>
+            <p className={cn('text-[14.5px] font-semibold leading-tight mb-1', a.titleText)}>{a.title}</p>
+            <p className={cn('text-[12px] leading-relaxed', a.subText)}>{a.sub}</p>
+            <span className={cn(
+              'absolute right-4 bottom-4 size-7 rounded-full flex items-center justify-center transition-all opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5',
+              a.primary ? 'bg-white/15 text-white' : 'bg-white/70 text-current',
+            )}>
+              <ArrowRight size={13} strokeWidth={2.2} />
+            </span>
           </button>
         ))}
       </div>
-
       {/* TWO-COLUMN: PROPERTIES + SIDE STACK */}
       <div className="grid grid-cols-1 xl:grid-cols-[1.7fr_1fr] gap-4 sm:gap-5">
         {/* Properties panel */}

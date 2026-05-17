@@ -22,7 +22,7 @@ import {
   Home, Users, Plug, FileText, ChevronDown, LogOut,
   Receipt, Wallet, BarChart3, Gauge, X,
   ArrowLeftRight, CreditCard, SearchCheck, Search, Landmark, Trash2,
-  Sparkles, ListTodo, FolderArchive, Menu, Target,
+  Sparkles, ListTodo, FolderArchive, Target,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAppMode } from '../../context/AppModeContext';
@@ -730,43 +730,44 @@ export function Navbar({ onSearchClick }: { onSearchClick?: () => void }) {
     setTimeout(() => startTour(), 220);
   };
 
+  // Mobile: kein Hamburger mehr — Navigation läuft komplett über die
+  // MobileBottomNav. Top-Bar wird zum schlanken 3-Spalten-Layout:
+  // Mode-Switch links, Logo mittig (absolut zentriert), Actions rechts.
+  // Desktop: behält bestehendes Layout mit Section-Dropdowns.
+
   return (
     <>
       <header className="bg-card border-b border-card-line h-16 flex-shrink-0 flex items-center px-3 sm:px-4 gap-2 z-30 relative">
-        {/* Mobile: hamburger */}
-        <button
-          onClick={() => setMobileOpen(true)}
-          aria-label="Menü"
-          className="lg:hidden size-9 -ml-1.5 rounded-lg flex items-center justify-center text-foreground hover:bg-layer-hover active:bg-layer-active cursor-pointer"
-        >
-          <Menu size={20} />
-        </button>
-
-        {/* Logo */}
+        {/* DESKTOP: Logo links, Mode-Switch, dann horizontale Section-Nav */}
         <NavLink
           to={mode === 'fixflip' ? '/' : mode === 'private' ? '/privat' : '/bh'}
-          className="flex-shrink-0 flex items-center"
+          className="hidden lg:flex flex-shrink-0 items-center"
         >
-          <img src="/logo.png" alt="ImmoFreak" className="h-7 sm:h-8 object-contain" />
+          <img src="/logo.png" alt="ImmoFreak" className="h-8 object-contain" />
         </NavLink>
-
-        {/* Mode-Switch — auch auf Mobile sichtbar; bei < 420 px wird das Label
-            ausgeblendet damit nur das Gradient-Icon-Pille bleibt. */}
-        <div className="flex-shrink-0 ml-1 sm:ml-2">
+        <div className="hidden lg:block flex-shrink-0 ml-2">
           <ModeSwitch />
         </div>
-
-        {/* Section-Navigation (Desktop only — auf Mobile zeigt Hamburger das Menü) */}
         <nav className="hidden lg:flex items-center gap-0.5 ml-3 flex-1 min-w-0 overflow-x-auto no-scrollbar">
           {sections.map((section) => (
             <SectionDropdown key={section.title} section={section} />
           ))}
         </nav>
 
-        {/* Spacer auf kleineren Screens */}
+        {/* MOBILE: Switch links, Logo mittig (absolut zentriert), Actions rechts */}
+        <div className="lg:hidden flex-shrink-0">
+          <ModeSwitch />
+        </div>
+        <NavLink
+          to={mode === 'fixflip' ? '/' : mode === 'private' ? '/privat' : '/bh'}
+          aria-label="ImmoFreak"
+          className="lg:hidden absolute left-1/2 -translate-x-1/2 flex items-center pointer-events-auto"
+        >
+          <img src="/logo.png" alt="ImmoFreak" className="h-7 object-contain" />
+        </NavLink>
         <div className="lg:hidden flex-1" />
 
-        {/* Right side actions */}
+        {/* Right side actions — auf beiden Layouts gleich */}
         <div className="flex items-center gap-1 flex-shrink-0">
           {onSearchClick && (
             <Tip label={`${t('common.search')} (⌘K)`}>
@@ -793,6 +794,8 @@ export function Navbar({ onSearchClick }: { onSearchClick?: () => void }) {
         </div>
       </header>
 
+      {/* Mobile-Drawer aktuell ungenutzt — Hamburger wurde entfernt, kommt nur
+          noch zum Tragen falls explizit über andere Trigger geöffnet. */}
       <MobileNavDrawer
         open={mobileOpen}
         onClose={() => setMobileOpen(false)}
