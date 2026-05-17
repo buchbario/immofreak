@@ -12,6 +12,7 @@ import { useTenants } from '../../hooks/useTenants';
 import { useTrash } from '../../hooks/useTrash';
 import { TaskForm } from './TaskForm';
 import { QuickTaskModal } from '../shared/QuickTaskWidget';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import type { AppMode, Task, TaskStatus, TaskPriority } from '../../types';
 import { cn } from '../../lib/utils';
 
@@ -93,6 +94,9 @@ export function TaskListPage({ mode }: TaskListPageProps = {}) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [createDefaultStatus, setCreateDefaultStatus] = useState<TaskStatus>('offen');
+  // Aufgabe, deren Abhaken gerade bestätigt werden soll. Beim Zurück-Setzen
+  // (erledigt → offen) wird KEIN Modal gezeigt, das ist nur Korrektur.
+  const [confirmingDone, setConfirmingDone] = useState<Task | null>(null);
 
   const counts = useMemo(() => {
     const now = Date.now();
@@ -169,8 +173,18 @@ export function TaskListPage({ mode }: TaskListPageProps = {}) {
   };
   const openEdit = (task: Task) => { setEditing(task); setShowForm(true); };
   const handleQuickToggle = (t: Task) => {
-    const next: TaskStatus = t.status === 'erledigt' ? 'offen' : 'erledigt';
-    toggleStatus(t.id, next);
+    if (t.status === 'erledigt') {
+      // Re-open ohne Bestätigung — ist ja Korrektur
+      toggleStatus(t.id, 'offen');
+      return;
+    }
+    // Abhaken — Modal zur Bestätigung
+    setConfirmingDone(t);
+  };
+  const handleConfirmDone = () => {
+    if (!confirmingDone) return;
+    toggleStatus(confirmingDone.id, 'erledigt');
+    setConfirmingDone(null);
   };
   const openCreate = (defaultStatus: TaskStatus = 'offen') => {
     setCreateDefaultStatus(defaultStatus);
@@ -568,6 +582,22 @@ export function TaskListPage({ mode }: TaskListPageProps = {}) {
           onDelete={editing ? handleDelete : undefined}
         />
       )}
+
+      <ConfirmDialog
+        open={!!confirmingDone}
+        onClose={() => setConfirmingDone(null)}
+        onConfirm={handleConfirmDone}
+        title="Aufgabe erledigt?"
+        message={
+          <>
+            <span className="font-semibold text-foreground">„{confirmingDone?.title}"</span> als erledigt markieren?
+            Du findest sie weiterhin in der Aufgaben-Liste.
+          </>
+        }
+        confirmLabel="Ja, erledigt"
+        cancelLabel="Abbrechen"
+        variant="primary"
+      />
     </div>
   );
 }

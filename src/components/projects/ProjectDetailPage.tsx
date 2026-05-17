@@ -151,6 +151,7 @@ export function ProjectDetailPage() {
   const [tasksOpen, setTasksOpen] = useState(true);
   const [notesOpen, setNotesOpen] = useState(true);
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [confirmingDone, setConfirmingDone] = useState<{ id: string; title: string } | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('handwerker');
 
   // Aufgaben die mit diesem FF-Projekt verknüpft sind, sortiert nach Frist.
@@ -725,7 +726,13 @@ export function ProjectDetailPage() {
                         className="flex items-center gap-3 rounded-xl border border-card-line bg-card hover:border-[#4F6BFF]/30 transition-colors px-3 py-2.5"
                       >
                         <button
-                          onClick={() => toggleStatus(t.id, isDone ? 'offen' : 'erledigt')}
+                          onClick={() => {
+                            if (isDone) {
+                              toggleStatus(t.id, 'offen');
+                            } else {
+                              setConfirmingDone({ id: t.id, title: t.title });
+                            }
+                          }}
                           className={`size-[18px] rounded-md border-[1.5px] flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
                             isDone ? 'bg-[#4F6BFF] border-[#4F6BFF]' : 'border-muted-foreground/40 hover:border-[#4F6BFF]'
                           }`}
@@ -870,6 +877,25 @@ export function ProjectDetailPage() {
       )}
 
       {showEdit && <ProjectForm project={project} onClose={() => setShowEdit(false)} />}
+
+      <ConfirmDialog
+        open={!!confirmingDone}
+        onClose={() => setConfirmingDone(null)}
+        onConfirm={() => {
+          if (confirmingDone) toggleStatus(confirmingDone.id, 'erledigt');
+          setConfirmingDone(null);
+        }}
+        title="Aufgabe erledigt?"
+        message={
+          <>
+            <span className="font-semibold text-foreground">„{confirmingDone?.title}"</span> als erledigt
+            markieren? Du findest sie weiterhin in der Aufgaben-Liste.
+          </>
+        }
+        confirmLabel="Ja, erledigt"
+        cancelLabel="Abbrechen"
+        variant="primary"
+      />
 
       {/* Quick-Task-Modal mit vorausgewähltem Projekt */}
       {showTaskModal && (
