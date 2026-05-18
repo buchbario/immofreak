@@ -155,6 +155,10 @@ export function NotificationBell({ variant = 'icon' }: { variant?: 'icon' | 'row
   const updatePos = useCallback(() => {
     if (btnRef.current) {
       const r = btnRef.current.getBoundingClientRect();
+      // Auf Mobile (< 640px) zentrieren wir das Panel im verfügbaren Viewport
+      // (linke + rechte Inset 8px). Auf Desktop bleibt es rechts unter der
+      // Glocke ausgerichtet. So überläuft das 320px-Panel nicht den Rand
+      // bei schmalem Display.
       setPos({ top: r.bottom + 8, right: window.innerWidth - r.right });
     }
   }, []);
@@ -194,7 +198,16 @@ export function NotificationBell({ variant = 'icon' }: { variant?: 'icon' | 'row
       )}
 
       {open && (
-        <div className="fixed w-80 bg-dropdown border border-dropdown-line rounded-xl shadow-xl z-[80] overflow-hidden" style={{ top: pos.top, right: pos.right }}>
+        <div
+          className="fixed bg-dropdown border border-dropdown-line rounded-xl shadow-xl z-[80] overflow-hidden left-2 right-2 sm:left-auto sm:w-80"
+          style={{
+            top: pos.top,
+            // sm: rechts unter der Glocke; mobile: links/rechts via Tailwind-Klassen
+            ...(typeof window !== 'undefined' && window.innerWidth >= 640
+              ? { right: pos.right }
+              : {}),
+          }}
+        >
           <div className="flex items-center justify-between px-4 py-3 border-b border-dropdown-divider">
             <h3 className="text-sm font-semibold text-foreground">Benachrichtigungen</h3>
             {unreadCount > 0 ? (
