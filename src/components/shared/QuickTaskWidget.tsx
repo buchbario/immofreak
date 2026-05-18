@@ -167,27 +167,26 @@ export function QuickTaskWidget({
             </span>
           )}
         </div>
-        {viewAllHref && (
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Kompakter "+ Neu" Pill-Button — visuell wie "+ Neues Projekt" oben rechts */}
           <button
-            onClick={() => navigate(viewAllHref)}
-            className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            onClick={() => setModalOpen(true)}
+            className={cn(
+              'inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors cursor-pointer',
+              tone.btn,
+            )}
           >
-            Alle <ArrowRight size={12} />
+            <Plus size={12} strokeWidth={2.4} /> Neu
           </button>
-        )}
-      </div>
-
-      {/* Action: Neuer-Aufgabe-Button */}
-      <div className="px-5 sm:px-6 pb-3">
-        <button
-          onClick={() => setModalOpen(true)}
-          className={cn(
-            'w-full inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-[13px] font-semibold transition-colors cursor-pointer',
-            tone.btn,
+          {viewAllHref && (
+            <button
+              onClick={() => navigate(viewAllHref)}
+              className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            >
+              Alle <ArrowRight size={12} />
+            </button>
           )}
-        >
-          <Plus size={14} strokeWidth={2.4} /> Neue Aufgabe anlegen
-        </button>
+        </div>
       </div>
 
       {/* Tasks-Liste */}
