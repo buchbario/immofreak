@@ -296,50 +296,57 @@ export function TaskListPage({ mode }: TaskListPageProps = {}) {
             </p>
           </div>
 
-          {/* Tabs / Filter row */}
-          <div className="px-5 sm:px-7 py-3 border-b border-card-divider flex items-center gap-2 sm:gap-4 flex-wrap">
-            {(
-              [
-                { key: 'alle', label: 'Alle', cnt: counts.total },
-                { key: 'offen', label: 'Offen', cnt: counts.offen },
-                { key: 'in-bearbeitung', label: 'In Bearbeitung', cnt: counts.inBearbeitung },
-                { key: 'ueberfaellig', label: 'Überfällig', cnt: counts.ueberfaellig },
-                { key: 'erledigt', label: 'Erledigt', cnt: counts.erledigt },
-              ] as const
-            ).map((opt) => (
-              <button
-                key={opt.key}
-                onClick={() => setFilter(opt.key)}
-                className={cn(
-                  'group relative inline-flex items-center gap-1.5 pb-2 -mb-3 text-[13px] font-medium transition-colors cursor-pointer',
-                  filter === opt.key
-                    ? 'text-[#4F6BFF]'
-                    : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                {opt.label}
-                <span className={cn(
-                  'inline-flex items-center justify-center min-w-[20px] h-[18px] px-1.5 rounded-full text-[10.5px] font-semibold tabular-nums',
-                  filter === opt.key ? 'bg-[#4F6BFF]/15 text-[#4F6BFF]' : 'bg-layer-hover text-muted-foreground/80',
-                )}>
-                  {opt.cnt}
-                </span>
-                {filter === opt.key && (
-                  <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-[#4F6BFF]" />
-                )}
-              </button>
-            ))}
+          {/* Tabs / Filter row — Mobile: Tabs horizontal scrollbar, Search drunter
+              auf eigener Zeile. Desktop: alles in einer Reihe. */}
+          <div className="border-b border-card-divider">
+            <div className="flex sm:items-center sm:gap-4 sm:px-7 sm:py-3 sm:flex-row flex-col">
+              {/* Tabs */}
+              <div className="flex items-center gap-4 sm:gap-4 overflow-x-auto no-scrollbar px-5 sm:px-0 pt-3 sm:pt-0 pb-2 sm:pb-0 -mb-px">
+                {(
+                  [
+                    { key: 'alle', label: 'Alle', cnt: counts.total },
+                    { key: 'offen', label: 'Offen', cnt: counts.offen },
+                    { key: 'in-bearbeitung', label: 'In Bearb.', cnt: counts.inBearbeitung },
+                    { key: 'ueberfaellig', label: 'Überfällig', cnt: counts.ueberfaellig },
+                    { key: 'erledigt', label: 'Erledigt', cnt: counts.erledigt },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    key={opt.key}
+                    onClick={() => setFilter(opt.key)}
+                    className={cn(
+                      'shrink-0 group relative inline-flex items-center gap-1.5 pb-2 text-[13px] font-medium transition-colors cursor-pointer whitespace-nowrap',
+                      filter === opt.key
+                        ? 'text-[#4F6BFF]'
+                        : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {opt.label}
+                    <span className={cn(
+                      'inline-flex items-center justify-center min-w-[20px] h-[18px] px-1.5 rounded-full text-[10.5px] font-semibold tabular-nums',
+                      filter === opt.key ? 'bg-[#4F6BFF]/15 text-[#4F6BFF]' : 'bg-layer-hover text-muted-foreground/80',
+                    )}>
+                      {opt.cnt}
+                    </span>
+                    {filter === opt.key && (
+                      <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-[#4F6BFF]" />
+                    )}
+                  </button>
+                ))}
+              </div>
 
-            <div className="flex-1" />
+              <div className="hidden sm:block flex-1" />
 
-            <div className="relative">
-              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Suchen..."
-                className="h-8 pl-7 pr-3 rounded-md bg-layer-hover text-[12px] text-foreground placeholder:text-muted-foreground/70 border border-transparent hover:border-card-line focus:bg-card focus:border-[#4F6BFF]/40 focus:outline-none focus:ring-2 focus:ring-[#4F6BFF]/15 transition-all w-[160px] focus:w-[200px]"
-              />
+              {/* Search — Mobile: eigene Zeile mit voller Breite, Desktop: rechts kompakt */}
+              <div className="relative px-5 sm:px-0 pb-3 sm:pb-0">
+                <Search size={13} className="absolute left-7 sm:left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Aufgabe suchen..."
+                  className="w-full sm:w-[200px] h-9 sm:h-8 pl-9 sm:pl-7 pr-3 rounded-full sm:rounded-md bg-layer-hover text-[13px] sm:text-[12px] text-foreground placeholder:text-muted-foreground/70 border border-transparent focus:bg-card focus:border-[#4F6BFF]/40 focus:outline-none focus:ring-2 focus:ring-[#4F6BFF]/15 transition-all"
+                />
+              </div>
             </div>
           </div>
 
