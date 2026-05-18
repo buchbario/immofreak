@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Navbar } from './Navbar';
 import { GlobalSearch } from './GlobalSearch';
 import { MobileBottomNav } from './MobileBottomNav';
@@ -19,6 +19,8 @@ import { useEnsureContractTemplates } from '../../hooks/useEnsureContractTemplat
  */
 export function AppLayout() {
   const [searchOpen, setSearchOpen] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
+  const location = useLocation();
   usePrelineInit();
   useEnsureContractTemplates();
 
@@ -34,6 +36,14 @@ export function AppLayout() {
     return () => document.removeEventListener('keydown', handler);
   }, []);
 
+  // Scroll-to-top bei Route-Wechsel — sonst landet man auf der neuen Seite
+  // an der gleichen Scroll-Position wie auf der vorigen Seite. Wir scrollen
+  // sowohl das main-Element als auch window (für Fall-Back).
+  useEffect(() => {
+    if (mainRef.current) mainRef.current.scrollTop = 0;
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
   return (
     <div className="app-shell">
       {/* Sanfter Hintergrund — bleibt wie in der Sidebar-Variante */}
@@ -42,7 +52,7 @@ export function AppLayout() {
       <div className="relative flex flex-col h-[100dvh] overflow-hidden">
         <Navbar onSearchClick={() => setSearchOpen(true)} />
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
+        <main ref={mainRef} className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
           <Outlet />
         </main>
 
