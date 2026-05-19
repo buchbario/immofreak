@@ -4,7 +4,6 @@ import { Navbar } from './Navbar';
 import { GlobalSearch } from './GlobalSearch';
 import { MobileBottomNav } from './MobileBottomNav';
 import { TourOverlay } from '../tour/TourOverlay';
-import { usePrelineInit } from '../../hooks/usePrelineInit';
 import { useEnsureContractTemplates } from '../../hooks/useEnsureContractTemplates';
 
 /**
@@ -21,7 +20,6 @@ export function AppLayout() {
   const [searchOpen, setSearchOpen] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
   const location = useLocation();
-  usePrelineInit();
   useEnsureContractTemplates();
 
   // Cmd+K / Ctrl+K shortcut für Global Search

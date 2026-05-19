@@ -59,6 +59,15 @@ export function DashboardPage() {
   const { contractors } = useContractors();
 
   const activeProjects = projects.filter((p) => p.status !== 'Abgeschlossen');
+  // Counts pro Status für die Filter-Chips im Projekte-Panel
+  const statusCounts: Record<ProjectStatus, number> = {
+    Akquise: 0,
+    Planung: 0,
+    Sanierung: 0,
+    Verkauf: 0,
+    Abgeschlossen: 0,
+  };
+  for (const p of projects) statusCounts[p.status]++;
   const totalInvested = projects.reduce((sum, p) => sum + p.purchasePrice, 0);
   const totalTargetRevenue = projects.reduce((sum, p) => sum + p.targetSellPrice, 0);
   // Geplantes Sanierungsbudget — KPI „Renovierung / Budget gesamt".
@@ -259,91 +268,110 @@ export function DashboardPage() {
 
       {/* TWO-COLUMN: PROJECTS + SIDE STACK */}
       <div className="grid grid-cols-1 xl:grid-cols-[1.7fr_1fr] gap-4 sm:gap-5">
-        {/* Projects panel — gleiche Listen-Optik wie Aufgaben/Aktivität daneben */}
-        <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">
-          <div className="flex items-center justify-between gap-3 px-5 sm:px-6 pt-4 pb-3">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <h2 className="text-[15px] font-semibold text-foreground tracking-tight">Projekte</h2>
-              <span className="text-[12px] text-muted-foreground/80">
+        {/* Projects panel — Card-Row-Optik wie BH-„Objekte" */}
+        <div className="bg-card border border-card-line/80 rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.03)] overflow-hidden">
+          <div className="flex items-center justify-between gap-3 px-5 sm:px-6 pt-5 pb-3.5">
+            <div className="flex items-baseline gap-2.5 min-w-0">
+              <h2 className="text-[14px] font-semibold text-foreground tracking-tight">Projekte</h2>
+              <span className="text-[11.5px] text-muted-foreground/70 tabular-nums">
                 {projects.length} {projects.length === 1 ? 'Projekt' : 'Projekte'}
               </span>
             </div>
-            <button onClick={() => navigate('/projekte')} className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-              Alle <ArrowRight size={12} />
+            <button onClick={() => navigate('/projekte')} className="group inline-flex items-center gap-1 text-[11.5px] font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+              Alle anzeigen <ArrowRight size={11} className="transition-transform group-hover:translate-x-0.5" />
             </button>
           </div>
 
-          <div className="px-2 sm:px-3 pb-3">
-            <ul className="divide-y divide-card-divider">
-              {projects.map((project) => {
-                const cfg = STATUS_CFG[project.status];
-                const items = allBudgetItems.filter(b => b.projectId === project.id);
-                const spent = items.reduce((s, b) => s + b.actualCost, 0);
-                const budgetPct = project.renovationBudget > 0 ? Math.min(Math.round((spent / project.renovationBudget) * 100), 100) : 0;
-                const profit = calculateProjectedProfit(
-                  project.targetSellPrice,
-                  project.purchasePrice,
-                  project.renovationBudget,
-                  spent,
-                );
-                const StatusIcon = cfg.Icon;
-                return (
-                  <li key={project.id}>
-                    <button
-                      onClick={() => navigate(`/projekte/${project.id}`)}
-                      className="group w-full flex items-center gap-4 sm:gap-6 px-3 sm:px-4 py-3.5 rounded-lg hover:bg-layer-hover/60 transition-colors cursor-pointer text-left"
-                    >
-                      <span className={cn('size-9 rounded-lg grid place-items-center shrink-0', cfg.iconBg, cfg.iconColor)}>
-                        <StatusIcon size={15} />
-                      </span>
+          {/* Filter chips — Status-Counts mit Hairline-Borders */}
+          <div className="flex items-center gap-1.5 flex-wrap px-5 sm:px-6 pb-3.5">
+            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11.5px] font-medium bg-[#4F6BFF]/8 text-[#4F6BFF] ring-1 ring-inset ring-[#4F6BFF]/15">
+              Alle <span className="text-[10.5px] font-semibold opacity-80 tabular-nums">{projects.length}</span>
+            </span>
+            {(['Akquise', 'Planung', 'Sanierung', 'Verkauf', 'Abgeschlossen'] as const).map((s) => {
+              const cnt = statusCounts[s];
+              if (cnt === 0) return null;
+              const cfg = STATUS_CFG[s];
+              return (
+                <span key={s} className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11.5px] font-medium bg-card text-foreground/75 ring-1 ring-inset ring-card-line">
+                  <span className={cn('size-1.5 rounded-full', cfg.marker)} />
+                  {cfg.label}
+                  <span className="text-[10.5px] font-semibold opacity-60 tabular-nums">{cnt}</span>
+                </span>
+              );
+            })}
+          </div>
 
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="text-[13.5px] font-semibold text-foreground truncate group-hover:text-[#4F6BFF] transition-colors">
-                            {project.name}
+          {/* Project rows — bordered cards mit Hover-Shadow */}
+          <div className="px-3 sm:px-4 pb-4 space-y-2.5">
+            {projects.map((project) => {
+              const cfg = STATUS_CFG[project.status];
+              const items = allBudgetItems.filter(b => b.projectId === project.id);
+              const spent = items.reduce((s, b) => s + b.actualCost, 0);
+              const budgetPct = project.renovationBudget > 0 ? Math.min(Math.round((spent / project.renovationBudget) * 100), 100) : 0;
+              const profit = calculateProjectedProfit(
+                project.targetSellPrice,
+                project.purchasePrice,
+                project.renovationBudget,
+                spent,
+              );
+              const StatusIcon = cfg.Icon;
+              return (
+                <div
+                  key={project.id}
+                  onClick={() => navigate(`/projekte/${project.id}`)}
+                  className="group relative rounded-xl border border-card-line bg-card hover:border-[#4F6BFF]/40 hover:shadow-[0_4px_12px_-4px_rgba(15,23,42,0.08)] transition-all cursor-pointer overflow-hidden p-3.5"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={cn('size-10 rounded-xl flex items-center justify-center shrink-0', cfg.iconBg)}>
+                      <StatusIcon size={17} className={cfg.iconColor} />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2 mb-0.5">
+                        <p className="text-[14px] font-semibold text-foreground tracking-tight truncate group-hover:text-[#4F6BFF] transition-colors">{project.name}</p>
+                        <span className={cn('shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap', cfg.tagBg, cfg.tagText)}>
+                          <span className={cn('size-1.5 rounded-full', cfg.marker)} />
+                          {cfg.label}
+                        </span>
+                      </div>
+                      <p className="text-[11.5px] text-muted-foreground truncate mb-2.5">{project.address || '—'}</p>
+
+                      <div className="flex items-end gap-x-6 gap-y-3 flex-wrap">
+                        <div className="shrink-0">
+                          <p className="text-[9.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Kaufpreis</p>
+                          <p className="text-[13px] font-bold text-foreground tabular-nums">{formatCurrency(project.purchasePrice)}</p>
+                        </div>
+                        <div className="shrink-0">
+                          <p className="text-[9.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Verkaufsziel</p>
+                          <p className="text-[13px] font-bold text-foreground tabular-nums">{formatCurrency(project.targetSellPrice)}</p>
+                        </div>
+                        <div className="shrink-0">
+                          <p className="text-[9.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Gewinn</p>
+                          <p className={cn('text-[13px] font-bold tabular-nums', profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500')}>
+                            {profit >= 0 ? '+' : ''}{formatCurrency(profit)}
                           </p>
-                          <span className={cn('shrink-0 text-[11px] font-medium', cfg.iconColor)}>
-                            {cfg.label}
-                          </span>
                         </div>
-                        <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-muted-foreground">
-                          <span className="truncate">{project.address || '—'}</span>
-                          <span className="size-[3px] rounded-full bg-muted-foreground/40 shrink-0" />
-                          <span className="tabular-nums shrink-0">{formatCurrency(project.purchasePrice)}</span>
-                        </div>
-                      </div>
-
-                      {/* Gewinn */}
-                      <div className="hidden sm:block text-right shrink-0 w-[96px]">
-                        <p className="text-[9.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Gewinn</p>
-                        <p className={cn('text-[13px] font-semibold tabular-nums', profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500')}>
-                          {profit >= 0 ? '+' : ''}{formatCurrency(profit)}
-                        </p>
-                      </div>
-
-                      {/* Budget mit Mini-Bar */}
-                      <div className="shrink-0 w-[96px] sm:w-[128px]">
-                        <div className="flex items-baseline justify-between mb-1">
-                          <span className="text-[9.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold">Budget</span>
-                          <span className="text-[11px] font-semibold text-foreground tabular-nums">{budgetPct}%</span>
-                        </div>
-                        <div className="h-1 bg-layer-hover rounded-full overflow-hidden">
-                          <div
-                            className={cn(
-                              'h-full rounded-full transition-all duration-700',
-                              spent === 0 ? 'bg-muted-foreground/30' : budgetPct > 90 ? 'bg-rose-500' : budgetPct > 75 ? 'bg-amber-500' : 'bg-emerald-500',
-                            )}
-                            style={{ width: spent === 0 ? '2%' : `${Math.max(2, budgetPct)}%` }}
-                          />
+                        <div className="ml-auto w-full sm:w-[180px] md:w-[220px] shrink-0">
+                          <div className="flex items-baseline justify-between mb-1">
+                            <span className="text-[9.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold">Budget</span>
+                            <span className="text-[11px] font-bold text-foreground tabular-nums">{budgetPct}%</span>
+                          </div>
+                          <div className="h-1.5 bg-layer-hover rounded-full overflow-hidden">
+                            <div
+                              className={cn(
+                                'h-full rounded-full transition-all duration-700',
+                                spent === 0 ? 'bg-muted-foreground/30' : budgetPct > 90 ? 'bg-rose-500' : budgetPct > 75 ? 'bg-amber-500' : 'bg-emerald-500',
+                              )}
+                              style={{ width: spent === 0 ? '2%' : `${Math.max(2, budgetPct)}%` }}
+                            />
+                          </div>
                         </div>
                       </div>
-
-                      <ArrowRight size={14} className="shrink-0 text-muted-foreground/50 group-hover:text-[#4F6BFF] group-hover:translate-x-0.5 transition-all" />
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 

@@ -83,7 +83,7 @@ export function PageCard<K extends string = string>({
 
       {/* Filters row — flat, sits below the header with bottom border */}
       {hasFiltersRow && (
-        <div className="flex items-center gap-3 flex-wrap mb-4 pb-3 border-b border-card-line px-1">
+        <div className="flex items-center gap-3 flex-wrap mb-4 pb-3 border-b border-card-line/70 px-1">
           {tabs?.length ? (
             <div className="flex items-center gap-3 sm:gap-4 -mb-3 flex-wrap min-w-0">
               {tabs.map((t) => {
@@ -94,7 +94,7 @@ export function PageCard<K extends string = string>({
                     key={t.key}
                     onClick={() => onTabChange?.(t.key)}
                     className={cn(
-                      'group relative inline-flex items-center gap-1.5 pb-3 text-[13.5px] font-medium transition-colors cursor-pointer',
+                      'group relative inline-flex items-center gap-1.5 pb-3 text-[13px] font-medium transition-colors cursor-pointer tracking-tight',
                       isActive ? 'text-[#4F6BFF]' : 'text-muted-foreground hover:text-foreground',
                     )}
                   >
@@ -102,14 +102,14 @@ export function PageCard<K extends string = string>({
                     {typeof t.count === 'number' && (
                       <span
                         className={cn(
-                          'inline-flex items-center justify-center min-w-[20px] h-[18px] px-1.5 rounded-full text-[10.5px] font-semibold tabular-nums',
+                          'inline-flex items-center justify-center min-w-[18px] h-[17px] px-1.5 rounded-md text-[10px] font-semibold tabular-nums ring-1 ring-inset',
                           isActive
-                            ? 'bg-[#4F6BFF]/15 text-[#4F6BFF]'
+                            ? 'bg-[#4F6BFF]/8 text-[#4F6BFF] ring-[#4F6BFF]/15'
                             : tone === 'warn'
-                              ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'
+                              ? 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/20'
                               : tone === 'danger'
-                                ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300'
-                                : 'bg-layer-hover text-muted-foreground/80',
+                                ? 'bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/20'
+                                : 'bg-card text-muted-foreground/80 ring-card-line',
                         )}
                       >
                         {t.count}
@@ -138,12 +138,12 @@ export function PageCard<K extends string = string>({
 
       {/* Body — content renders inside a clean white card so tables/rows have a frame */}
       <div className={cn(
-        'bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden',
+        'bg-card border border-card-line/80 rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.06)] transition-shadow overflow-hidden',
         bodyPadding === 'comfortable' && 'p-5 sm:p-6',
       )}>
         {children}
         {footer && (
-          <div className="px-5 sm:px-7 py-3 border-t border-card-divider">
+          <div className="px-5 sm:px-7 py-3 border-t border-card-divider/70">
             <p className="text-[11.5px] text-muted-foreground tabular-nums">{footer}</p>
           </div>
         )}
@@ -158,7 +158,7 @@ function PageCardSearch({
   const [focused, setFocused] = useState(false);
   return (
     <div className="relative">
-      <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+      <Search size={12.5} strokeWidth={2.2} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/70 pointer-events-none" />
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -166,11 +166,11 @@ function PageCardSearch({
         onBlur={() => setFocused(false)}
         placeholder={placeholder}
         className={cn(
-          'h-8 pl-7 pr-3 rounded-md text-[12px] text-foreground placeholder:text-muted-foreground/70 transition-all',
-          'border focus:outline-none focus:ring-2 focus:ring-[#4F6BFF]/15',
+          'h-8 pl-7 pr-3 rounded-lg text-[12px] text-foreground placeholder:text-muted-foreground/60 transition-all tracking-tight',
+          'border focus:outline-none focus:ring-[3px] focus:ring-[#4F6BFF]/12',
           focused
-            ? 'bg-card border-[#4F6BFF]/40 w-[220px]'
-            : 'bg-layer-hover border-transparent hover:border-card-line w-[160px]',
+            ? 'bg-card border-[#4F6BFF]/40 w-[220px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+            : 'bg-layer-hover/60 border-transparent hover:bg-layer-hover hover:border-card-line/60 w-[160px]',
         )}
       />
     </div>

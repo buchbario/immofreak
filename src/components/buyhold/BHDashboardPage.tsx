@@ -1,7 +1,7 @@
 import {
   Building2, ArrowRight, Home, Users, Wallet, Percent, Plus,
   UserPlus, Receipt, BarChart3, Clock,
-  FileText, KeyRound,
+  FileText, KeyRound, TrendingUp, TrendingDown,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useRentalProperties } from '../../hooks/useRentalProperties';
@@ -186,23 +186,26 @@ export function BHDashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8" data-tour="bh-kpis">
         {/* Gesamtwert */}
         <KpiCard
-          icon={<Home size={14} />}
+          icon={<Home size={13} strokeWidth={2.1} />}
           iconClass="bg-[#4F6BFF]/10 text-[#4F6BFF]"
           label="Gesamtwert"
-        >
-          <p className="text-2xl sm:text-[28px] leading-[1.1] font-bold text-foreground tabular-nums tracking-tight">{fmtEur(totalValue)}</p>
-          <div className="flex items-center justify-between text-xs text-muted-foreground mt-1.5">
-            <span className="truncate">Kaufpreis: <span className="tabular-nums">{fmtEur(totalPurchase)}</span></span>
+          trend={
             <span className={cn(
-              'inline-flex items-center gap-0.5 text-[11px] font-semibold px-2 py-0.5 rounded-full tabular-nums',
+              'inline-flex items-center gap-0.5 text-[10.5px] font-semibold px-1.5 py-0.5 rounded-md tabular-nums',
               valueGrowth >= 0
-                ? 'text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-500/15'
-                : 'text-rose-700 dark:text-rose-400 bg-rose-100 dark:bg-rose-500/15',
+                ? 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10'
+                : 'text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10',
             )}>
-              {valueGrowth >= 0 ? '▲' : '▼'} {Math.abs(valueGrowth).toFixed(1)}%
+              {valueGrowth >= 0 ? <TrendingUp size={10} strokeWidth={2.4} /> : <TrendingDown size={10} strokeWidth={2.4} />}
+              {Math.abs(valueGrowth).toFixed(1)}%
             </span>
-          </div>
-          <div className="mt-3 h-1 bg-layer-hover rounded-full overflow-hidden">
+          }
+        >
+          <p className="text-[26px] sm:text-[30px] leading-[1.05] font-bold text-foreground tabular-nums tracking-[-0.02em]">{fmtEur(totalValue)}</p>
+          <p className="text-[11.5px] text-muted-foreground mt-2 tabular-nums">
+            Kaufpreis <span className="text-foreground/80 font-medium">{fmtEur(totalPurchase)}</span>
+          </p>
+          <div className="mt-3 h-[3px] bg-layer-hover rounded-full overflow-hidden">
             <div className={cn('h-full rounded-full transition-all duration-700', valueGrowth >= 0 ? 'bg-emerald-500' : 'bg-rose-500')}
               style={{ width: `${valueGrowthCapped}%` }} />
           </div>
@@ -210,30 +213,34 @@ export function BHDashboardPage() {
 
         {/* Mieteinnahmen */}
         <KpiCard
-          icon={<Wallet size={14} />}
-          iconClass="bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+          icon={<Wallet size={13} strokeWidth={2.1} />}
+          iconClass="bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
           label="Mieteinnahmen"
         >
-          <p className="text-2xl sm:text-[28px] leading-[1.1] font-bold text-foreground tabular-nums tracking-tight">
-            {fmt(totalMonthlyRent)}<span className="text-base font-medium text-muted-foreground ml-1">€/M</span>
+          <p className="text-[26px] sm:text-[30px] leading-[1.05] font-bold text-foreground tabular-nums tracking-[-0.02em]">
+            {fmt(totalMonthlyRent)}<span className="text-[14px] font-medium text-muted-foreground ml-1 tracking-normal">€/M</span>
           </p>
-          <p className="text-xs text-muted-foreground mt-1.5 tabular-nums">{fmtEur(yearlyRent)} p.a.</p>
+          <p className="text-[11.5px] text-muted-foreground mt-2 tabular-nums">
+            {fmtEur(yearlyRent)} <span className="text-muted-foreground/60">p.a.</span>
+          </p>
         </KpiCard>
 
         {/* Belegung */}
         <KpiCard
-          icon={<Users size={14} />}
-          iconClass="bg-violet-100 dark:bg-violet-500/15 text-violet-700 dark:text-violet-400"
+          icon={<Users size={13} strokeWidth={2.1} />}
+          iconClass="bg-violet-50 dark:bg-violet-500/15 text-violet-700 dark:text-violet-400"
           label="Belegung"
+          trend={
+            <span className="inline-flex items-center text-[10.5px] font-semibold px-1.5 py-0.5 rounded-md tabular-nums text-foreground/70 bg-layer-hover">
+              {(100 - vacancyRate).toFixed(0)}%
+            </span>
+          }
         >
-          <p className="text-2xl sm:text-[28px] leading-[1.1] font-bold text-foreground tabular-nums tracking-tight">
-            {occupiedUnits.length}<span className="text-base font-medium text-muted-foreground ml-1">/ {allUnits.length}</span>
+          <p className="text-[26px] sm:text-[30px] leading-[1.05] font-bold text-foreground tabular-nums tracking-[-0.02em]">
+            {occupiedUnits.length}<span className="text-[14px] font-medium text-muted-foreground ml-1 tracking-normal">/ {allUnits.length}</span>
           </p>
-          <div className="flex items-center justify-between text-xs text-muted-foreground mt-1.5">
-            <span>Einheiten belegt</span>
-            <span className="font-semibold text-foreground tabular-nums">{(100 - vacancyRate).toFixed(0)}%</span>
-          </div>
-          <div className="mt-3 h-1 bg-layer-hover rounded-full overflow-hidden">
+          <p className="text-[11.5px] text-muted-foreground mt-2">Einheiten belegt</p>
+          <div className="mt-3 h-[3px] bg-layer-hover rounded-full overflow-hidden">
             <div className={cn(
               'h-full rounded-full transition-all duration-700',
               vacancyRate > 20 ? 'bg-rose-500' : vacancyRate > 10 ? 'bg-amber-500' : 'bg-emerald-500',
@@ -241,14 +248,16 @@ export function BHDashboardPage() {
           </div>
         </KpiCard>
 
-        {/* Rendite — uniform style */}
+        {/* Rendite */}
         <KpiCard
-          icon={<Percent size={14} />}
-          iconClass="bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+          icon={<Percent size={13} strokeWidth={2.1} />}
+          iconClass="bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400"
           label="Rendite"
         >
-          <p className="text-2xl sm:text-[28px] leading-[1.1] font-bold text-foreground tabular-nums tracking-tight">{bruttoRendite.toFixed(1)}%</p>
-          <p className="text-xs text-muted-foreground mt-1.5">Netto {nettoRendite.toFixed(1)}%</p>
+          <p className="text-[26px] sm:text-[30px] leading-[1.05] font-bold text-foreground tabular-nums tracking-[-0.02em]">{bruttoRendite.toFixed(1)}<span className="text-[14px] font-medium text-muted-foreground ml-0.5 tracking-normal">%</span></p>
+          <p className="text-[11.5px] text-muted-foreground mt-2 tabular-nums">
+            Netto <span className="text-foreground/80 font-medium">{nettoRendite.toFixed(1)}%</span>
+          </p>
         </KpiCard>
       </div>
 
@@ -285,31 +294,31 @@ export function BHDashboardPage() {
       {/* TWO-COLUMN: PROPERTIES + SIDE STACK */}
       <div className="grid grid-cols-1 xl:grid-cols-[1.7fr_1fr] gap-4 sm:gap-5">
         {/* Properties panel */}
-        <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">
-          <div className="flex items-center justify-between gap-3 px-5 sm:px-6 pt-4 pb-3">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <h2 className="text-[15px] font-semibold text-foreground tracking-tight">Objekte</h2>
-              <span className="text-[13px] text-muted-foreground/80">{properties.length} gesamt</span>
+        <div className="bg-card border border-card-line/80 rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.03)] overflow-hidden">
+          <div className="flex items-center justify-between gap-3 px-5 sm:px-6 pt-5 pb-3.5">
+            <div className="flex items-baseline gap-2.5 min-w-0">
+              <h2 className="text-[14px] font-semibold text-foreground tracking-tight">Objekte</h2>
+              <span className="text-[11.5px] text-muted-foreground/70 tabular-nums">{properties.length} gesamt</span>
             </div>
-            <button onClick={() => navigate('/bh/objekte')} className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Alle anzeigen <ArrowRight size={12} />
+            <button onClick={() => navigate('/bh/objekte')} className="group inline-flex items-center gap-1 text-[11.5px] font-medium text-muted-foreground hover:text-foreground transition-colors">
+              Alle anzeigen <ArrowRight size={11} className="transition-transform group-hover:translate-x-0.5" />
             </button>
           </div>
 
-          {/* Filter chips */}
-          <div className="flex items-center gap-1.5 flex-wrap px-5 sm:px-6 pb-3">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-[#4F6BFF]/10 text-[#4F6BFF]">
-              Alle <span className="text-[11px] font-semibold opacity-80 tabular-nums">{properties.length}</span>
+          {/* Filter chips — premium: nur Hairline-Border + dezenter Hover */}
+          <div className="flex items-center gap-1.5 flex-wrap px-5 sm:px-6 pb-3.5">
+            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11.5px] font-medium bg-[#4F6BFF]/8 text-[#4F6BFF] ring-1 ring-inset ring-[#4F6BFF]/15">
+              Alle <span className="text-[10.5px] font-semibold opacity-80 tabular-nums">{properties.length}</span>
             </span>
             {(['voll', 'teil', 'leer'] as const).map(kind => {
               const cnt = occupancyCounts[kind];
               if (cnt === 0) return null;
               const cfg = OCC_CFG[kind];
               return (
-                <span key={kind} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-layer-hover text-foreground/80">
+                <span key={kind} className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11.5px] font-medium bg-card text-foreground/75 ring-1 ring-inset ring-card-line">
                   <span className={cn('size-1.5 rounded-full', cfg.marker)} />
                   {cfg.label}
-                  <span className="text-[11px] font-semibold opacity-60 tabular-nums">{cnt}</span>
+                  <span className="text-[10.5px] font-semibold opacity-60 tabular-nums">{cnt}</span>
                 </span>
               );
             })}
@@ -388,10 +397,10 @@ export function BHDashboardPage() {
           <QuickTaskWidget mode="buyhold" viewAllHref="/bh/aufgaben" accent="emerald" />
 
           {/* Aktivität */}
-          <div className="bg-card border border-card-line rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] overflow-hidden">
-            <div className="flex items-center justify-between gap-3 px-5 sm:px-6 pt-4 pb-3">
-              <h2 className="text-[15px] font-semibold text-foreground tracking-tight">Aktivität</h2>
-              <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground/60">
+          <div className="bg-card border border-card-line/80 rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.03)] overflow-hidden">
+            <div className="flex items-baseline justify-between gap-3 px-5 sm:px-6 pt-5 pb-3.5">
+              <h2 className="text-[14px] font-semibold text-foreground tracking-tight">Aktivität</h2>
+              <span className="text-[11.5px] font-medium text-muted-foreground/60 tabular-nums">
                 {recentActivity.length} {recentActivity.length === 1 ? 'Eintrag' : 'Einträge'}
               </span>
             </div>
@@ -472,20 +481,25 @@ export function BHDashboardPage() {
   );
 }
 
-// Reusable KPI card shell
-function KpiCard({ icon, iconClass, label, children }: {
+// Premium KPI Card — flatter Stil mit Hairline-Border, dezenter Hover-Lift,
+// trend-Pill rechts oben für sofortige Lesbarkeit.
+function KpiCard({ icon, iconClass, label, trend, children }: {
   icon: React.ReactNode;
   iconClass: string;
   label: string;
+  trend?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <div className="relative bg-card border border-card-line rounded-2xl p-4 sm:p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] hover:shadow-[0_1px_3px_rgba(15,23,42,0.05)] hover:-translate-y-px transition-all cursor-default">
-      <div className="flex items-center gap-2 mb-3 sm:mb-4">
-        <span className={cn('shrink-0 inline-flex justify-center items-center size-7 rounded-lg', iconClass)}>
-          {icon}
-        </span>
-        <span className="text-xs sm:text-sm font-medium text-muted-foreground">{label}</span>
+    <div className="relative bg-card border border-card-line/80 rounded-2xl p-4 sm:p-5 shadow-[0_1px_2px_rgba(15,23,42,0.03)] hover:border-card-line hover:shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.10)] transition-all cursor-default">
+      <div className="flex items-start justify-between gap-2 mb-3 sm:mb-4">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={cn('shrink-0 inline-flex justify-center items-center size-6 rounded-md', iconClass)}>
+            {icon}
+          </span>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground/80">{label}</span>
+        </div>
+        {trend && <div className="shrink-0">{trend}</div>}
       </div>
       {children}
     </div>
