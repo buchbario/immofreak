@@ -639,14 +639,22 @@ async function handleConnectFinish(body: ConnectFinishBody) {
     const account = await mapBankzugangToAccount({ ...zugang, bankprodukte: produkte }, body.accountHolder || '');
     const transactions: any[] = [];
     // Über ALLE Bankprodukte iterieren — User kann Giro + Sparbuch + Tagesgeld
-    // im selben Zugang haben. Wir mergen die Umsätze.
+    // im selben Zugang haben. Wir mergen die Umsätze. Dedup über productKey
+    // gegen doppelte Fetches, danach Dedup der TX-IDs gegen UNIQUE-Index.
+    const seenProductKeys = new Set<string>();
+    const seenTxIds = new Set<string>();
     for (const produkt of produkte) {
-      // Quickstart-Doc: product-id ist die IBAN.
       const productKey = produkt.iban || produkt.id || '';
-      if (!productKey) continue;
+      if (!productKey || seenProductKeys.has(productKey)) continue;
+      seenProductKeys.add(productKey);
       try {
         const umsaetze = await realGetKontoumsaetze(zugang.id, productKey);
-        for (const u of umsaetze) transactions.push(mapUmsatzToTransaction(u));
+        for (const u of umsaetze) {
+          const tx = mapUmsatzToTransaction(u);
+          if (tx.banksapiTransactionId && seenTxIds.has(tx.banksapiTransactionId)) continue;
+          if (tx.banksapiTransactionId) seenTxIds.add(tx.banksapiTransactionId);
+          transactions.push(tx);
+        }
       } catch (e) {
         // eslint-disable-next-line no-console
         console.error(`[banksapi] umsatz-fetch failed for product ${productKey}: ${(e as Error).message}`);

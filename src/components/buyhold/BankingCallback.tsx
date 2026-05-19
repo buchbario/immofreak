@@ -88,7 +88,12 @@ export function BankingCallback() {
           // (counterparty, purpose) bekommen IMMER einen String — selbst wenn BANKSapi
           // null/object/missing liefert. Optionale Felder werden bei "leer" weggelassen,
           // damit der Postgres-Default greift.
-          const txRows = result.transactions.map((tx) => {
+          // Dedup: BANKSapi liefert manchmal denselben Umsatz mehrfach (z.B. wenn
+          // mehrere Produkte auf dieselbe IBAN zeigen) — gegen UNIQUE-Index-Verletzung.
+          const seenTxIds = new Set<string>();
+          const txRows: Record<string, unknown>[] = [];
+          for (let i = 0; i < result.transactions.length; i++) {
+            const tx = result.transactions[i];
             const counterparty = typeof tx.counterparty === 'string' ? tx.counterparty : '';
             const purpose = typeof tx.purpose === 'string' ? tx.purpose : '';
             const date = typeof tx.date === 'string' && tx.date
@@ -96,9 +101,16 @@ export function BankingCallback() {
               : new Date().toISOString().slice(0, 10);
             const amount = typeof tx.amount === 'number' && Number.isFinite(tx.amount) ? tx.amount : 0;
             const ibanStr = typeof tx.iban === 'string' && tx.iban ? tx.iban : null;
-            const banksapiTxId = typeof tx.banksapiTransactionId === 'string' && tx.banksapiTransactionId
+            // Wenn BANKSapi keine eindeutige ID liefert oder die ID doppelt wäre,
+            // bauen wir einen synthetischen Schlüssel der den Insert nicht crashen lässt.
+            let banksapiTxId = typeof tx.banksapiTransactionId === 'string' && tx.banksapiTransactionId
               ? tx.banksapiTransactionId
-              : null;
+              : `${accountId}-${i}-${date}-${amount}`;
+            if (seenTxIds.has(banksapiTxId)) {
+              banksapiTxId = `${banksapiTxId}-${i}`;
+            }
+            seenTxIds.add(banksapiTxId);
+
             const row: Record<string, unknown> = {
               id: generateId(),
               bank_account_id: accountId,
@@ -106,13 +118,13 @@ export function BankingCallback() {
               amount,
               counterparty,
               purpose,
+              banksapi_transaction_id: banksapiTxId,
               is_reconciled: false,
               created_at: new Date().toISOString(),
             };
             if (ibanStr) row.iban = ibanStr;
-            if (banksapiTxId) row.banksapi_transaction_id = banksapiTxId;
-            return row;
-          });
+            txRows.push(row);
+          }
           const { error: txErr } = await supabase.from('bank_transactions').insert(txRows);
           if (txErr) throw new Error(`Transaktions-Insert fehlgeschlagen: ${txErr.message}`);
         }
