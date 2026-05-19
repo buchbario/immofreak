@@ -207,6 +207,42 @@ async function getBanksapiProviders(): Promise<BanksapiProvider[]> {
 }
 
 /**
+ * Sucht in der Provider-Liste nach Banken die zum Query-String passen. Sortiert
+ * nach Relevanz: exakter Name → Name-Präfix → BIC-Präfix → BLZ-Präfix → Name-Substring.
+ * Limit-default 30 hält die Antwort klein.
+ */
+function searchProviders(providers: BanksapiProvider[], query: string, limit: number): BanksapiProvider[] {
+  if (!query) return providers.slice(0, limit);
+  const q = query.toLowerCase().trim();
+  const tokens = q.split(/\s+/).filter(Boolean);
+  type Scored = { p: BanksapiProvider; score: number };
+  const scored: Scored[] = [];
+  for (const p of providers) {
+    const name = (p.name || '').toLowerCase();
+    const bic = (p.bic || '').toLowerCase();
+    const blz = p.blz || '';
+    let score = 0;
+    // Exact / Prefix-Matches auf das volle Query bekommen Bonus-Punkte.
+    if (name === q) score = 100;
+    else if (name.startsWith(q)) score = 80;
+    else if (bic.startsWith(q)) score = 70;
+    else if (blz.startsWith(q)) score = 60;
+    else if (name.includes(q)) score = 40;
+    else if (bic.includes(q)) score = 30;
+    else if (blz.includes(q)) score = 20;
+    // Multi-Token-Match: alle Tokens müssen im Name vorkommen (z.B. "sparkasse berlin"
+    // matched "Berliner Sparkasse" und "Sparkasse Berlin Pankow").
+    if (score === 0 && tokens.length > 1) {
+      const allTokensInName = tokens.every((t) => name.includes(t));
+      if (allTokensInName) score = 25;
+    }
+    if (score > 0) scored.push({ p, score });
+  }
+  scored.sort((a, b) => b.score - a.score || (a.p.name || '').localeCompare(b.p.name || ''));
+  return scored.slice(0, limit).map((s) => s.p);
+}
+
+/**
  * Findet den BANKSapi-Provider für eine Bank anhand BIC und/oder BLZ. BLZ
  * ist exakt — BIC kann mehrdeutig sein (Sparkasse hat 1 BIC, viele Filialen).
  */
@@ -245,30 +281,36 @@ async function realCreateWebform(opts: {
   accessId: string;
   callbackUrl: string;
   customerIp: string;
+  providerId?: string;
   bankBic?: string;
   iban?: string;
 }): Promise<string> {
   // Alte Sessions löschen (Best-Practice, non-fatal bei Fehler).
   await realDeleteRegprotectSessions();
 
-  // Provider-Lookup: BLZ (aus IBAN) ist genauer als BIC.
-  const providers = await getBanksapiProviders();
-  const blz = blzFromIban(opts.iban);
-  const provider = findBanksapiProvider(providers, { bic: opts.bankBic, blz });
-
-  if (!provider) {
-    throw new Error(
-      `Diese Bank wurde bei BANKSapi nicht gefunden (BIC: ${opts.bankBic || '–'}, BLZ: ${blz || '–'}). ` +
-      `Bitte gib deine IBAN ein, damit wir die richtige Filiale auswählen können.`,
-    );
+  let resolvedProviderId = opts.providerId;
+  if (!resolvedProviderId) {
+    // Fallback-Lookup via BIC/BLZ wenn kein expliziter providerId vom Frontend kam.
+    const providers = await getBanksapiProviders();
+    const blz = blzFromIban(opts.iban);
+    const provider = findBanksapiProvider(providers, { bic: opts.bankBic, blz });
+    if (!provider) {
+      throw new Error(
+        `Diese Bank wurde bei BANKSapi nicht gefunden (BIC: ${opts.bankBic || '–'}, BLZ: ${blz || '–'}). ` +
+        `Bitte nutze die Bank-Suche um deine konkrete Bank auszuwählen.`,
+      );
+    }
+    resolvedProviderId = provider.id;
+    // eslint-disable-next-line no-console
+    console.log(`[banksapi] resolved via BIC/BLZ: id=${provider.id} name=${provider.name} bic=${provider.bic} blz=${provider.blz}`);
+  } else {
+    // eslint-disable-next-line no-console
+    console.log(`[banksapi] using user-picked providerId=${resolvedProviderId}`);
   }
-
-  // eslint-disable-next-line no-console
-  console.log(`[banksapi] connect/start matched provider id=${provider.id} name=${provider.name} bic=${provider.bic} blz=${provider.blz}`);
 
   const token = await getBanksapiToken();
   const url = `${ENV.BANKSAPI_BASE_URL}/customer/v2/bankzugaenge?callbackUrl=${encodeURIComponent(opts.callbackUrl)}`;
-  const body = { [opts.accessId]: { providerId: provider.id } };
+  const body = { [opts.accessId]: { providerId: resolvedProviderId } };
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -523,6 +565,8 @@ interface ConnectStartBody {
   bankKey?: string;
   bankBic?: string;
   iban?: string;
+  /** Direkt vom User über die Bank-Suche gewählte BANKSapi-Provider-UUID. */
+  providerId?: string;
   accountHolder?: string;
   label?: string;
 }
@@ -550,6 +594,7 @@ async function handleConnectStart(body: ConnectStartBody, customerIp: string) {
       accessId,
       callbackUrl: appCallbackUrl,
       customerIp,
+      providerId: body.providerId,
       bankBic: body.bankBic,
       iban: body.iban,
     });
@@ -685,6 +730,29 @@ Deno.serve(async (req) => {
     }
     if (req.method === 'GET' && route === 'mode') {
       return jsonResponse({ mode: REAL_MODE ? 'real' : 'stub' });
+    }
+    // GET /providers/search?q=<query>&limit=30 — Fuzzy-Suche über BANKSapi's
+    // Provider-Liste (4000+ Banken). Liefert eine kompakte Liste {id, name,
+    // bic, blz} sortiert nach Relevanz.
+    if (req.method === 'GET' && route === 'providers/search') {
+      if (!REAL_MODE) {
+        return jsonResponse({
+          providers: [
+            { id: 'stub-dkb', name: 'DKB (Sandbox)', bic: 'BYLADEM1001', blz: '12030000' },
+            { id: 'stub-ing', name: 'ING (Sandbox)', bic: 'INGDDEFFXXX', blz: '50010517' },
+          ],
+          mode: 'stub',
+        });
+      }
+      const q = url.searchParams.get('q')?.trim().toLowerCase() || '';
+      const limit = Math.min(Number(url.searchParams.get('limit')) || 30, 100);
+      const providers = await getBanksapiProviders();
+      const ranked = searchProviders(providers, q, limit);
+      return jsonResponse({
+        providers: ranked.map((p) => ({ id: p.id, name: p.name, bic: p.bic, blz: p.blz })),
+        total: providers.length,
+        mode: 'real',
+      });
     }
     return jsonResponse({ error: 'Not Found', route, method: req.method }, 404);
   } catch (e) {

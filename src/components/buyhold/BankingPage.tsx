@@ -1,9 +1,9 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Landmark, Plus, RefreshCw, ArrowDownLeft, ArrowUpRight,
   CheckCircle2, XCircle, Clock, Search, X,
   Link2, Unlink, CreditCard, TrendingUp, AlertCircle, Check,
-  Building2, ChevronDown, Users, Sparkles, HelpCircle, UserCheck, Loader2, ShieldCheck,
+  ChevronDown, Users, Sparkles, HelpCircle, UserCheck, Loader2, ShieldCheck, ArrowRight,
 } from 'lucide-react';
 import { useBanking } from '../../hooks/useBanking';
 import { useRentalProperties } from '../../hooks/useRentalProperties';
@@ -19,8 +19,10 @@ import { applyMatch, matchTransaction } from '../../lib/matcher';
 import { MatchTransactionModal } from './MatchTransactionModal';
 import {
   disconnectBanksapiAccount,
+  searchBanksapiProviders,
   startBanksapiConnect,
   syncBanksapiAccount,
+  type BanksapiProviderHit,
 } from '../../lib/banksapiClient';
 import type { BankTransaction } from '../../types';
 
@@ -45,7 +47,16 @@ function bankKeyFor(name: string): string {
 type Tab = 'konten' | 'transaktionen' | 'mieteingang';
 type TxFilter = 'alle' | 'eingang' | 'ausgang' | 'miete';
 
-type BankPreset = { name: string; color: string; bic: string; domain?: string };
+type BankPreset = {
+  name: string;
+  color: string;
+  bic: string;
+  domain?: string;
+  /** Wenn aus der BANKSapi-Suche gewählt, ist die exakte providerId hier gesetzt. */
+  banksapiProviderId?: string;
+  /** Bankleitzahl (8 Ziffern) — relevant für Sparkasse/Volksbank, identifiziert die Filiale. */
+  blz?: string;
+};
 
 const BANK_PRESETS: BankPreset[] = [
   { name: 'Deutsche Bank', color: '#0018A8', bic: 'DEUTDEDB', domain: 'deutsche-bank.de' },
@@ -171,194 +182,100 @@ function BankLogo({
   );
 }
 
-/**
- * Custom searchable dropdown for bank selection.
- * Matches the app's design language (uses `input`, `surface`, brand accent).
- * - Click outside / Esc closes
- * - Keyboard navigation: ↑↓ to move, Enter to pick
- * - Search filters by bank name
- */
-function BankDropdown({
-  banks,
-  selected,
-  onSelect,
-  placeholder = 'Bank auswählen…',
-}: {
-  banks: BankPreset[];
-  selected: BankPreset | null;
-  onSelect: (bank: BankPreset) => void;
-  placeholder?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const [activeIndex, setActiveIndex] = useState(0);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return banks;
-    return banks.filter(b => b.name.toLowerCase().includes(q));
-  }, [banks, query]);
-
-  // Close on outside click
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
-  }, [open]);
-
-  // Focus search when opening, reset state when closing
-  useEffect(() => {
-    if (open) {
-      setActiveIndex(0);
-      setTimeout(() => searchRef.current?.focus(), 10);
-    } else {
-      setQuery('');
-    }
-  }, [open]);
-
-  // Keep active row scrolled into view
-  useEffect(() => {
-    if (!open || !listRef.current) return;
-    const row = listRef.current.querySelector<HTMLElement>(`[data-idx="${activeIndex}"]`);
-    row?.scrollIntoView({ block: 'nearest' });
-  }, [activeIndex, open]);
-
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') { setOpen(false); return; }
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setActiveIndex(i => Math.min(i + 1, filtered.length - 1));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setActiveIndex(i => Math.max(i - 1, 0));
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      const bank = filtered[activeIndex];
-      if (bank) { onSelect(bank); setOpen(false); }
-    }
-  };
-
-  return (
-    <div ref={rootRef} className="relative">
-      {/* Trigger */}
-      <button
-        type="button"
-        onClick={() => setOpen(o => !o)}
-        className={cn(
-          'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border bg-card transition-all cursor-pointer text-left',
-          open
-            ? 'border-[#4F6BFF] ring-2 ring-[#4F6BFF]/15'
-            : 'border-card-line hover:border-[#4F6BFF]/40'
-        )}
-      >
-        <div className="size-8 rounded-lg bg-white border border-card-line flex items-center justify-center overflow-hidden shrink-0">
-          {selected
-            ? <BankLogo bank={selected} size={20} />
-            : <Landmark size={15} className="text-muted-foreground" />}
-        </div>
-        <div className="flex-1 min-w-0">
-          {selected ? (
-            <>
-              <p className="text-sm font-medium text-foreground truncate">{selected.name}</p>
-              <p className="text-[11px] text-muted-foreground truncate">BIC: {selected.bic}</p>
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">{placeholder}</p>
-          )}
-        </div>
-        <ChevronDown
-          size={16}
-          className={cn(
-            'text-muted-foreground shrink-0 transition-transform',
-            open && 'rotate-180'
-          )}
-        />
-      </button>
-
-      {/* Popover */}
-      {open && (
-        <div
-          className="absolute left-0 right-0 top-full mt-1.5 z-50 rounded-xl border border-card-line bg-card shadow-lg overflow-hidden"
-          onKeyDown={onKeyDown}
-        >
-          {/* Search */}
-          <div className="p-2 border-b border-card-line">
-            <div className="relative">
-              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input
-                ref={searchRef}
-                value={query}
-                onChange={e => { setQuery(e.target.value); setActiveIndex(0); }}
-                onKeyDown={onKeyDown}
-                placeholder="Suchen…"
-                className="input pl-8 h-9 text-sm w-full"
-              />
-            </div>
-          </div>
-
-          {/* List */}
-          <div ref={listRef} className="max-h-72 overflow-y-auto py-1">
-            {filtered.length === 0 ? (
-              <div className="flex flex-col items-center py-8 px-4">
-                <Building2 size={20} className="text-muted-foreground mb-2" />
-                <p className="text-xs text-muted-foreground">Keine Bank gefunden</p>
-              </div>
-            ) : (
-              filtered.map((bank, idx) => {
-                const isActive = idx === activeIndex;
-                const isSelected = selected?.name === bank.name;
-                return (
-                  <button
-                    key={bank.name}
-                    type="button"
-                    data-idx={idx}
-                    onMouseEnter={() => setActiveIndex(idx)}
-                    onClick={() => { onSelect(bank); setOpen(false); }}
-                    className={cn(
-                      'w-full flex items-center gap-3 px-3 py-2 transition-colors cursor-pointer text-left',
-                      isActive && 'bg-[#4F6BFF]/8',
-                      isSelected && 'bg-[#4F6BFF]/10'
-                    )}
-                  >
-                    <div className="size-7 rounded-md bg-white border border-card-line flex items-center justify-center overflow-hidden shrink-0">
-                      <BankLogo bank={bank} size={18} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{bank.name}</p>
-                      <p className="text-[10px] text-muted-foreground truncate font-mono">{bank.bic}</p>
-                    </div>
-                    {isSelected && <Check size={14} className="text-[#4F6BFF] shrink-0" />}
-                  </button>
-                );
-              })
-            )}
-          </div>
-
-          {/* Footer */}
-          <div className="px-3 py-2 border-t border-card-line bg-muted/30">
-            <p className="text-[10px] text-muted-foreground">
-              {filtered.length} von {banks.length} Banken
-            </p>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 const MONTHS = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
 
 function maskIban(iban: string, show: boolean) {
   if (show || iban.length < 10) return iban;
   return iban.slice(0, 4) + ' •••• •••• •••• ' + iban.slice(-4);
+}
+
+/**
+ * Live-Suche gegen BANKSapi's komplette Provider-Liste (~4000 Banken + Filialen).
+ * Debounce 250 ms, top 30 Treffer. User wählt einen Eintrag — wir geben die
+ * exakte providerId an den ConnectModal weiter.
+ */
+function BanksapiBankSearch({ onSelect }: { onSelect: (hit: BanksapiProviderHit) => void }) {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<BanksapiProviderHit[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (query.trim().length < 2) {
+      setResults([]);
+      setError('');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    const handle = setTimeout(async () => {
+      try {
+        const hits = await searchBanksapiProviders(query.trim());
+        setResults(hits);
+      } catch (e) {
+        setError((e as Error).message);
+        setResults([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 250);
+    return () => clearTimeout(handle);
+  }, [query]);
+
+  return (
+    <div>
+      <div className="relative">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Banknamen, BIC oder BLZ tippen …"
+          className="input pl-9"
+          autoFocus
+        />
+        {loading && (
+          <Loader2 size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground animate-spin" />
+        )}
+      </div>
+
+      {error && (
+        <div className="mt-2 p-2.5 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20">
+          <p className="text-[11px] text-red-700 dark:text-red-400 whitespace-pre-wrap">{error}</p>
+        </div>
+      )}
+
+      {query.trim().length >= 2 && (
+        <div className="mt-2 max-h-[280px] overflow-y-auto rounded-lg border border-card-line bg-card">
+          {results.length === 0 && !loading && !error && (
+            <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">
+              Keine Treffer für „{query}".
+            </div>
+          )}
+          {results.map((hit) => (
+            <button
+              key={hit.id}
+              type="button"
+              onClick={() => onSelect(hit)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-layer-hover/60 transition-colors cursor-pointer border-b border-card-divider last:border-b-0"
+            >
+              <div className="size-8 rounded-lg bg-[#4F6BFF]/10 flex items-center justify-center shrink-0">
+                <Landmark size={14} className="text-[#4F6BFF]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-medium text-foreground truncate">{hit.name}</p>
+                <p className="text-[11px] text-muted-foreground truncate">
+                  {hit.bic && <span className="font-mono">{hit.bic}</span>}
+                  {hit.bic && hit.blz && <span className="mx-1.5">·</span>}
+                  {hit.blz && <span className="font-mono">BLZ {hit.blz}</span>}
+                </p>
+              </div>
+              <ArrowRight size={13} className="text-muted-foreground shrink-0" />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function ConnectModal({ onClose }: { onClose: () => void }) {
@@ -370,10 +287,12 @@ function ConnectModal({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  // Bei Sparkasse/Volksbank brauchen wir die IBAN um die richtige Filiale
-  // zu finden — der generische BIC im Preset reicht da nicht.
+  // Wenn der User die Bank über die BANKSapi-Suche gewählt hat, ist die
+  // providerId schon eindeutig — keine IBAN nötig. Nur wenn er aus dem
+  // Quick-Pick eine generische Sparkasse/Volksbank wählt, brauchen wir die
+  // IBAN um die richtige Filiale zu identifizieren.
   const needsIbanForProvider = selected
-    ? /sparkasse|volksbank|raiffeisen|genoss/i.test(selected.name)
+    ? !selected.banksapiProviderId && /sparkasse|volksbank|raiffeisen|genoss/i.test(selected.name)
     : false;
 
   const handleConnect = async () => {
@@ -385,6 +304,7 @@ function ConnectModal({ onClose }: { onClose: () => void }) {
       const result = await startBanksapiConnect({
         redirectUri,
         bankKey: bankKeyFor(selected.name),
+        providerId: selected.banksapiProviderId,
         bankBic: selected.bic,
         iban: iban.trim() || undefined,
         accountHolder: holder,
@@ -439,14 +359,21 @@ function ConnectModal({ onClose }: { onClose: () => void }) {
                   <span className="text-xs text-muted-foreground">Bank nicht dabei?</span>
                   <div className="flex-1 h-px bg-card-line" />
                 </div>
-                <label className="input-label">Weitere deutsche Banken</label>
-                <BankDropdown
-                  banks={ADDITIONAL_BANKS}
-                  selected={selected && ADDITIONAL_BANKS.some(b => b.name === selected.name) ? selected : null}
-                  onSelect={(bank) => { setSelected(bank); setStep('credentials'); }}
+                <label className="input-label">Bank suchen (alle 4.000+ Banken bei BANKSapi)</label>
+                <BanksapiBankSearch
+                  onSelect={(hit) => {
+                    setSelected({
+                      name: hit.name,
+                      color: '#4F6BFF',
+                      bic: hit.bic || '',
+                      banksapiProviderId: hit.id,
+                      blz: hit.blz,
+                    });
+                    setStep('credentials');
+                  }}
                 />
                 <p className="mt-2 text-[11px] text-muted-foreground">
-                  {ADDITIONAL_BANKS.length} weitere Banken verfügbar. BIC wird automatisch übernommen.
+                  Tippe Namen, BIC oder BLZ — z.B. „Sparkasse Berlin", „REVODEB2" oder „12030000".
                 </p>
               </div>
             </div>

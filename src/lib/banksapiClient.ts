@@ -83,7 +83,9 @@ async function invoke<T>(path: string, body?: Record<string, unknown>, method: '
 export function startBanksapiConnect(opts: {
   redirectUri: string;
   bankKey: string;
-  /** BIC der gewählten Bank — Edge Function nutzt das zur Provider-Auflösung. */
+  /** BANKSapi-Provider-UUID (vom Bank-Picker in der UI gesetzt — die robusteste Option). */
+  providerId?: string;
+  /** BIC der gewählten Bank — Edge Function nutzt das als Fallback zur Provider-Auflösung. */
   bankBic?: string;
   /** IBAN des Users (optional). Wird genutzt um die exakte Filiale per BLZ zu finden
    *  — wichtig bei Sparkasse/Volksbank wo der BIC mehrdeutig ist. */
@@ -93,6 +95,23 @@ export function startBanksapiConnect(opts: {
   label?: string;
 }) {
   return invoke<{ redirectUrl: string; code: string; mode: string }>('connect/start', opts);
+}
+
+export interface BanksapiProviderHit {
+  id: string;
+  name: string;
+  bic?: string;
+  blz?: string;
+}
+
+/**
+ * Sucht in BANKSapi's 4000+ Banken nach Namen/BIC/BLZ. Liefert top 30
+ * Treffer sortiert nach Relevanz.
+ */
+export async function searchBanksapiProviders(query: string): Promise<BanksapiProviderHit[]> {
+  const path = `providers/search?q=${encodeURIComponent(query)}&limit=30`;
+  const res = await invoke<{ providers: BanksapiProviderHit[] }>(path, undefined, 'GET');
+  return res.providers || [];
 }
 
 export function finishBanksapiConnect(opts: {
