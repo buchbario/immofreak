@@ -62,8 +62,9 @@ export function PageCard<K extends string = string>({
   const hasFiltersRow = !!(tabs?.length || onSearchChange || tabExtras);
   return (
     <div>
-      {/* Header — flat, no card wrap. Title/description left, actions right */}
-      <div className="flex items-start justify-between gap-3 flex-wrap mb-5 sm:mb-6 px-1">
+      {/* Header — flat, no card wrap. Auf Mobile vertikal gestapelt (Titel + Description
+          oben, Actions darunter, jeweils volle Breite), auf ≥sm side-by-side. */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-5 sm:mb-6 px-1">
         <div className="min-w-0 flex-1">
           <h1 className="text-[26px] sm:text-[30px] font-bold text-foreground tracking-tight leading-[1.15] mb-1.5">
             {title}
@@ -72,7 +73,11 @@ export function PageCard<K extends string = string>({
             <p className="text-[14px] text-muted-foreground max-w-2xl leading-relaxed">{description}</p>
           )}
         </div>
-        {actions && <div className="flex items-center gap-2 shrink-0 mt-1">{actions}</div>}
+        {actions && (
+          <div className="flex items-center gap-2 flex-wrap sm:shrink-0 sm:mt-1 [&>*]:flex-1 sm:[&>*]:flex-initial">
+            {actions}
+          </div>
+        )}
       </div>
       {meta ? <span className="hidden">{meta}</span> : null}
 
