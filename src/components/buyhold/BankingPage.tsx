@@ -94,14 +94,14 @@ const ADDITIONAL_BANKS: BankPreset[] = [
   { name: 'PSD Bank', bic: 'GENODEF1P01', color: '#0069B4', domain: 'psd-bank.de' },
   { name: 'Pax-Bank', bic: 'GENODED1PAX', color: '#6D2077', domain: 'pax-bank.de' },
   { name: 'Raiffeisenbank', bic: 'GENODEF1', color: '#FFCC00', domain: 'raiffeisen.de' },
-  { name: 'Revolut', bic: 'REVOLT21', color: '#0075EB', domain: 'revolut.com' },
+  { name: 'Revolut', bic: 'REVODEB2', color: '#0075EB', domain: 'revolut.com' },
   { name: 'Santander Consumer Bank', bic: 'SCFBDE33XXX', color: '#EC0000', domain: 'santander.de' },
   { name: 'SolarisBank', bic: 'SOBKDEBBXXX', color: '#FF6D00', domain: 'solarisgroup.com' },
   { name: 'Sparda-Bank', bic: 'GENODEF1S03', color: '#003D7A', domain: 'sparda.de' },
   { name: 'Südwestbank', bic: 'SWBSDESS', color: '#004996', domain: 'suedwestbank.de' },
-  { name: 'Sutor Bank', bic: 'HSTBDEHHXXX', color: '#1F2A44', domain: 'sutorbank.de' },
+  { name: 'Sutor Bank', bic: 'MHSBDEHB', color: '#1F2A44', domain: 'sutorbank.de' },
   { name: 'Targobank', bic: 'CMCIDEDD', color: '#E2001A', domain: 'targobank.de' },
-  { name: 'Tomorrow Bank', bic: 'TRWIBEB1', color: '#1FC1C8', domain: 'tomorrow.one' },
+  { name: 'Tomorrow Bank', bic: 'SOBKDEBB', color: '#1FC1C8', domain: 'tomorrow.one' },
   { name: 'Triodos Bank', bic: 'TRIODEF1', color: '#009149', domain: 'triodos.de' },
   { name: 'UmweltBank', bic: 'UMWEDE7N', color: '#78BE20', domain: 'umweltbank.de' },
   { name: 'Vivid Money', bic: 'SOBKDEBBXXX', color: '#0B1C2E', domain: 'vivid.money' },
@@ -507,24 +507,24 @@ function ConnectModal({ onClose }: { onClose: () => void }) {
                 />
               </div>
 
-              <div>
-                <label className="input-label">
-                  IBAN <span className="text-muted-foreground font-normal">
-                    {needsIbanForProvider ? '(Pflicht für diese Bank)' : '(optional)'}
-                  </span>
-                </label>
-                <input
-                  value={iban}
-                  onChange={e => setIban(e.target.value.toUpperCase())}
-                  className="input font-mono tracking-wider"
-                  placeholder="DE89 3704 0044 0532 0130 00"
-                />
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  {needsIbanForProvider
-                    ? 'Wir brauchen die IBAN um deine konkrete Filiale zu identifizieren — Sparkasse/Volksbank haben viele Standorte.'
-                    : 'Wenn angegeben, wird die richtige Bank-Filiale exakt zugeordnet.'}
-                </p>
-              </div>
+              {/* IBAN nur bei Banken die ohne Filiale-Info nicht eindeutig sind
+                  (Sparkasse, Volksbank, Raiffeisenbank). Sonst raus aus dem Form. */}
+              {needsIbanForProvider && (
+                <div>
+                  <label className="input-label">
+                    IBAN <span className="text-muted-foreground font-normal">(Pflicht für diese Bank)</span>
+                  </label>
+                  <input
+                    value={iban}
+                    onChange={e => setIban(e.target.value.toUpperCase())}
+                    className="input font-mono tracking-wider"
+                    placeholder="DE89 3704 0044 0532 0130 00"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Wir brauchen die IBAN um deine konkrete Filiale zu identifizieren — Sparkasse/Volksbank haben viele Standorte.
+                  </p>
+                </div>
+              )}
 
               <p className="text-xs text-muted-foreground flex items-start gap-2">
                 <ShieldCheck size={13} className="text-[#4F6BFF] mt-0.5 shrink-0" />

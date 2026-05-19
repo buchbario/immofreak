@@ -39,11 +39,24 @@ async function invoke<T>(path: string, body?: Record<string, unknown>, method: '
     body,
   });
   if (error) {
-    // supabase-js wirft bei nicht-deployten Functions einen FunctionsFetchError,
-    // weil der Gateway 404 liefert (kein CORS-konformer JSON-Response). Wir
-    // mappen das hier auf eine konkrete Deploy-Anweisung, damit der User nicht
-    // raten muss.
-    const ctx = (error as { context?: { status?: number } }).context;
+    // supabase-js's FunctionsHttpError versteckt die echte Fehlermeldung. Der
+    // Response-Body steckt aber als Response-Objekt in error.context — also
+    // hier auspacken, sonst sieht der User nur "Edge Function returned a
+    // non-2xx status code" statt der konkreten Ursache.
+    const ctx = (error as { context?: Response & { status?: number } }).context;
+    let bodyMsg = '';
+    if (ctx && typeof (ctx as Response).text === 'function') {
+      try {
+        const txt = await (ctx as Response).clone().text();
+        try {
+          const j = JSON.parse(txt);
+          bodyMsg = (j && (j.error || j.message)) || '';
+        } catch {
+          bodyMsg = txt.slice(0, 600);
+        }
+      } catch { /* ignore */ }
+    }
+
     const msg = error.message || '';
     const isMissingDeploy =
       ctx?.status === 404 ||
@@ -59,7 +72,7 @@ async function invoke<T>(path: string, body?: Record<string, unknown>, method: '
           '3. Deployen: `supabase functions deploy banksapi-proxy`',
       );
     }
-    throw new Error(msg || 'Unbekannter Edge-Function-Fehler');
+    throw new Error(bodyMsg || msg || 'Unbekannter Edge-Function-Fehler');
   }
   if ((data as { error?: string } | null)?.error) {
     throw new Error((data as { error: string }).error);
