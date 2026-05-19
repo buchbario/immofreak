@@ -191,17 +191,28 @@ function maskIban(iban: string, show: boolean) {
 
 /**
  * Live-Suche gegen BANKSapi's komplette Provider-Liste (~4000 Banken + Filialen).
- * Debounce 250 ms, top 30 Treffer. User wählt einen Eintrag — wir geben die
- * exakte providerId an den ConnectModal weiter.
+ * `queryPrefix` wird vor dem User-Input platziert — z.B. "Sparkasse " damit
+ * der User nur den Standort eintippen muss.
  */
-function BanksapiBankSearch({ onSelect }: { onSelect: (hit: BanksapiProviderHit) => void }) {
+function BanksapiBankSearch({
+  onSelect,
+  queryPrefix = '',
+  placeholder = 'Banknamen, BIC oder BLZ tippen …',
+  autoFocus = true,
+}: {
+  onSelect: (hit: BanksapiProviderHit) => void;
+  queryPrefix?: string;
+  placeholder?: string;
+  autoFocus?: boolean;
+}) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<BanksapiProviderHit[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (query.trim().length < 2) {
+    const fullQuery = (queryPrefix + query).trim();
+    if (fullQuery.length < 2) {
       setResults([]);
       setError('');
       return;
@@ -210,7 +221,7 @@ function BanksapiBankSearch({ onSelect }: { onSelect: (hit: BanksapiProviderHit)
     setError('');
     const handle = setTimeout(async () => {
       try {
-        const hits = await searchBanksapiProviders(query.trim());
+        const hits = await searchBanksapiProviders(fullQuery);
         setResults(hits);
       } catch (e) {
         setError((e as Error).message);
@@ -220,7 +231,7 @@ function BanksapiBankSearch({ onSelect }: { onSelect: (hit: BanksapiProviderHit)
       }
     }, 250);
     return () => clearTimeout(handle);
-  }, [query]);
+  }, [query, queryPrefix]);
 
   return (
     <div>
@@ -229,9 +240,9 @@ function BanksapiBankSearch({ onSelect }: { onSelect: (hit: BanksapiProviderHit)
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Banknamen, BIC oder BLZ tippen …"
+          placeholder={placeholder}
           className="input pl-9"
-          autoFocus
+          autoFocus={autoFocus}
         />
         {loading && (
           <Loader2 size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground animate-spin" />
@@ -244,7 +255,7 @@ function BanksapiBankSearch({ onSelect }: { onSelect: (hit: BanksapiProviderHit)
         </div>
       )}
 
-      {query.trim().length >= 2 && (
+      {(queryPrefix + query).trim().length >= 2 && (
         <div className="mt-2 max-h-[280px] overflow-y-auto rounded-lg border border-card-line bg-card">
           {results.length === 0 && !loading && !error && (
             <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">
@@ -279,21 +290,52 @@ function BanksapiBankSearch({ onSelect }: { onSelect: (hit: BanksapiProviderHit)
 }
 
 function ConnectModal({ onClose }: { onClose: () => void }) {
-  const [step, setStep] = useState<'select' | 'credentials'>('select');
+  const [step, setStep] = useState<'select' | 'pick-branch' | 'credentials'>('select');
   const [selected, setSelected] = useState<BankPreset | null>(null);
+  /** Wenn gesetzt: User hat eine Multi-Filial-Bank (Sparkasse/Volksbank) aus dem
+   *  Quick-Pick gewählt — wir routen ihn zu 'pick-branch' wo er den Standort
+   *  eingibt und die konkrete Filiale aussucht. */
+  const [bankFamily, setBankFamily] = useState<BankPreset | null>(null);
   const [label, setLabel] = useState('');
   const [holder, setHolder] = useState('');
-  const [iban, setIban] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  // Wenn der User die Bank über die BANKSapi-Suche gewählt hat, ist die
-  // providerId schon eindeutig — keine IBAN nötig. Nur wenn er aus dem
-  // Quick-Pick eine generische Sparkasse/Volksbank wählt, brauchen wir die
-  // IBAN um die richtige Filiale zu identifizieren.
-  const needsIbanForProvider = selected
-    ? !selected.banksapiProviderId && /sparkasse|volksbank|raiffeisen|genoss/i.test(selected.name)
-    : false;
+  const isMultiBranch = (name: string) => /sparkasse|volksbank|raiffeisen|genoss/i.test(name);
+
+  const handleQuickPick = (bank: BankPreset) => {
+    if (isMultiBranch(bank.name)) {
+      setBankFamily(bank);
+      setStep('pick-branch');
+    } else {
+      setSelected(bank);
+      setStep('credentials');
+    }
+  };
+
+  const handleBranchPicked = (hit: BanksapiProviderHit) => {
+    setSelected({
+      name: hit.name,
+      color: bankFamily?.color || '#4F6BFF',
+      bic: hit.bic || '',
+      domain: bankFamily?.domain,
+      banksapiProviderId: hit.id,
+      blz: hit.blz,
+    });
+    setStep('credentials');
+  };
+
+  const handleBack = () => {
+    if (step === 'credentials' && bankFamily) {
+      setSelected(null);
+      setStep('pick-branch');
+    } else if (step === 'pick-branch') {
+      setBankFamily(null);
+      setStep('select');
+    } else {
+      setStep('select');
+    }
+  };
 
   const handleConnect = async () => {
     if (!selected) return;
@@ -306,7 +348,6 @@ function ConnectModal({ onClose }: { onClose: () => void }) {
         bankKey: bankKeyFor(selected.name),
         providerId: selected.banksapiProviderId,
         bankBic: selected.bic,
-        iban: iban.trim() || undefined,
         accountHolder: holder,
         label,
       });
@@ -337,7 +378,7 @@ function ConnectModal({ onClose }: { onClose: () => void }) {
                 {BANK_PRESETS.map(bank => (
                   <button
                     key={bank.name}
-                    onClick={() => { setSelected(bank); setStep('credentials'); }}
+                    onClick={() => handleQuickPick(bank)}
                     className={cn(
                       'flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer text-left',
                       'hover:border-[#4F6BFF] hover:bg-[#4F6BFF]/5',
@@ -374,6 +415,35 @@ function ConnectModal({ onClose }: { onClose: () => void }) {
                 />
                 <p className="mt-2 text-[11px] text-muted-foreground">
                   Tippe Namen, BIC oder BLZ — z.B. „Sparkasse Berlin", „REVODEB2" oder „12030000".
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Filial-Auswahl für Sparkasse / Volksbank / Raiffeisenbank.
+              User hat im vorigen Schritt z.B. "Sparkasse" gepickt; hier tippt er
+              den Standort (Stadt / PLZ), wir liefern matching Filialen. */}
+          {step === 'pick-branch' && bankFamily && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-3 rounded-xl border border-card-line bg-muted/30">
+                <div className="size-10 rounded-lg bg-white border border-card-line flex items-center justify-center overflow-hidden shrink-0">
+                  <BankLogo bank={bankFamily} size={24} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">{bankFamily.name}</p>
+                  <p className="text-xs text-muted-foreground">Wo befindet sich deine Filiale?</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="input-label">Standort, Stadt oder BLZ</label>
+                <BanksapiBankSearch
+                  queryPrefix={bankFamily.name + ' '}
+                  placeholder="z. B. Berlin, München, 10117 oder 12050000"
+                  onSelect={handleBranchPicked}
+                />
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Tippe den Standort deiner {bankFamily.name} — die Filiale wird live aus BANKSapi geladen.
                 </p>
               </div>
             </div>
@@ -434,25 +504,6 @@ function ConnectModal({ onClose }: { onClose: () => void }) {
                 />
               </div>
 
-              {/* IBAN nur bei Banken die ohne Filiale-Info nicht eindeutig sind
-                  (Sparkasse, Volksbank, Raiffeisenbank). Sonst raus aus dem Form. */}
-              {needsIbanForProvider && (
-                <div>
-                  <label className="input-label">
-                    IBAN <span className="text-muted-foreground font-normal">(Pflicht für diese Bank)</span>
-                  </label>
-                  <input
-                    value={iban}
-                    onChange={e => setIban(e.target.value.toUpperCase())}
-                    className="input font-mono tracking-wider"
-                    placeholder="DE89 3704 0044 0532 0130 00"
-                  />
-                  <p className="text-[11px] text-muted-foreground mt-1">
-                    Wir brauchen die IBAN um deine konkrete Filiale zu identifizieren — Sparkasse/Volksbank haben viele Standorte.
-                  </p>
-                </div>
-              )}
-
               <p className="text-xs text-muted-foreground flex items-start gap-2">
                 <ShieldCheck size={13} className="text-[#4F6BFF] mt-0.5 shrink-0" />
                 Du wirst auf das sichere Bank-Login weitergeleitet und bestätigst dort den
@@ -469,20 +520,21 @@ function ConnectModal({ onClose }: { onClose: () => void }) {
 
         </div>
 
-        {(step === 'credentials') && (
+        {(step === 'pick-branch' || step === 'credentials') && (
           <div className="modal-footer">
-            <button onClick={() => setStep('select')} className="btn btn-md btn-secondary" disabled={busy}>
+            <button onClick={handleBack} className="btn btn-md btn-secondary" disabled={busy}>
               Zurück
             </button>
-            <button
-              onClick={handleConnect}
-              disabled={busy || (needsIbanForProvider && !iban.trim())}
-              className="btn btn-md btn-primary"
-              title={needsIbanForProvider && !iban.trim() ? 'IBAN erforderlich' : undefined}
-            >
-              {busy ? <Loader2 size={14} className="animate-spin" /> : <Link2 size={14} />}
-              {busy ? 'Weiterleitung …' : 'Verbinden'}
-            </button>
+            {step === 'credentials' && (
+              <button
+                onClick={handleConnect}
+                disabled={busy}
+                className="btn btn-md btn-primary"
+              >
+                {busy ? <Loader2 size={14} className="animate-spin" /> : <Link2 size={14} />}
+                {busy ? 'Weiterleitung …' : 'Verbinden'}
+              </button>
+            )}
           </div>
         )}
       </div>
