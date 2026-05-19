@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertCircle, CheckCircle2, Landmark } from 'lucide-react';
+import { cn } from '../../lib/utils';
 import { finishBanksapiConnect } from '../../lib/banksapiClient';
 import { supabase } from '../../lib/supabase';
 import { objectToRow } from '../../lib/caseMapping';
@@ -19,6 +20,27 @@ type State = 'loading' | 'success' | 'error';
  * sequentiell mit Foreign-Key-Constraint geschrieben werden — sonst rennt der
  * TX-Insert dem Account-Insert davon und der `bank_account_id_fkey` schlägt.
  */
+/**
+ * Bank-Favicon via Google-Favicons-Service (deckt ~99% deutscher Banken).
+ * Bei Fehler / fehlender Domain fällt auf den Landmark-Icon-Style zurück.
+ */
+function BankFavicon({ domain, name }: { domain: string; name: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!domain || failed) {
+    return <Landmark size={28} className="text-[#4F6BFF]" />;
+  }
+  return (
+    <img
+      src={`https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(domain)}`}
+      alt={name || domain}
+      className={cn('size-10 object-contain')}
+      onError={() => setFailed(true)}
+      loading="eager"
+      referrerPolicy="no-referrer"
+    />
+  );
+}
+
 export function BankingCallback() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
@@ -26,6 +48,12 @@ export function BankingCallback() {
   const [message, setMessage] = useState('Verbinde dein Konto …');
   const [error, setError] = useState('');
   const ranRef = useRef(false);
+
+  // Bank-Info für die Loading-Animation aus den URL-Params lesen — die Edge
+  // Function reicht das durch, damit wir das Logo der gewählten Bank zeigen
+  // können während wir auf die finalen Kontodaten warten.
+  const animBankName = params.get('bankName') || '';
+  const animBankDomain = params.get('bankDomain') || '';
 
   useEffect(() => {
     if (ranRef.current) return;
@@ -148,17 +176,19 @@ export function BankingCallback() {
       <div className="max-w-md mx-auto mt-16 bg-card border border-card-line rounded-2xl p-8 text-center">
         {state === 'loading' && (
           <>
-            {/* Bank-Icon mit rotierendem Ring — selbe Optik wie das alte Demo-Modal */}
+            {/* Bank-Logo mit rotierendem Ring — selbe Optik wie das alte Demo-Modal */}
             <div className="relative size-16 mx-auto mb-5">
-              <div className="size-16 rounded-2xl bg-white border border-card-line flex items-center justify-center shadow-sm">
-                <Landmark size={28} className="text-[#4F6BFF]" />
+              <div className="size-16 rounded-2xl bg-white border border-card-line flex items-center justify-center shadow-sm overflow-hidden">
+                <BankFavicon domain={animBankDomain} name={animBankName} />
               </div>
               <div
                 className="absolute -inset-1 rounded-2xl border-2 border-transparent animate-spin"
                 style={{ borderTopColor: '#4F6BFF', borderRightColor: '#4F6BFF40' }}
               />
             </div>
-            <h2 className="text-lg font-semibold text-foreground mb-1">Bank wird verbunden</h2>
+            <h2 className="text-lg font-semibold text-foreground mb-1">
+              {animBankName ? `${animBankName} wird verbunden` : 'Bank wird verbunden'}
+            </h2>
             <p className="text-sm text-muted-foreground">{message}</p>
           </>
         )}

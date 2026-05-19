@@ -365,11 +365,17 @@ function ConnectModal({ onClose }: { onClose: () => void }) {
     setBusy(true);
     try {
       const redirectUri = `${window.location.origin}/bh/banking/callback`;
+      // Domain für das Logo: aus dem ausgewählten Preset oder via BIC-Fallback aus
+      // dem Directory holen, damit auch search-gepickte Banken das Logo zeigen.
+      const directoryHit = lookupBankByName(selected.name, selected.bic);
+      const bankDomain = selected.domain || directoryHit?.domain || '';
       const result = await startBanksapiConnect({
         redirectUri,
         bankKey: bankKeyFor(selected.name),
         providerId: selected.banksapiProviderId,
         bankBic: selected.bic,
+        bankName: selected.name,
+        bankDomain,
         accountHolder: holder,
         label,
       });

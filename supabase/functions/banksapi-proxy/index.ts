@@ -575,6 +575,8 @@ interface ConnectStartBody {
   redirectUri: string;
   bankKey?: string;
   bankBic?: string;
+  bankName?: string;
+  bankDomain?: string;
   iban?: string;
   /** Direkt vom User über die Bank-Suche gewählte BANKSapi-Provider-UUID. */
   providerId?: string;
@@ -593,6 +595,8 @@ async function handleConnectStart(body: ConnectStartBody, customerIp: string) {
   const queryParts = [
     `accessId=${encodeURIComponent(accessId)}`,
     `bank=${encodeURIComponent(body.bankKey || '')}`,
+    `bankName=${encodeURIComponent(body.bankName || '')}`,
+    `bankDomain=${encodeURIComponent(body.bankDomain || '')}`,
     `holder=${encodeURIComponent(body.accountHolder || '')}`,
     `label=${encodeURIComponent(body.label || '')}`,
     'provider=banksapi',

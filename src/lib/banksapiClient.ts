@@ -87,6 +87,11 @@ export function startBanksapiConnect(opts: {
   providerId?: string;
   /** BIC der gewählten Bank — Edge Function nutzt das als Fallback zur Provider-Auflösung. */
   bankBic?: string;
+  /** Banknamen (z.B. "Revolut Bank") — wird durch URL geschleust für die
+   *  Loading-Animation im Callback. */
+  bankName?: string;
+  /** Logo-Domain (z.B. "revolut.com") — für das Logo im Callback-Loading. */
+  bankDomain?: string;
   /** IBAN des Users (optional). Wird genutzt um die exakte Filiale per BLZ zu finden
    *  — wichtig bei Sparkasse/Volksbank wo der BIC mehrdeutig ist. */
   iban?: string;
