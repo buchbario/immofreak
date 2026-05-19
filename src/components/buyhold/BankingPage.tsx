@@ -443,7 +443,26 @@ function ConnectModal({ onClose }: { onClose: () => void }) {
             </div>
           )}
 
-          {step === 'credentials' && selected && (
+          {/* Während wir die Webform-URL holen: Bank-Logo mit rotierendem Ring.
+              Sobald die URL da ist, springt window.location.href an — die Animation
+              ist also genau der Übergang vom Klick bis zum BANKSapi-Redirect. */}
+          {step === 'credentials' && selected && busy && (
+            <div className="flex flex-col items-center py-10">
+              <div className="relative mb-5">
+                <div className="size-16 rounded-2xl bg-white border border-card-line flex items-center justify-center overflow-hidden shadow-sm">
+                  <BankLogo bank={selected} size={36} />
+                </div>
+                <div
+                  className="absolute -inset-1 rounded-2xl border-2 border-transparent animate-spin"
+                  style={{ borderTopColor: selected.color, borderRightColor: selected.color + '40' }}
+                />
+              </div>
+              <p className="text-sm font-semibold text-foreground">Weiterleitung wird vorbereitet …</p>
+              <p className="text-xs text-muted-foreground mt-1">Du wirst gleich zum sicheren Bank-Login geleitet</p>
+            </div>
+          )}
+
+          {step === 'credentials' && selected && !busy && (
             <div className="space-y-5">
               <div className="flex items-center gap-3 p-3 rounded-xl border border-card-line bg-muted/30">
                 <div className="size-10 rounded-lg bg-white border border-card-line flex items-center justify-center overflow-hidden shrink-0">

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Loader2, AlertCircle, CheckCircle2, Landmark } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Landmark } from 'lucide-react';
 import { finishBanksapiConnect } from '../../lib/banksapiClient';
 import { supabase } from '../../lib/supabase';
 import { objectToRow } from '../../lib/caseMapping';
@@ -56,23 +56,24 @@ export function BankingCallback() {
 
         // 1) Account-Row schreiben — wir müssen warten, bevor wir TXs einfügen,
         //    sonst greift die FK-Constraint nicht.
+        const safeStr = (v: unknown): string => (typeof v === 'string' ? v : '');
         const accountId = generateId();
         const accountObj: BankAccount = {
           id: accountId,
-          bankName: result.account.bankName,
+          bankName: safeStr(result.account.bankName) || 'Bank',
           label: label || undefined,
-          iban: result.account.iban,
-          bic: result.account.bic,
-          accountHolder: result.account.accountHolder,
-          balance: result.account.balance,
+          iban: safeStr(result.account.iban),
+          bic: safeStr(result.account.bic),
+          accountHolder: safeStr(result.account.accountHolder),
+          balance: typeof result.account.balance === 'number' ? result.account.balance : 0,
           lastSync: new Date().toISOString(),
           status: 'connected',
-          color: result.account.color,
-          domain: result.account.domain,
+          color: safeStr(result.account.color) || '#4F6BFF',
+          domain: result.account.domain && typeof result.account.domain === 'string' ? result.account.domain : undefined,
           provider: 'banksapi',
-          banksapiAccessId: result.account.banksapiAccessId,
-          banksapiProductId: result.account.banksapiProductId,
-          consentExpiresAt: result.account.consentExpiresAt,
+          banksapiAccessId: safeStr(result.account.banksapiAccessId),
+          banksapiProductId: safeStr(result.account.banksapiProductId),
+          consentExpiresAt: safeStr(result.account.consentExpiresAt),
           createdAt: new Date().toISOString(),
         };
         const accountRow = objectToRow(accountObj as unknown as Record<string, unknown>);
@@ -83,15 +84,19 @@ export function BankingCallback() {
         // 2) Transaktionen in einem Bulk-Insert — Account existiert jetzt, FK passt.
         setMessage(`Lade ${result.transactions.length} Transaktionen …`);
         if (result.transactions.length > 0) {
+          // Bei BANKSapi-Sandbox können einzelne Umsatz-Felder fehlen (z.B. Bankgebühren
+          // ohne Gegenkonto-Inhaber). `safeStr` (oben deklariert) erzwingt non-null
+          // Strings für Felder mit NOT-NULL-Constraint — andernfalls würde objectToRow
+          // null durchreichen und der Postgres-Default `''` greift nicht.
           const txObjs: BankTransaction[] = result.transactions.map((tx) => ({
             id: generateId(),
             bankAccountId: accountId,
-            date: tx.date,
-            amount: tx.amount,
-            counterparty: tx.counterparty,
-            purpose: tx.purpose,
-            iban: tx.iban,
-            banksapiTransactionId: tx.banksapiTransactionId,
+            date: safeStr(tx.date) || new Date().toISOString().slice(0, 10),
+            amount: typeof tx.amount === 'number' ? tx.amount : 0,
+            counterparty: safeStr(tx.counterparty),
+            purpose: safeStr(tx.purpose),
+            iban: tx.iban && typeof tx.iban === 'string' ? tx.iban : undefined,
+            banksapiTransactionId: safeStr(tx.banksapiTransactionId) || generateId(),
             isReconciled: false,
             createdAt: new Date().toISOString(),
           }));
@@ -123,8 +128,15 @@ export function BankingCallback() {
       <div className="max-w-md mx-auto mt-16 bg-card border border-card-line rounded-2xl p-8 text-center">
         {state === 'loading' && (
           <>
-            <div className="size-14 rounded-2xl bg-[#4F6BFF]/10 flex items-center justify-center mx-auto mb-4">
-              <Loader2 size={26} className="text-[#4F6BFF] animate-spin" />
+            {/* Bank-Icon mit rotierendem Ring — selbe Optik wie das alte Demo-Modal */}
+            <div className="relative size-16 mx-auto mb-5">
+              <div className="size-16 rounded-2xl bg-white border border-card-line flex items-center justify-center shadow-sm">
+                <Landmark size={28} className="text-[#4F6BFF]" />
+              </div>
+              <div
+                className="absolute -inset-1 rounded-2xl border-2 border-transparent animate-spin"
+                style={{ borderTopColor: '#4F6BFF', borderRightColor: '#4F6BFF40' }}
+              />
             </div>
             <h2 className="text-lg font-semibold text-foreground mb-1">Bank wird verbunden</h2>
             <p className="text-sm text-muted-foreground">{message}</p>

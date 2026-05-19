@@ -159,13 +159,40 @@ interface BanksapiBankzugang {
  *
  * Docs: https://docs.banksapi.de/api/banks-connect.html#bankzugaenge
  */
+/**
+ * Räumt alte REG/Protect-Sessions auf. BANKSapi-Doku empfiehlt: "Delete all
+ * REG/Protect sessions before starting new processes" — sonst kann ein
+ * unvollständiger früherer Versuch den neuen Zugang blockieren.
+ */
+async function realDeleteRegprotectSessions(): Promise<void> {
+  try {
+    const token = await getBanksapiToken();
+    await fetch(`${ENV.BANKSAPI_BASE_URL}/customer/v2/regprotect/sessions`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn(`[banksapi] regprotect cleanup failed (non-fatal): ${(e as Error).message}`);
+  }
+}
+
+// BANKSapi-Sentinel: "User wählt Provider in der Webform aus"
+const PROVIDER_PICK_IN_WEBFORM = '00000000-0000-0000-0000-000000000000';
+
 async function realCreateWebform(opts: {
   accessId: string;
   callbackUrl: string;
   customerIp: string;
 }): Promise<string> {
+  // Alte Sessions löschen (Best-Practice, non-fatal bei Fehler).
+  await realDeleteRegprotectSessions();
+
   const token = await getBanksapiToken();
   const url = `${ENV.BANKSAPI_BASE_URL}/customer/v2/bankzugaenge?callbackUrl=${encodeURIComponent(opts.callbackUrl)}`;
+  // BANKSapi will einen providerId-Eintrag haben, auch wenn der User die Bank
+  // in der Webform aussucht — All-Zeros-UUID ist das Sentinel dafür.
+  const body = { [opts.accessId]: { providerId: PROVIDER_PICK_IN_WEBFORM } };
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -173,7 +200,7 @@ async function realCreateWebform(opts: {
       'Authorization': `Bearer ${token}`,
       'Customer-IP-Address': opts.customerIp,
     },
-    body: JSON.stringify({ [opts.accessId]: {} }),
+    body: JSON.stringify(body),
     redirect: 'manual',
   });
   // BANKSapi liefert 451 (Unavailable For Legal Reasons) als Signal für
@@ -220,22 +247,46 @@ interface BanksapiUmsatz {
 /**
  * Liest die Kontoumsätze eines Bankprodukts.
  * `productId` ist laut Quickstart i.d.R. die IBAN.
+ * Antwort-Schema ist in der Public-Doc unscharf — wir versuchen mehrere
+ * gängige Shapes und loggen einen Sample, falls keiner matcht.
  */
 async function realGetKontoumsaetze(accessId: string, productId: string): Promise<BanksapiUmsatz[]> {
   const token = await getBanksapiToken();
-  const res = await fetch(
-    `${ENV.BANKSAPI_BASE_URL}/customer/v2/bankzugaenge/${accessId}/${encodeURIComponent(productId)}/kontoumsaetze`,
-    { headers: { 'Authorization': `Bearer ${token}` } },
-  );
+  const url = `${ENV.BANKSAPI_BASE_URL}/customer/v2/bankzugaenge/${accessId}/${encodeURIComponent(productId)}/kontoumsaetze?maxTransactions=all`;
+  const res = await fetch(url, {
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
   if (!res.ok) {
     const txt = await res.text();
     throw new Error(`BANKSapi kontoumsaetze fetch failed (${res.status}): ${txt}`);
   }
   const json = await res.json();
-  // Doc ist unscharf — entweder Array oder Wrapper mit `kontoumsaetze[]`.
-  if (Array.isArray(json)) return json;
-  if (Array.isArray(json?.kontoumsaetze)) return json.kontoumsaetze;
-  if (Array.isArray(json?.umsaetze)) return json.umsaetze;
+  const umsaetze = extractUmsaetze(json);
+  // eslint-disable-next-line no-console
+  console.log(`[banksapi] kontoumsaetze product=${productId} → ${umsaetze.length} Umsätze (response keys: ${Array.isArray(json) ? '[array]' : Object.keys(json || {}).join(',')})`);
+  if (umsaetze.length === 0 && json && typeof json === 'object') {
+    // eslint-disable-next-line no-console
+    console.log(`[banksapi] empty response sample: ${JSON.stringify(json).slice(0, 800)}`);
+  }
+  return umsaetze;
+}
+
+function extractUmsaetze(obj: any): BanksapiUmsatz[] {
+  if (Array.isArray(obj)) return obj;
+  if (!obj || typeof obj !== 'object') return [];
+  if (Array.isArray(obj.kontoumsaetze)) return obj.kontoumsaetze;
+  if (Array.isArray(obj.umsaetze)) return obj.umsaetze;
+  if (Array.isArray(obj.transactions)) return obj.transactions;
+  // Nested-by-productId: { "<id>": { umsaetze: [...] } } oder { "<id>": [...] }
+  for (const key of Object.keys(obj)) {
+    const inner = obj[key];
+    if (Array.isArray(inner)) return inner as BanksapiUmsatz[];
+    if (inner && typeof inner === 'object') {
+      if (Array.isArray(inner.kontoumsaetze)) return inner.kontoumsaetze;
+      if (Array.isArray(inner.umsaetze)) return inner.umsaetze;
+      if (Array.isArray(inner.transactions)) return inner.transactions;
+    }
+  }
   return [];
 }
 
@@ -441,14 +492,24 @@ async function handleConnectFinish(body: ConnectFinishBody) {
     if (zugang.status && zugang.status !== 'VOLLSTAENDIG') {
       return jsonResponse({ error: `Bankzugang nicht fertig: ${zugang.status}`, status: zugang.status }, 409);
     }
-    const account = mapBankzugangToAccount(zugang, body.accountHolder || '');
-    const produkt = zugang.bankprodukte?.[0];
+    // bankprodukte kann Array ODER keyed-object sein — beide Shapes normalisieren.
+    const produkte = normalizeProdukte(zugang.bankprodukte);
+    // eslint-disable-next-line no-console
+    console.log(`[banksapi] zugang=${zugang.id} status=${zugang.status} produkte=${produkte.length}`);
+    const account = mapBankzugangToAccount({ ...zugang, bankprodukte: produkte }, body.accountHolder || '');
     const transactions: any[] = [];
-    if (produkt) {
-      const productKey = produkt.id || produkt.iban || '';
-      if (productKey) {
+    // Über ALLE Bankprodukte iterieren — User kann Giro + Sparbuch + Tagesgeld
+    // im selben Zugang haben. Wir mergen die Umsätze.
+    for (const produkt of produkte) {
+      // Quickstart-Doc: product-id ist die IBAN.
+      const productKey = produkt.iban || produkt.id || '';
+      if (!productKey) continue;
+      try {
         const umsaetze = await realGetKontoumsaetze(zugang.id, productKey);
         for (const u of umsaetze) transactions.push(mapUmsatzToTransaction(u));
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error(`[banksapi] umsatz-fetch failed for product ${productKey}: ${(e as Error).message}`);
       }
     }
     return jsonResponse({ account, transactions, mode: 'real' });
@@ -468,18 +529,34 @@ async function handleAccountSync(accessId: string) {
   if (REAL_MODE) {
     await realRefreshBankzugang(accessId);
     const zugang = await realGetBankzugang(accessId);
-    const produkt = zugang.bankprodukte?.[0];
+    const produkte = normalizeProdukte(zugang.bankprodukte);
     const transactions: any[] = [];
-    if (produkt) {
-      const productKey = produkt.id || produkt.iban || '';
-      if (productKey) {
+    for (const produkt of produkte) {
+      const productKey = produkt.iban || produkt.id || '';
+      if (!productKey) continue;
+      try {
         const umsaetze = await realGetKontoumsaetze(accessId, productKey);
         for (const u of umsaetze) transactions.push(mapUmsatzToTransaction(u));
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error(`[banksapi] sync umsatz-fetch failed for product ${productKey}: ${(e as Error).message}`);
       }
     }
     return jsonResponse({ accessId, transactions, mode: 'real' });
   }
   return jsonResponse({ accessId, transactions: stubBuildTransactions(accessId, true), mode: 'stub' });
+}
+
+/**
+ * BANKSapi liefert `bankprodukte` mal als Array, mal als Objekt {productId: produkt}.
+ * Wir normalisieren auf Array.
+ */
+function normalizeProdukte(raw: unknown): BanksapiBankprodukt[] {
+  if (Array.isArray(raw)) return raw as BanksapiBankprodukt[];
+  if (raw && typeof raw === 'object') {
+    return Object.values(raw as Record<string, BanksapiBankprodukt>);
+  }
+  return [];
 }
 
 async function handleAccountDisconnect(accessId: string) {
