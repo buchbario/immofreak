@@ -148,11 +148,47 @@ const BANK_BY_BIC: Record<string, BankPreset> = (() => {
 })();
 
 function lookupBankByName(name: string, bic?: string): BankPreset | undefined {
-  return (
-    BANK_DIRECTORY[name] ||
-    (bic ? BANK_BY_BIC[bic.toUpperCase()] : undefined) ||
-    (bic ? BANK_BY_BIC[bic.toUpperCase().slice(0, 8)] : undefined)
-  );
+  const exact = BANK_DIRECTORY[name];
+  if (exact) return exact;
+  if (bic) {
+    const upper = bic.toUpperCase();
+    const byBic = BANK_BY_BIC[upper] || BANK_BY_BIC[upper.slice(0, 8)];
+    if (byBic) return byBic;
+  }
+  // Fuzzy: BANKSapi liefert oft erweiterte Namen wie "Revolut Bank" oder
+  // "Sparkasse Berlin" — wir matchen über Token-Überlappung mit dem Directory,
+  // damit die Marken-Farbe + das Logo auch dann greifen.
+  const norm = name.toLowerCase().replace(/\s+/g, ' ').trim();
+  if (!norm) return undefined;
+  for (const key of Object.keys(BANK_DIRECTORY)) {
+    const k = key.toLowerCase();
+    if (norm === k || norm.startsWith(k + ' ') || norm.endsWith(' ' + k) || norm.includes(' ' + k + ' ')) {
+      return BANK_DIRECTORY[key];
+    }
+  }
+  // Letztes Mittel: erstes Wort vergleichen ("Revolut Bank" → "Revolut").
+  const firstWord = norm.split(' ')[0];
+  for (const key of Object.keys(BANK_DIRECTORY)) {
+    if (key.toLowerCase() === firstWord) return BANK_DIRECTORY[key];
+  }
+  return undefined;
+}
+
+/**
+ * Wählt eine lesbare Textfarbe auf einem Hex-Hintergrund. Heuristik nach
+ * Rec. 601-Perzeption (Y = 0.299R + 0.587G + 0.114B). Schwellwert 0.62 —
+ * darüber (z.B. Postbank-Gelb #FFCC00, Commerzbank-Gold #FFD700) liefern
+ * wir dunklen Text, sonst weiß.
+ */
+function readableTextOn(hex: string): 'white' | 'dark' {
+  const h = hex.replace('#', '').trim();
+  if (h.length < 6) return 'white';
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) return 'white';
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return lum > 0.62 ? 'dark' : 'white';
 }
 
 /**
@@ -904,11 +940,24 @@ export function BankingPage() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
               {accounts.map(account => {
-                // Lookup domain/color from the bank directory so older accounts (stored
-                // before `domain` existed on BankAccount) still render their logo.
+                // Directory first — kuratierte Marken-Farben sind gegenüber dem
+                // gespeicherten Fallback (oft generisches #4F6BFF) zu bevorzugen.
                 const directoryEntry = lookupBankByName(account.bankName, account.bic);
                 const effectiveDomain = account.domain || directoryEntry?.domain;
-                const effectiveColor = account.color || directoryEntry?.color || '#4F6BFF';
+                const effectiveColor = directoryEntry?.color || account.color || '#4F6BFF';
+                const textTone = readableTextOn(effectiveColor);
+                const isDarkText = textTone === 'dark';
+                const gradient = isDarkText
+                  ? `linear-gradient(135deg, ${effectiveColor}, ${effectiveColor}cc)`
+                  : `linear-gradient(135deg, ${effectiveColor}dd, ${effectiveColor}99)`;
+                const cls = {
+                  title:  isDarkText ? 'text-neutral-900' : 'text-white',
+                  sub:    isDarkText ? 'text-neutral-900/70' : 'text-white/70',
+                  hint:   isDarkText ? 'text-neutral-900/60' : 'text-white/60',
+                  amount: isDarkText ? 'text-neutral-900' : 'text-white',
+                  status: isDarkText ? 'text-neutral-900/75' : 'text-white/80',
+                  dot:    isDarkText ? 'bg-emerald-700' : 'bg-emerald-400',
+                };
                 return (
                 <div
                   key={account.id}
@@ -917,9 +966,7 @@ export function BankingPage() {
                   {/* Gradient header */}
                   <div
                     className="px-5 py-4"
-                    style={{
-                      background: `linear-gradient(135deg, ${effectiveColor}dd, ${effectiveColor}99)`,
-                    }}
+                    style={{ background: gradient }}
                   >
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2.5">
@@ -930,21 +977,21 @@ export function BankingPage() {
                           />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-bold text-white truncate">{account.label || account.bankName}</p>
-                          <p className="text-xs text-white/70 truncate">
+                          <p className={cn('text-sm font-bold truncate', cls.title)}>{account.label || account.bankName}</p>
+                          <p className={cn('text-xs truncate', cls.sub)}>
                             {account.label ? account.bankName : (account.accountHolder || ' ')}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
-                        <div className="size-2 rounded-full bg-emerald-400 animate-pulse" />
-                        <span className="text-[10px] font-medium text-white/80 uppercase tracking-wider">Verbunden</span>
+                        <div className={cn('size-2 rounded-full animate-pulse', cls.dot)} />
+                        <span className={cn('text-[10px] font-medium uppercase tracking-wider', cls.status)}>Verbunden</span>
                       </div>
                     </div>
                     <div className="flex items-end justify-between">
                       <div>
-                        <p className="text-xs text-white/60 mb-0.5">Kontostand</p>
-                        <p className="text-2xl font-bold text-white tabular-nums">
+                        <p className={cn('text-xs mb-0.5', cls.hint)}>Kontostand</p>
+                        <p className={cn('text-2xl font-bold tabular-nums', cls.amount)}>
                           {account.balance.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                         </p>
                       </div>
