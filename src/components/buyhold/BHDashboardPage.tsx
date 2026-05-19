@@ -343,22 +343,22 @@ export function BHDashboardPage() {
                       </div>
                       <p className="text-[11.5px] text-muted-foreground truncate mb-2.5">{p.address || '—'}</p>
 
-                      <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
-                        <div>
+                      <div className="flex items-end gap-x-6 gap-y-3 flex-wrap">
+                        <div className="shrink-0">
                           <p className="text-[9.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Miete/M</p>
                           <p className="text-[13px] font-bold text-foreground tabular-nums">{fmtEur(rent)}</p>
                         </div>
-                        <div>
+                        <div className="shrink-0">
                           <p className="text-[9.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Marktwert</p>
                           <p className="text-[13px] font-bold text-foreground tabular-nums">{fmtEur(p.currentValue)}</p>
                         </div>
-                        <div>
+                        <div className="shrink-0">
                           <p className="text-[9.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Rendite</p>
                           <p className={cn('text-[13px] font-bold tabular-nums', rendite >= 4 ? 'text-emerald-600 dark:text-emerald-400' : rendite >= 2.5 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-500')}>
                             {rendite.toFixed(1)}%
                           </p>
                         </div>
-                        <div className="min-w-[100px] flex-1 max-w-[160px]">
+                        <div className="ml-auto w-full sm:w-[180px] md:w-[220px] shrink-0">
                           <div className="flex items-baseline justify-between mb-1">
                             <span className="text-[9.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold">Belegt</span>
                             <span className="text-[11px] font-bold text-foreground tabular-nums">{occ.length}/{units.length}</span>

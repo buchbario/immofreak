@@ -291,7 +291,7 @@ export function DashboardPage() {
                   <li key={project.id}>
                     <button
                       onClick={() => navigate(`/projekte/${project.id}`)}
-                      className="group w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-layer-hover/60 transition-colors cursor-pointer text-left"
+                      className="group w-full flex items-center gap-4 sm:gap-6 px-3 sm:px-4 py-3.5 rounded-lg hover:bg-layer-hover/60 transition-colors cursor-pointer text-left"
                     >
                       <span className={cn('size-9 rounded-lg grid place-items-center shrink-0', cfg.iconBg, cfg.iconColor)}>
                         <StatusIcon size={15} />
@@ -313,29 +313,32 @@ export function DashboardPage() {
                         </div>
                       </div>
 
-                      <div className="shrink-0 flex items-center gap-5">
-                        <div className="text-right">
-                          <p className="text-[9.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold leading-none mb-1">Gewinn</p>
-                          <p className={cn('text-[13px] font-bold tabular-nums leading-none', profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500')}>
-                            {profit >= 0 ? '+' : ''}{formatCurrency(profit)}
-                          </p>
+                      {/* Gewinn */}
+                      <div className="hidden sm:block text-right shrink-0 w-[96px]">
+                        <p className="text-[9.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Gewinn</p>
+                        <p className={cn('text-[13px] font-semibold tabular-nums', profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-500')}>
+                          {profit >= 0 ? '+' : ''}{formatCurrency(profit)}
+                        </p>
+                      </div>
+
+                      {/* Budget mit Mini-Bar */}
+                      <div className="shrink-0 w-[96px] sm:w-[128px]">
+                        <div className="flex items-baseline justify-between mb-1">
+                          <span className="text-[9.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold">Budget</span>
+                          <span className="text-[11px] font-semibold text-foreground tabular-nums">{budgetPct}%</span>
                         </div>
-                        <div className="hidden sm:block w-24">
-                          <div className="flex items-center justify-between mb-1 leading-none">
-                            <span className="text-[9.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold">Budget</span>
-                            <span className="text-[10.5px] font-bold text-foreground tabular-nums">{budgetPct}%</span>
-                          </div>
-                          <div className="h-1 bg-layer-hover rounded-full overflow-hidden">
-                            <div
-                              className={cn(
-                                'h-full rounded-full transition-all duration-700',
-                                spent === 0 ? 'bg-muted-foreground/30' : budgetPct > 90 ? 'bg-rose-500' : budgetPct > 75 ? 'bg-amber-500' : 'bg-emerald-500',
-                              )}
-                              style={{ width: spent === 0 ? '2%' : `${Math.max(2, budgetPct)}%` }}
-                            />
-                          </div>
+                        <div className="h-1 bg-layer-hover rounded-full overflow-hidden">
+                          <div
+                            className={cn(
+                              'h-full rounded-full transition-all duration-700',
+                              spent === 0 ? 'bg-muted-foreground/30' : budgetPct > 90 ? 'bg-rose-500' : budgetPct > 75 ? 'bg-amber-500' : 'bg-emerald-500',
+                            )}
+                            style={{ width: spent === 0 ? '2%' : `${Math.max(2, budgetPct)}%` }}
+                          />
                         </div>
                       </div>
+
+                      <ArrowRight size={14} className="shrink-0 text-muted-foreground/50 group-hover:text-[#4F6BFF] group-hover:translate-x-0.5 transition-all" />
                     </button>
                   </li>
                 );

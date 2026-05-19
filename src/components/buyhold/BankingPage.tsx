@@ -192,6 +192,154 @@ function readableTextOn(hex: string): 'white' | 'dark' {
 }
 
 /**
+ * Versucht aus counterparty + purpose den Händler zu erkennen und liefert
+ * Anzeigenamen + (wenn bekannt) eine Domain für das Logo via Google-Favicon-
+ * Service. Liste deckt die häufigsten deutschen Marken ab; bei Treffer wird
+ * statt des generischen Eingang-/Ausgang-Pfeils das Marken-Favicon angezeigt.
+ */
+type MerchantHint = { name: string; domain?: string };
+
+const MERCHANT_RULES: ReadonlyArray<{ match: RegExp; name: string; domain?: string }> = [
+  // Fastfood / Restaurants
+  { match: /mcdonald|\bmcd\b|mc\.d/i, name: "McDonald's", domain: 'mcdonalds.com' },
+  { match: /burger\s*king|\bbk\b/i,   name: 'Burger King', domain: 'burgerking.de' },
+  { match: /starbucks/i,              name: 'Starbucks',   domain: 'starbucks.de' },
+  { match: /subway/i,                 name: 'Subway',      domain: 'subway.de' },
+  { match: /\bkfc\b/i,                name: 'KFC',         domain: 'kfc.de' },
+  { match: /domino/i,                 name: "Domino's",    domain: 'dominos.de' },
+  { match: /lieferando/i,             name: 'Lieferando',  domain: 'lieferando.de' },
+  { match: /wolt\b/i,                 name: 'Wolt',        domain: 'wolt.com' },
+  // Supermärkte
+  { match: /\brewe\b/i,               name: 'REWE',        domain: 'rewe.de' },
+  { match: /edeka/i,                  name: 'Edeka',       domain: 'edeka.de' },
+  { match: /\blidl\b/i,               name: 'Lidl',        domain: 'lidl.de' },
+  { match: /\baldi\b/i,               name: 'ALDI',        domain: 'aldi.de' },
+  { match: /kaufland/i,               name: 'Kaufland',    domain: 'kaufland.de' },
+  { match: /\bnetto\b/i,              name: 'Netto',       domain: 'netto-online.de' },
+  { match: /\bpenny\b/i,              name: 'Penny',       domain: 'penny.de' },
+  { match: /globus\b/i,               name: 'Globus',      domain: 'globus.de' },
+  // Drogerie & Kiosk
+  { match: /\bdm\b|dm.{0,3}drogerie/i, name: 'dm-drogerie', domain: 'dm.de' },
+  { match: /rossmann/i,               name: 'Rossmann',    domain: 'rossmann.de' },
+  { match: /\bmüller\b|m[üu]ller drogerie/i, name: 'Müller', domain: 'mueller.de' },
+  { match: /\bk\.?\s*kiosk\b/i,       name: 'K Kiosk',     domain: 'valora.com' },
+  // Tankstellen
+  { match: /\bshell\b/i,              name: 'Shell',       domain: 'shell.de' },
+  { match: /\baral\b/i,               name: 'Aral',        domain: 'aral.de' },
+  { match: /\besso\b/i,               name: 'Esso',        domain: 'esso.de' },
+  { match: /\bjet\b.*tank|\btankstelle\s*jet/i, name: 'JET', domain: 'jet-tankstellen.de' },
+  { match: /\btotal\b.*service|total.*tank/i, name: 'TotalEnergies', domain: 'totalenergies.de' },
+  { match: /\bhem\b\s*tank/i,         name: 'HEM',         domain: 'hem.com' },
+  // Online / Abo
+  { match: /amazon/i,                 name: 'Amazon',      domain: 'amazon.de' },
+  { match: /paypal/i,                 name: 'PayPal',      domain: 'paypal.com' },
+  { match: /netflix/i,                name: 'Netflix',     domain: 'netflix.com' },
+  { match: /spotify/i,                name: 'Spotify',     domain: 'spotify.com' },
+  { match: /disney\+?|disneyplus/i,   name: 'Disney+',     domain: 'disneyplus.com' },
+  { match: /apple\.com|itunes|apple pay/i, name: 'Apple',  domain: 'apple.com' },
+  { match: /google.*play|googleplay/i,name: 'Google Play', domain: 'play.google.com' },
+  { match: /steam/i,                  name: 'Steam',       domain: 'steampowered.com' },
+  { match: /microsoft|xbox/i,         name: 'Microsoft',   domain: 'microsoft.com' },
+  { match: /openai|chatgpt/i,         name: 'OpenAI',      domain: 'openai.com' },
+  // Fitness
+  { match: /xtrafit/i,                name: 'XtraFit',     domain: 'xtrafit.de' },
+  { match: /\bfitx\b/i,               name: 'FitX',        domain: 'fitx.de' },
+  { match: /mcfit/i,                  name: 'McFit',       domain: 'mcfit.com' },
+  { match: /clever\s*fit/i,           name: 'clever fit',  domain: 'clever-fit.com' },
+  // Verkehr & Mobilität
+  { match: /deutsche\s*bahn|\bdb vertrieb|bahn\.de/i, name: 'Deutsche Bahn', domain: 'bahn.de' },
+  { match: /\buber\b/i,               name: 'Uber',        domain: 'uber.com' },
+  { match: /\bbolt\b/i,               name: 'Bolt',        domain: 'bolt.eu' },
+  { match: /\bflixbus|flixtrain/i,    name: 'Flix',        domain: 'flixbus.de' },
+  { match: /\bbvg\b/i,                name: 'BVG',         domain: 'bvg.de' },
+  // Bargeld / Banking
+  { match: /cash at|atm|geldautomat|bargeldabhebung/i, name: 'Bargeld' },
+  { match: /sparkasse/i,              name: 'Sparkasse',   domain: 'sparkasse.de' },
+  { match: /revpoints|spare change|aufrundung/i, name: 'Aufrundung', domain: 'revolut.com' },
+];
+
+function detectMerchant(counterparty: string, purpose: string): MerchantHint {
+  const text = `${counterparty} ${purpose}`.trim();
+  for (const r of MERCHANT_RULES) {
+    if (r.match.test(text)) return { name: r.name, domain: r.domain };
+  }
+  const cp = counterparty.trim();
+  if (cp) return { name: cp };
+  const firstWord = purpose.split(/\s+/).find((w) => w.length > 2);
+  return { name: firstWord || 'Sonstige' };
+}
+
+/**
+ * Englische Standard-Bank-Phrasen ins Deutsche übersetzen. Revolut & andere
+ * Neobanken liefern Verwendungszweck oft auf Englisch — wir mappen die
+ * häufigsten Muster damit die UI durchgehend deutsch wirkt. Unbekanntes
+ * bleibt unverändert (z.B. Marken-Eigennamen).
+ */
+function translatePurpose(text: string): string {
+  if (!text) return text;
+  let out = text;
+  const REPLACEMENTS: ReadonlyArray<[RegExp, string]> = [
+    [/^Payment from\b/i,                    'Zahlung von'],
+    [/^Payment to\b/i,                      'Zahlung an'],
+    [/^Transfer from\b/i,                   'Überweisung von'],
+    [/^Transfer to\b/i,                     'Überweisung an'],
+    [/^Sent to\b/i,                         'Gesendet an'],
+    [/^Received from\b/i,                   'Erhalten von'],
+    [/^Top[- ]up( from)?\b/i,               'Aufladung'],
+    [/^Card payment at\b/i,                 'Kartenzahlung bei'],
+    [/^Card payment\b/i,                    'Kartenzahlung'],
+    [/^Cash withdrawal\b|^ATM withdrawal\b/i, 'Bargeldabhebung'],
+    [/^Cash at\b/i,                         'Bargeld bei'],
+    [/\bRevpoints\s+Spare\s*Change\b/gi,    'Aufrundung'],
+    [/\bSpare\s*Change\b/gi,                'Aufrundung'],
+    [/\bRevpoints\b/gi,                     'Revolut Points'],
+    [/^Reward\b/i,                          'Belohnung'],
+    [/^Refund( from)?\b/i,                  'Erstattung von'],
+    [/^Subscription\b/i,                    'Abo'],
+    [/^Direct debit\b/i,                    'Lastschrift'],
+    [/^Standing order\b/i,                  'Dauerauftrag'],
+    [/^Fee\b/i,                             'Gebühr'],
+    [/^Interest\b/i,                        'Zinsen'],
+    [/^Exchange( to)?\b/i,                  'Wechsel'],
+    [/^Foreign exchange\b/i,                'Devisenwechsel'],
+    [/\bPayment\b/g,                        'Zahlung'],
+  ];
+  for (const [re, rep] of REPLACEMENTS) {
+    out = out.replace(re, rep);
+  }
+  return out;
+}
+
+/**
+ * Lädt das Marken-Favicon via Google. Wenn keine Domain bekannt ist oder das
+ * Logo nicht lädt, wird das Fallback-Element gerendert (Eingang/Ausgang-Pfeil).
+ */
+function MerchantLogo({
+  domain,
+  fallback,
+  size = 18,
+}: {
+  domain?: string;
+  fallback: React.ReactNode;
+  size?: number;
+}) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { setFailed(false); }, [domain]);
+  if (!domain || failed) return <>{fallback}</>;
+  return (
+    <img
+      src={`https://www.google.com/s2/favicons?domain=${domain}&sz=128`}
+      alt=""
+      className="object-contain"
+      style={{ width: size, height: size }}
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+/**
  * Renders a real bank logo. Tries Google's favicon service first (works for ~99% of
  * bank domains) then falls back to DuckDuckGo's icon service. If all sources fail
  * or no domain is set, shows the Landmark icon in the bank's brand color.
@@ -1109,6 +1257,8 @@ export function BankingPage() {
                   const canAssign = isIncome && !tx.isIgnored;
                   const bankInfo = accountInfoMap.get(tx.bankAccountId);
                   const showBankChip = accounts.length > 1 && !!bankInfo;
+                  const merchant = detectMerchant(tx.counterparty, tx.purpose);
+                  const displayTitle = tx.counterparty || merchant.name;
                   return (
                     <div
                       key={tx.id}
@@ -1119,18 +1269,40 @@ export function BankingPage() {
                         tx.isIgnored && 'opacity-60',
                       )}
                     >
+                      {/* Merchant-Logo bzw. Eingang-/Ausgang-Pfeil mit farbigem Ring */}
                       <div className={cn(
-                        'size-9 rounded-xl flex items-center justify-center shrink-0',
-                        isIncome ? 'bg-emerald-100 dark:bg-emerald-500/15' : 'bg-red-100 dark:bg-red-500/15'
+                        'size-10 rounded-xl flex items-center justify-center shrink-0 ring-1 bg-white overflow-hidden',
+                        isIncome
+                          ? 'ring-emerald-200 dark:ring-emerald-500/30'
+                          : 'ring-rose-200 dark:ring-rose-500/30',
                       )}>
-                        {isIncome
-                          ? <ArrowDownLeft size={16} className="text-emerald-600 dark:text-emerald-400" />
-                          : <ArrowUpRight size={16} className="text-red-500 dark:text-red-400" />
-                        }
+                        <MerchantLogo
+                          domain={merchant.domain}
+                          size={20}
+                          fallback={
+                            <div className={cn(
+                              'size-full flex items-center justify-center',
+                              isIncome ? 'bg-emerald-50 dark:bg-emerald-500/15' : 'bg-rose-50 dark:bg-rose-500/15',
+                            )}>
+                              {isIncome
+                                ? <ArrowDownLeft size={16} className="text-emerald-600 dark:text-emerald-400" />
+                                : <ArrowUpRight size={16} className="text-rose-500 dark:text-rose-400" />
+                              }
+                            </div>
+                          }
+                        />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-medium text-foreground truncate">{tx.counterparty}</p>
+                          <p className="text-sm font-medium text-foreground truncate">{displayTitle}</p>
+                          <span className={cn(
+                            'shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide',
+                            isIncome
+                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
+                              : 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400',
+                          )}>
+                            {isIncome ? 'Eingang' : 'Abbuchung'}
+                          </span>
                           {showBankChip && bankInfo && (
                             <span
                               className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-muted/70 text-muted-foreground max-w-[160px]"
@@ -1164,12 +1336,21 @@ export function BankingPage() {
                             <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground truncate mt-0.5">{tx.purpose}</p>
+                        {(() => {
+                          const sub = translatePurpose(tx.purpose);
+                          // Subtitel ausblenden wenn er identisch mit der Headline ist
+                          // (vermeidet "Aufrundung / Aufrundung"-Doppel bei aufgeräumten
+                          // Eigenüberweisungen ohne Counterparty).
+                          if (!sub || sub.trim().toLowerCase() === displayTitle.trim().toLowerCase()) return null;
+                          return <p className="text-xs text-muted-foreground truncate mt-0.5">{sub}</p>;
+                        })()}
                       </div>
                       <div className="text-right shrink-0">
                         <p className={cn(
                           'text-sm font-bold tabular-nums',
-                          isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'
+                          isIncome
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-rose-600 dark:text-rose-400',
                         )}>
                           {isIncome ? '+' : ''}{fmt(tx.amount)} €
                         </p>
