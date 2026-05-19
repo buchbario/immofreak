@@ -130,16 +130,18 @@ export interface Project {
   name: string;
   address: string;
   purchasePrice: number;
+  /** Verkaufsziel (Plan). */
   targetSellPrice: number;
-  arv: number;
+  /** Tatsächlicher Verkaufspreis — wird nach Abschluss eingetragen. */
+  actualSellPrice?: number;
+  /** Legacy/Optional: ARV (After Repair Value). Wird im UI nicht mehr erfasst,
+   *  bleibt aber in alten Datensätzen / Deal-Analyzer-Imports erhalten. */
+  arv?: number;
   renovationBudget: number;
   status: ProjectStatus;
   notes: string;
-  /** Optionale URL zum Immoscout-Inserat — wird in der Projekt-Sidebar verlinkt. */
   immoscoutUrl?: string;
-  /** Optionale URL zum Grundbuchauszug (z. B. Cloud-PDF, Notar-Portal). */
   grundbuchUrl?: string;
-  /** Optionale URL zum externen Exposé-PDF (unabhängig vom eingebauten Exposé-Generator). */
   exposeUrl?: string;
   createdAt: string;
   updatedAt: string;
@@ -235,6 +237,7 @@ export interface Tenant {
   leaseEnd?: string;
   deposit: number;
   notes: string;
+  iban?: string;
   createdAt: string;
 }
 
@@ -389,6 +392,9 @@ export type TransactionCategory = 'miete' | 'nebenkosten' | 'instandhaltung' | '
 export interface BankAccount {
   id: string;
   bankName: string;
+  /** Optionale interne Bezeichnung, z.B. "Mietkonto Berlin". Wenn gesetzt,
+   *  wird sie statt `bankName` als Haupt-Titel in der Konten-Liste angezeigt. */
+  label?: string;
   iban: string;
   bic: string;
   accountHolder: string;
@@ -398,8 +404,19 @@ export interface BankAccount {
   color: string;
   /** Optional brand domain (e.g. "dkb.de") used to fetch the real bank logo via Clearbit. */
   domain?: string;
+  /** Quelle der Konto-Daten. 'demo' für Altdaten/Test, 'banksapi' für echten Open-Banking-Zugang. */
+  provider?: BankingProvider;
+  /** BANKSapi-Access-ID — gleiche ID für mehrere Produkte (Giro+Tagesgeld) desselben Bank-Zugangs. */
+  banksapiAccessId?: string;
+  /** BANKSapi-Product-ID — eindeutiges Konto innerhalb des Zugangs. */
+  banksapiProductId?: string;
+  /** PSD2-Consent-Ablauf (90 Tage Default). Vor Ablauf UI-Warnung anzeigen. */
+  consentExpiresAt?: string;
   createdAt: string;
 }
+
+export type MatchStatus = 'auto' | 'manual' | 'suggested' | 'unmatched';
+export type BankingProvider = 'banksapi' | 'demo';
 
 export interface BankTransaction {
   id: string;
@@ -408,12 +425,34 @@ export interface BankTransaction {
   amount: number;
   counterparty: string;
   purpose: string;
+  /** IBAN des Gegenkontos (z.B. Mieter-IBAN bei Eingang). */
   iban?: string;
   category?: TransactionCategory;
   matchedTenantId?: string;
   matchedPropertyId?: string;
   matchedUnitId?: string;
+  /** Status der Mieter-Zuordnung; wird vom Matcher gesetzt oder bei manueller Zuordnung auf 'manual' gesetzt. */
+  matchStatus?: MatchStatus;
+  /** Confidence 0..1 — nur zur Anzeige/Debug. */
+  matchConfidence?: number;
+  /** Provider-spezifische Transaktions-ID (Idempotenz beim Re-Sync). */
+  banksapiTransactionId?: string;
   isReconciled: boolean;
+  createdAt: string;
+}
+
+/**
+ * Gelerntes Mapping Counterparty/IBAN → Mieter. Wird beim manuellen Zuordnen
+ * mit "merken"-Checkbox angelegt, damit beim nächsten Sync derselbe Mieter
+ * automatisch erkannt wird.
+ */
+export interface TenantPaymentMapping {
+  id: string;
+  tenantId: string;
+  iban?: string;
+  /** Normalisierter Counterparty-String (siehe lib/matcher.ts:normalize). */
+  counterpartyName?: string;
+  learnedFromTransactionId?: string;
   createdAt: string;
 }
 

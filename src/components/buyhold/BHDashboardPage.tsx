@@ -34,9 +34,9 @@ const fmtEur = (n: number) => `${fmt(n)} €`;
 type OccupancyKind = 'voll' | 'teil' | 'leer';
 
 const OCC_CFG: Record<OccupancyKind, { label: string; marker: string; iconBg: string; iconColor: string; tagBg: string; tagText: string }> = {
-  voll: { label: 'Vollbelegt',  marker: 'bg-emerald-500', iconBg: 'bg-emerald-100 dark:bg-emerald-500/15', iconColor: 'text-emerald-700 dark:text-emerald-300', tagBg: 'bg-emerald-100 dark:bg-emerald-500/15', tagText: 'text-emerald-700 dark:text-emerald-300' },
-  teil: { label: 'Teilbelegt',  marker: 'bg-amber-500',   iconBg: 'bg-amber-100 dark:bg-amber-500/15',     iconColor: 'text-amber-700 dark:text-amber-300',     tagBg: 'bg-amber-100 dark:bg-amber-500/15',     tagText: 'text-amber-700 dark:text-amber-300' },
-  leer: { label: 'Leerstand',   marker: 'bg-rose-500',    iconBg: 'bg-rose-100 dark:bg-rose-500/15',       iconColor: 'text-rose-700 dark:text-rose-300',       tagBg: 'bg-rose-100 dark:bg-rose-500/15',       tagText: 'text-rose-700 dark:text-rose-300' },
+  voll: { label: 'Vollbelegt',  marker: 'bg-emerald-500', iconBg: 'bg-emerald-100 dark:bg-emerald-500/15', iconColor: 'text-emerald-700 dark:text-emerald-300', tagBg: 'bg-emerald-100 dark:bg-emerald-500/15', tagText: 'text-neutral-900' },
+  teil: { label: 'Teilbelegt',  marker: 'bg-amber-500',   iconBg: 'bg-amber-100 dark:bg-amber-500/15',     iconColor: 'text-amber-700 dark:text-amber-300',     tagBg: 'bg-amber-100 dark:bg-amber-500/15',     tagText: 'text-neutral-900' },
+  leer: { label: 'Leerstand',   marker: 'bg-rose-500',    iconBg: 'bg-rose-100 dark:bg-rose-500/15',       iconColor: 'text-rose-700 dark:text-rose-300',       tagBg: 'bg-rose-100 dark:bg-rose-500/15',       tagText: 'text-neutral-900' },
 };
 
 function classifyOccupancy(occupiedCount: number, totalCount: number): OccupancyKind {
@@ -315,8 +315,8 @@ export function BHDashboardPage() {
             })}
           </div>
 
-          {/* Property rows */}
-          <div className="px-2 pb-3">
+          {/* Property rows — kompakte Cards mit klarer Hierarchie (wie FF) */}
+          <div className="px-3 sm:px-4 pb-4 space-y-2.5">
             {propertyOccupancy.map(({ property: p, units, occ, kind }) => {
               const cfg = OCC_CFG[kind];
               const rent = units.reduce((s, u) => s + u.currentRent, 0);
@@ -326,53 +326,54 @@ export function BHDashboardPage() {
                 <div
                   key={p.id}
                   onClick={() => navigate(`/bh/objekte/${p.id}`)}
-                  className="group grid grid-cols-[36px_1fr_auto] sm:grid-cols-[36px_1fr_auto_auto_auto] xl:grid-cols-[36px_1fr_auto_auto_100px] items-center gap-3 sm:gap-4 px-4 py-3.5 mx-1 rounded-[10px] cursor-pointer hover:bg-layer-hover transition-colors [&:not(:first-child)]:border-t [&:not(:first-child)]:border-card-line"
+                  className="group relative rounded-xl border border-card-line bg-card hover:border-[#4F6BFF]/40 hover:shadow-[0_4px_12px_-4px_rgba(15,23,42,0.08)] transition-all cursor-pointer overflow-hidden p-3.5"
                 >
-                  <div className={cn('size-9 rounded-[9px] flex items-center justify-center shrink-0', cfg.iconBg)}>
-                    <Home size={16} className={cfg.iconColor} />
-                  </div>
-
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-semibold text-foreground tracking-tight truncate">{p.name}</p>
-                      <span className={cn(
-                        'inline-flex items-center px-2 py-px rounded-full text-[10.5px] font-semibold whitespace-nowrap tabular-nums',
-                        rendite >= 4 ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
-                          : rendite >= 2.5 ? 'bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-400'
-                          : 'bg-rose-100 dark:bg-rose-500/15 text-rose-700 dark:text-rose-400',
-                      )}>
-                        {rendite.toFixed(1)}%
-                      </span>
+                  <div className="flex items-start gap-3">
+                    <div className={cn('size-10 rounded-xl flex items-center justify-center shrink-0', cfg.iconBg)}>
+                      <Home size={17} className={cfg.iconColor} />
                     </div>
-                    <div className="flex items-center flex-wrap gap-x-2 gap-y-0.5 text-xs text-muted-foreground mt-0.5">
-                      <span className="truncate">{p.address}</span>
-                      <span className={cn('inline-flex items-center px-2 py-px rounded-full text-[10.5px] font-semibold whitespace-nowrap sm:hidden', cfg.tagBg, cfg.tagText)}>{cfg.label}</span>
-                    </div>
-                  </div>
 
-                  <div className="hidden sm:block text-right min-w-[88px]">
-                    <p className="text-[10.5px] uppercase tracking-wider text-muted-foreground/80 font-medium">Miete/M</p>
-                    <p className="text-[13.5px] font-semibold text-foreground tabular-nums tracking-tight">{fmtEur(rent)}</p>
-                  </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2 mb-0.5">
+                        <p className="text-[14px] font-semibold text-foreground tracking-tight truncate group-hover:text-[#4F6BFF] transition-colors">{p.name}</p>
+                        <span className={cn('shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap', cfg.tagBg, cfg.tagText)}>
+                          <span className={cn('size-1.5 rounded-full', cfg.marker)} />
+                          {cfg.label}
+                        </span>
+                      </div>
+                      <p className="text-[11.5px] text-muted-foreground truncate mb-2.5">{p.address || '—'}</p>
 
-                  <div className="hidden sm:block text-right min-w-[88px]">
-                    <p className="text-[10.5px] uppercase tracking-wider text-muted-foreground/80 font-medium">Marktwert</p>
-                    <p className="text-[13.5px] font-semibold text-foreground tabular-nums tracking-tight">{fmtEur(p.currentValue)}</p>
-                  </div>
-
-                  <div className="hidden xl:block w-[100px]">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10.5px] uppercase tracking-wider text-muted-foreground/80 font-medium">Belegt</span>
-                      <span className="text-[11.5px] font-semibold text-foreground/80 tabular-nums">{occ.length}/{units.length}</span>
-                    </div>
-                    <div className="h-1 bg-layer-hover rounded-full overflow-hidden">
-                      <div
-                        className={cn(
-                          'h-full rounded-full transition-all duration-700',
-                          occupancyPct === 100 ? 'bg-emerald-500' : occupancyPct > 0 ? 'bg-amber-500' : 'bg-rose-500',
-                        )}
-                        style={{ width: `${Math.max(2, occupancyPct)}%` }}
-                      />
+                      <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
+                        <div>
+                          <p className="text-[9.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Miete/M</p>
+                          <p className="text-[13px] font-bold text-foreground tabular-nums">{fmtEur(rent)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[9.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Marktwert</p>
+                          <p className="text-[13px] font-bold text-foreground tabular-nums">{fmtEur(p.currentValue)}</p>
+                        </div>
+                        <div>
+                          <p className="text-[9.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Rendite</p>
+                          <p className={cn('text-[13px] font-bold tabular-nums', rendite >= 4 ? 'text-emerald-600 dark:text-emerald-400' : rendite >= 2.5 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-500')}>
+                            {rendite.toFixed(1)}%
+                          </p>
+                        </div>
+                        <div className="min-w-[100px] flex-1 max-w-[160px]">
+                          <div className="flex items-baseline justify-between mb-1">
+                            <span className="text-[9.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold">Belegt</span>
+                            <span className="text-[11px] font-bold text-foreground tabular-nums">{occ.length}/{units.length}</span>
+                          </div>
+                          <div className="h-1.5 bg-layer-hover rounded-full overflow-hidden">
+                            <div
+                              className={cn(
+                                'h-full rounded-full transition-all duration-700',
+                                occupancyPct === 100 ? 'bg-emerald-500' : occupancyPct > 0 ? 'bg-amber-500' : 'bg-rose-500',
+                              )}
+                              style={{ width: `${Math.max(2, occupancyPct)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

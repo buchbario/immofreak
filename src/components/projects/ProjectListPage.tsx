@@ -452,10 +452,10 @@ export function ProjectListPage() {
               const cover = projectPhotos.find(p => p.projectId === project.id)?.dataUrl;
 
               const statusConf = {
-                Akquise:       { dot: 'bg-blue-500',    pill: 'bg-blue-50 text-blue-700 ring-blue-200/60' },
-                Planung:       { dot: 'bg-amber-500',   pill: 'bg-amber-50 text-amber-700 ring-amber-200/60' },
-                Sanierung:     { dot: 'bg-orange-500',  pill: 'bg-orange-50 text-orange-700 ring-orange-200/60' },
-                Verkauf:       { dot: 'bg-emerald-500', pill: 'bg-emerald-50 text-emerald-700 ring-emerald-200/60' },
+                Akquise:       { dot: 'bg-blue-500',    pill: 'bg-blue-50 text-black ring-blue-200/60' },
+                Planung:       { dot: 'bg-amber-500',   pill: 'bg-amber-50 text-black ring-amber-200/60' },
+                Sanierung:     { dot: 'bg-orange-500',  pill: 'bg-orange-50 text-black ring-orange-200/60' },
+                Verkauf:       { dot: 'bg-emerald-500', pill: 'bg-emerald-50 text-black ring-emerald-200/60' },
                 Abgeschlossen: { dot: 'bg-slate-400',   pill: 'bg-slate-50 text-slate-700 ring-slate-200/60' },
               }[project.status];
 

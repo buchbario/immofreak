@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Pencil, Trash2, Plus, CheckCircle2, Circle, ExternalLink, Wrench, StickyNote, ChevronDown, ChevronUp, FileText, MapPin, Mail, Phone, ArrowLeft, TrendingUp, Wallet, BarChart3, Calculator, SearchCheck, Check, X, ListTodo, Calendar as CalendarIcon } from 'lucide-react';
+import { Pencil, Trash2, Plus, CheckCircle2, Circle, Wrench, StickyNote, ChevronDown, ChevronUp, FileText, MapPin, Mail, Phone, ArrowLeft, ArrowRight, TrendingUp, Wallet, BarChart3, ListTodo, Calendar as CalendarIcon } from 'lucide-react';
 import { useProjects } from '../../hooks/useProjects';
 import { useContractors } from '../../hooks/useContractors';
 import { useProjectContractors } from '../../hooks/useProjectContractors';
@@ -18,6 +18,7 @@ import { PhotoGallery } from '../shared/PhotoGallery';
 import { DocumentList } from '../shared/DocumentList';
 import { formatCurrency, formatDate, getBudgetPercentage, calculateProjectedProfit } from '../../lib/utils';
 import { PROJECT_STATUSES } from '../../types';
+import type { ProjectStatus } from '../../types';
 
 const TABS = [
   { key: 'handwerker', label: 'Handwerker' },
@@ -29,105 +30,6 @@ const TABS = [
 ] as const;
 
 type TabKey = typeof TABS[number]['key'];
-
-/**
- * Einzelne Zeile in der Links-Sektion der Projekt-Sidebar.
- * - Leer → Klick öffnet Inline-Edit, Nutzer tippt URL.
- * - Gesetzt → Link zeigt das externe Ziel; Stift-Icon (hover) öffnet Edit.
- * - Enter / OK speichert, Escape / X bricht ab (Draft wird verworfen).
- * Ein leerer String beim Speichern setzt den Wert auf `undefined` zurück.
- */
-function SidebarLinkRow({
-  label,
-  value,
-  onSave,
-}: {
-  label: string;
-  value?: string;
-  onSave: (url: string) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState('');
-
-  const startEdit = () => {
-    setDraft(value ?? '');
-    setEditing(true);
-  };
-  const commit = () => {
-    onSave(draft.trim());
-    setEditing(false);
-  };
-  const cancel = () => setEditing(false);
-
-  if (editing) {
-    return (
-      <div className="flex items-center gap-1">
-        <input
-          type="url"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') commit();
-            else if (e.key === 'Escape') cancel();
-          }}
-          placeholder="https://…"
-          autoFocus
-          className="input flex-1 min-w-0 text-xs py-1 px-2"
-        />
-        <button
-          type="button"
-          onClick={commit}
-          className="size-6 flex items-center justify-center rounded-md text-emerald-500 hover:bg-emerald-500/10 cursor-pointer"
-          title="Speichern"
-        >
-          <Check size={12} />
-        </button>
-        <button
-          type="button"
-          onClick={cancel}
-          className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:bg-layer-hover cursor-pointer"
-          title="Abbrechen"
-        >
-          <X size={12} />
-        </button>
-      </div>
-    );
-  }
-
-  if (value) {
-    return (
-      <div className="group flex items-center justify-between gap-1">
-        <a
-          href={value}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-blue-400 hover:text-blue-300 font-semibold truncate"
-        >
-          {label} ↗
-        </a>
-        <button
-          type="button"
-          onClick={startEdit}
-          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
-          title="URL ändern"
-        >
-          <Pencil size={10} />
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={startEdit}
-      className="flex items-center gap-1 text-xs italic text-muted-foreground/70 hover:text-blue-400 cursor-pointer"
-    >
-      <Plus size={10} />
-      {label}
-    </button>
-  );
-}
 
 export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -146,12 +48,11 @@ export function ProjectDetailPage() {
   const [showAssign, setShowAssign] = useState(false);
   const [removeContractorId, setRemoveContractorId] = useState<string | null>(null);
   const [notes, setNotes] = useState<string | null>(null);
-  const [linksOpen, setLinksOpen] = useState(true);
-  const [toolsOpen, setToolsOpen] = useState(false);
   const [tasksOpen, setTasksOpen] = useState(true);
   const [notesOpen, setNotesOpen] = useState(true);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [confirmingDone, setConfirmingDone] = useState<{ id: string; title: string } | null>(null);
+  const [confirmingStatus, setConfirmingStatus] = useState<ProjectStatus | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('handwerker');
 
   // Aufgaben die mit diesem FF-Projekt verknüpft sind, sortiert nach Frist.
@@ -224,6 +125,23 @@ export function ProjectDetailPage() {
               style={{ width: `${((currentStatusIndex + 1) / PROJECT_STATUSES.length) * 100}%` }}
             />
           </div>
+
+          {/* Prominenter "Auf nächsten Schritt setzen"-Button — kompakt auf Mobile */}
+          {currentStatusIndex < PROJECT_STATUSES.length - 1 && (
+            <button
+              onClick={() => setConfirmingStatus(PROJECT_STATUSES[currentStatusIndex + 1])}
+              className="mt-3 inline-flex items-center justify-center gap-1.5 rounded-full bg-[#4F6BFF] hover:bg-[#3D56E0] text-white text-[12px] font-semibold px-3 py-1.5 lg:w-full lg:py-2 lg:text-[12.5px] transition-colors cursor-pointer"
+            >
+              <span className="lg:hidden">→ {PROJECT_STATUSES[currentStatusIndex + 1]}</span>
+              <span className="hidden lg:inline">Nächste Phase: {PROJECT_STATUSES[currentStatusIndex + 1]}</span>
+              <ArrowRight size={12} strokeWidth={2.2} className="hidden lg:inline" />
+            </button>
+          )}
+          {currentStatusIndex === PROJECT_STATUSES.length - 1 && (
+            <div className="mt-3 inline-flex items-center justify-center gap-1.5 rounded-full bg-emerald-100 text-emerald-700 text-[12px] font-semibold px-3 py-1.5 lg:w-full lg:py-2 lg:text-[12.5px]">
+              <CheckCircle2 size={12} /> Abgeschlossen
+            </div>
+          )}
         </div>
 
         {/* Steps — horizontal chip scroller on mobile, vertical list on desktop */}
@@ -235,7 +153,7 @@ export function ProjectDetailPage() {
             return (
               <button
                 key={status}
-                onClick={() => updateStatus(project.id, status)}
+                onClick={() => setConfirmingStatus(status)}
                 className={`flex items-center gap-1.5 py-2 px-3 rounded-full whitespace-nowrap text-xs font-semibold transition-all cursor-pointer flex-shrink-0 border ${
                   isCompleted
                     ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
@@ -252,16 +170,18 @@ export function ProjectDetailPage() {
             );
           })}
         </div>
-        {/* Desktop: vertical list */}
+        {/* Desktop: vertical list — jeder Step ist ein klickbarer Button mit
+            klarem Visual-Cue. Nächster Step bekommt Pfeil-Icon + "→ Klick
+            zum Wechseln"-Hint beim Hover. */}
         <div className="hidden lg:block flex-1 overflow-y-auto px-4 py-4">
           <div className="relative">
             {PROJECT_STATUSES.map((status, index) => {
               const isCompleted = index < currentStatusIndex;
               const isCurrent = index === currentStatusIndex;
+              const isNext = index === currentStatusIndex + 1;
               const isLast = index === PROJECT_STATUSES.length - 1;
               return (
                 <div key={status} className="relative flex items-center">
-                  {/* Vertical connector line */}
                   {!isLast && (
                     <div
                       className={`absolute left-[23px] top-[36px] w-px h-[calc(100%-18px)] ${
@@ -269,43 +189,54 @@ export function ProjectDetailPage() {
                       }`}
                     />
                   )}
-                  {/* Step row */}
                   <button
-                    onClick={() => updateStatus(project.id, status)}
+                    onClick={() => setConfirmingStatus(status)}
+                    title={isCurrent ? 'Aktueller Status' : `Status auf "${status}" setzen`}
                     className={`flex items-center gap-2.5 w-full py-2.5 px-3 rounded-lg text-left transition-all cursor-pointer group ${
                       isCompleted
-                        ? 'bg-emerald-500/10'
+                        ? 'bg-emerald-500/10 hover:bg-emerald-500/15'
                         : isCurrent
                         ? ''
-                        : ''
+                        : isNext
+                        ? 'hover:bg-[#4F6BFF]/10 ring-1 ring-[#4F6BFF]/20'
+                        : 'hover:bg-card-line/40'
                     }`}
                     style={isCurrent ? { backgroundColor: 'var(--accent-dim)' } : {}}
                   >
                     {isCompleted ? (
-                      <CheckCircle2 size={18} className="text-emerald-400 flex-shrink-0" />
+                      <CheckCircle2 size={18} className="text-emerald-500 flex-shrink-0" />
                     ) : isCurrent ? (
-                      <div className="w-[18px] h-[18px] rounded-full border-[2.5px] border-blue-500 flex-shrink-0 group-hover:border-blue-400 transition-colors" />
+                      <div className="w-[18px] h-[18px] rounded-full border-[2.5px] border-blue-500 flex-shrink-0" />
                     ) : (
-                      <Circle size={18} className="flex-shrink-0 group-hover:opacity-80 transition-colors text-muted-foreground" />
+                      <Circle size={18} className={`flex-shrink-0 transition-colors ${isNext ? 'text-[#4F6BFF]' : 'text-muted-foreground/60'}`} />
                     )}
                     <span className={`text-sm flex-1 ${
-                      isCompleted ? 'font-semibold text-emerald-400' :
-                      isCurrent ? 'font-semibold text-blue-400' :
+                      isCompleted ? 'font-semibold text-emerald-600 dark:text-emerald-400' :
+                      isCurrent ? 'font-semibold text-blue-500' :
+                      isNext ? 'font-semibold text-[#4F6BFF]' :
                       'text-muted-foreground'
                     }`}>
                       {status}
                     </span>
                     {isCompleted && (
-                      <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wide">Erledigt</span>
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">Erledigt</span>
                     )}
                     {isCurrent && (
-                      <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wide">Aktuell</span>
+                      <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wide">Aktuell</span>
+                    )}
+                    {isNext && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#4F6BFF] uppercase tracking-wide opacity-90 group-hover:opacity-100">
+                        Wechseln <ArrowRight size={11} strokeWidth={2.4} />
+                      </span>
                     )}
                   </button>
                 </div>
               );
             })}
           </div>
+          <p className="text-[10.5px] text-muted-foreground/70 mt-3 px-1 leading-relaxed">
+            Klick auf eine Phase wechselt den Status — du wirst vorher gefragt.
+          </p>
         </div>
 
         {/* Bottom nav for other projects — desktop only */}
@@ -536,13 +467,18 @@ export function ProjectDetailPage() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-card-divider border-t border-card-divider">
                   {[
-                    { label: 'ARV', value: formatCurrency(project.arv) },
+                    // Tatsächlicher Verkaufspreis nur anzeigen wenn das Projekt
+                    // abgeschlossen ist und der Wert gesetzt wurde. Sonst Platz
+                    // für "Sanierungsbudget" + "Erstellt am" — ohne ARV.
+                    ...(project.actualSellPrice
+                      ? [{ label: 'Tats. Verkaufspreis', value: formatCurrency(project.actualSellPrice), accent: true }]
+                      : []),
                     { label: 'Sanierungsbudget', value: formatCurrency(project.renovationBudget) },
                     { label: 'Erstellt am', value: formatDate(project.createdAt) },
                   ].map((item) => (
                     <div key={item.label} className="p-5">
                       <p className="text-xs font-medium text-muted-foreground">{item.label}</p>
-                      <p className="text-lg font-bold tabular-nums mt-1.5 text-foreground">{item.value}</p>
+                      <p className={`text-lg font-bold tabular-nums mt-1.5 ${item.accent ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'}`}>{item.value}</p>
                     </div>
                   ))}
                 </div>
@@ -612,85 +548,6 @@ export function ProjectDetailPage() {
         className="w-full lg:w-[220px] flex-shrink-0 lg:h-full lg:sticky lg:top-0 lg:overflow-y-auto lg:border-l border-t lg:border-t-0 border-card-line"
         style={{ backgroundColor: 'var(--bg-raised)' }}
       >
-        {/* Links section */}
-        <div className="border-b border-card-divider">
-          <button
-            onClick={() => setLinksOpen(!linksOpen)}
-            className="w-full flex items-center justify-between px-5 py-4 cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--accent-dim)' }}>
-                <ExternalLink size={14} className="text-blue-400" />
-              </div>
-              <span className="section-title">Links</span>
-            </div>
-            {linksOpen ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
-          </button>
-          {linksOpen && (
-            <div className="px-5 pb-4 space-y-2">
-              <SidebarLinkRow
-                label="Immoscout Inserat"
-                value={project.immoscoutUrl}
-                onSave={(url) => updateProject(project.id, { immoscoutUrl: url || undefined })}
-              />
-              <SidebarLinkRow
-                label="Grundbuchauszug"
-                value={project.grundbuchUrl}
-                onSave={(url) => updateProject(project.id, { grundbuchUrl: url || undefined })}
-              />
-              <SidebarLinkRow
-                label="Exposé PDF"
-                value={project.exposeUrl}
-                onSave={(url) => updateProject(project.id, { exposeUrl: url || undefined })}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Tools section */}
-        <div className="border-b border-card-divider">
-          <button
-            onClick={() => setToolsOpen(!toolsOpen)}
-            className="w-full flex items-center justify-between px-5 py-4 cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--accent-dim)' }}>
-                <Wrench size={14} className="text-blue-400" />
-              </div>
-              <span className="section-title">Tools</span>
-            </div>
-            {toolsOpen ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
-          </button>
-          {toolsOpen && (
-            <div className="px-5 pb-4 space-y-2">
-              <button
-                type="button"
-                onClick={() => navigate('/kalkulator')}
-                className="flex items-center gap-2 text-xs font-semibold text-blue-400 hover:text-blue-300 cursor-pointer"
-              >
-                <Calculator size={12} />
-                Rendite-Rechner
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate('/deal-analyzer')}
-                className="flex items-center gap-2 text-xs font-semibold text-blue-400 hover:text-blue-300 cursor-pointer"
-              >
-                <SearchCheck size={12} />
-                Deal Analyzer
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate('/handwerker')}
-                className="flex items-center gap-2 text-xs font-semibold text-blue-400 hover:text-blue-300 cursor-pointer"
-              >
-                <Wrench size={12} />
-                Handwerker-Übersicht
-              </button>
-            </div>
-          )}
-        </div>
-
         {/* Tasks section — projektbezogene Aufgaben */}
         <div>
           <button
@@ -760,12 +617,12 @@ export function ProjectDetailPage() {
                           )}
                         </div>
                         <span
-                          className={`text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5 shrink-0 ${
+                          className={`text-[11px] font-semibold rounded-full px-2 py-0.5 shrink-0 text-black ${
                             t.priority === 'hoch'
-                              ? 'bg-rose-100 text-rose-700'
+                              ? 'bg-rose-100'
                               : t.priority === 'mittel'
-                                ? 'bg-amber-100 text-amber-700'
-                                : 'bg-violet-100 text-violet-700'
+                                ? 'bg-amber-100'
+                                : 'bg-violet-100'
                           }`}
                         >
                           {t.priority}
@@ -877,6 +734,42 @@ export function ProjectDetailPage() {
       )}
 
       {showEdit && <ProjectForm project={project} onClose={() => setShowEdit(false)} />}
+
+      <ConfirmDialog
+        open={!!confirmingStatus}
+        onClose={() => setConfirmingStatus(null)}
+        onConfirm={() => {
+          if (confirmingStatus) updateStatus(project.id, confirmingStatus);
+          setConfirmingStatus(null);
+        }}
+        title="Status ändern?"
+        message={
+          confirmingStatus && (() => {
+            const targetIdx = PROJECT_STATUSES.indexOf(confirmingStatus);
+            const goingForward = targetIdx > currentStatusIndex;
+            const goingBack = targetIdx < currentStatusIndex;
+            return (
+              <>
+                Projekt-Status von <span className="font-semibold text-foreground">„{project.status}"</span>{' '}
+                auf <span className="font-semibold text-foreground">„{confirmingStatus}"</span> setzen?
+                {goingForward && (
+                  <span className="block mt-2 text-emerald-700 dark:text-emerald-400 text-xs">
+                    Damit markierst du „{project.status}" als abgeschlossen.
+                  </span>
+                )}
+                {goingBack && (
+                  <span className="block mt-2 text-amber-700 dark:text-amber-400 text-xs">
+                    Du gehst eine oder mehrere Phasen zurück.
+                  </span>
+                )}
+              </>
+            );
+          })()
+        }
+        confirmLabel="Ja, ändern"
+        cancelLabel="Abbrechen"
+        variant="primary"
+      />
 
       <ConfirmDialog
         open={!!confirmingDone}

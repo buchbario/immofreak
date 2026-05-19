@@ -21,13 +21,14 @@ export function ProjectForm({ onClose, project, prefill }: ProjectFormProps) {
     address: source?.address || '',
     purchasePrice: source?.purchasePrice ? source.purchasePrice.toString() : '',
     targetSellPrice: source?.targetSellPrice ? source.targetSellPrice.toString() : '',
-    arv: source?.arv ? source.arv.toString() : '',
+    actualSellPrice: source?.actualSellPrice ? source.actualSellPrice.toString() : '',
     renovationBudget: source?.renovationBudget ? source.renovationBudget.toString() : '',
     status: project?.status || 'Akquise' as ProjectStatus,
     notes: project?.notes || '',
   });
 
   const valid = form.name.trim() && form.address.trim();
+  const isDone = form.status === 'Abgeschlossen';
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -37,7 +38,7 @@ export function ProjectForm({ onClose, project, prefill }: ProjectFormProps) {
       address: form.address,
       purchasePrice: Number(form.purchasePrice) || 0,
       targetSellPrice: Number(form.targetSellPrice) || 0,
-      arv: Number(form.arv) || 0,
+      actualSellPrice: form.actualSellPrice ? Number(form.actualSellPrice) : undefined,
       renovationBudget: Number(form.renovationBudget) || 0,
       status: form.status,
       notes: form.notes,
@@ -128,28 +129,31 @@ export function ProjectForm({ onClose, project, prefill }: ProjectFormProps) {
               />
             </Field>
           </FormRow>
-          <FormRow cols={2}>
-            <Field label="ARV" help="After Repair Value — geschätzter Marktwert nach Sanierung">
+          <Field label="Sanierungsbudget">
+            <NumberInput
+              value={form.renovationBudget}
+              onChange={(v) => update('renovationBudget', v === '' ? '' : String(v))}
+              placeholder="0"
+              suffix="€"
+              decimals={2}
+              className="input"
+            />
+          </Field>
+          {isDone && (
+            <Field
+              label="Tatsächlicher Verkaufspreis"
+              help="Wird nach Abschluss eingetragen — ersetzt das Verkaufsziel in Auswertungen."
+            >
               <NumberInput
-                value={form.arv}
-                onChange={(v) => update('arv', v === '' ? '' : String(v))}
+                value={form.actualSellPrice}
+                onChange={(v) => update('actualSellPrice', v === '' ? '' : String(v))}
                 placeholder="0"
                 suffix="€"
                 decimals={2}
                 className="input"
               />
             </Field>
-            <Field label="Sanierungsbudget">
-              <NumberInput
-                value={form.renovationBudget}
-                onChange={(v) => update('renovationBudget', v === '' ? '' : String(v))}
-                placeholder="0"
-                suffix="€"
-                decimals={2}
-                className="input"
-              />
-            </Field>
-          </FormRow>
+          )}
         </FormSection>
 
         <FormSection title="Notizen">

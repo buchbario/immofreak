@@ -3,18 +3,44 @@ import {
   Landmark, Plus, RefreshCw, ArrowDownLeft, ArrowUpRight,
   CheckCircle2, XCircle, Clock, Search, X,
   Link2, Unlink, CreditCard, TrendingUp, AlertCircle, Check,
-  Building2, ChevronDown, Users,
+  Building2, ChevronDown, Users, Sparkles, HelpCircle, UserCheck, Loader2, ShieldCheck,
 } from 'lucide-react';
 import { useBanking } from '../../hooks/useBanking';
 import { useRentalProperties } from '../../hooks/useRentalProperties';
 import { useRentalUnits } from '../../hooks/useRentalUnits';
 import { useTenants } from '../../hooks/useTenants';
+import { useRentalContracts } from '../../hooks/useRentalContracts';
 import { useTrash } from '../../hooks/useTrash';
 import { cascadeBankAccountToTrash } from '../../lib/cascadeDelete';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { cn, formatDate } from '../../lib/utils';
 import { PageCard } from '../ui/PageCard';
+import { applyMatch, matchTransaction } from '../../lib/matcher';
+import { MatchTransactionModal } from './MatchTransactionModal';
+import {
+  disconnectBanksapiAccount,
+  startBanksapiConnect,
+  syncBanksapiAccount,
+} from '../../lib/banksapiClient';
 import type { BankTransaction } from '../../types';
+
+/**
+ * Stub-Mapping vom UI-Banknamen auf den BANKSapi-Provider-Key. Sobald die
+ * Edge Function gegen die echte BANKSapi läuft (Schritt 7), kommt hier ein
+ * vollständiger Lookup auf die BANKSapi-Bankliste rein.
+ */
+function bankKeyFor(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes('sparkasse')) return 'sparkasse';
+  if (n.includes('deutsche bank')) return 'deutsche-bank';
+  if (n.includes('commerzbank')) return 'commerzbank';
+  if (n.startsWith('ing')) return 'ing';
+  if (n.includes('volksbank') || n.includes('vr')) return 'volksbank';
+  if (n.includes('n26')) return 'n26';
+  if (n.includes('dkb')) return 'dkb';
+  if (n.includes('postbank')) return 'postbank';
+  return 'deutsche-bank';
+}
 
 type Tab = 'konten' | 'transaktionen' | 'mieteingang';
 type TxFilter = 'alle' | 'eingang' | 'ausgang' | 'miete';
@@ -335,24 +361,31 @@ function maskIban(iban: string, show: boolean) {
   return iban.slice(0, 4) + ' •••• •••• •••• ' + iban.slice(-4);
 }
 
-function ConnectModal({ onClose, onConnect }: {
-  onClose: () => void;
-  onConnect: (bank: BankPreset, iban: string, holder: string) => void;
-}) {
-  const [step, setStep] = useState<'select' | 'credentials' | 'connecting' | 'done'>('select');
+function ConnectModal({ onClose }: { onClose: () => void }) {
+  const [step, setStep] = useState<'select' | 'credentials'>('select');
   const [selected, setSelected] = useState<BankPreset | null>(null);
-  const [iban, setIban] = useState('');
+  const [label, setLabel] = useState('');
   const [holder, setHolder] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleConnect = () => {
-    if (!selected || !iban) return;
-    setStep('connecting');
-    setTimeout(() => {
-      setStep('done');
-      setTimeout(() => {
-        onConnect(selected, iban, holder);
-      }, 800);
-    }, 1500);
+  const handleConnect = async () => {
+    if (!selected) return;
+    setError('');
+    setBusy(true);
+    try {
+      const redirectUri = `${window.location.origin}/bh/banking/callback`;
+      const result = await startBanksapiConnect({
+        redirectUri,
+        bankKey: bankKeyFor(selected.name),
+        accountHolder: holder,
+        label,
+      });
+      window.location.href = result.redirectUrl;
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(false);
+    }
   };
 
   return (
@@ -411,75 +444,65 @@ function ConnectModal({ onClose, onConnect }: {
           )}
 
           {step === 'credentials' && selected && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 p-3 rounded-xl border border-[#4F6BFF]/30 bg-[#4F6BFF]/5">
-                <div className="size-9 rounded-lg bg-white border border-card-line flex items-center justify-center overflow-hidden shrink-0">
-                  <BankLogo bank={selected} size={22} />
+            <div className="space-y-5">
+              <div className="flex items-center gap-3 p-3 rounded-xl border border-card-line bg-muted/30">
+                <div className="size-10 rounded-lg bg-white border border-card-line flex items-center justify-center overflow-hidden shrink-0">
+                  <BankLogo bank={selected} size={24} />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-foreground">{selected.name}</p>
                   <p className="text-xs text-muted-foreground">BIC: {selected.bic}</p>
                 </div>
               </div>
+
               <div>
-                <label className="input-label">Kontoinhaber</label>
-                <input value={holder} onChange={e => setHolder(e.target.value)} className="input" placeholder="Max Mustermann" />
-              </div>
-              <div>
-                <label className="input-label">IBAN *</label>
+                <label className="input-label">Bezeichnung <span className="text-muted-foreground font-normal">(optional)</span></label>
                 <input
-                  value={iban}
-                  onChange={e => setIban(e.target.value.toUpperCase())}
-                  className="input font-mono tracking-wider"
-                  placeholder="DE89 3704 0044 0532 0130 00"
-                  required
+                  value={label}
+                  onChange={e => setLabel(e.target.value)}
+                  className="input"
+                  placeholder="z. B. Mietkonto Berlin"
+                  autoFocus
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Interner Name für dieses Konto in der App. Leer lassen, um den Banknamen zu nutzen.
+                </p>
+              </div>
+
+              <div>
+                <label className="input-label">Kontoinhaber <span className="text-muted-foreground font-normal">(optional)</span></label>
+                <input
+                  value={holder}
+                  onChange={e => setHolder(e.target.value)}
+                  className="input"
+                  placeholder="Max Mustermann"
                 />
               </div>
-              <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20">
-                <div className="flex items-start gap-2">
-                  <AlertCircle size={14} className="text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                  <p className="text-xs text-amber-700 dark:text-amber-300">
-                    Demo-Modus: Es werden Beispiel-Transaktionen generiert. Keine echte Bankverbindung.
-                  </p>
+
+              <p className="text-xs text-muted-foreground flex items-start gap-2">
+                <ShieldCheck size={13} className="text-[#4F6BFF] mt-0.5 shrink-0" />
+                Du wirst auf das sichere Bank-Login weitergeleitet und bestätigst dort den
+                90-Tage-Zugriff auf Kontoumsätze. Dein Login bleibt bei der Bank.
+              </p>
+
+              {error && (
+                <div className="p-3 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20">
+                  <p className="text-xs text-red-700 dark:text-red-400 whitespace-pre-wrap">{error}</p>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
-          {step === 'connecting' && (
-            <div className="flex flex-col items-center py-8">
-              <div className="relative mb-4">
-                <div
-                  className="size-16 rounded-2xl bg-white border border-card-line flex items-center justify-center overflow-hidden shadow-sm"
-                >
-                  <BankLogo bank={selected!} size={36} />
-                </div>
-                <div
-                  className="absolute -inset-1 rounded-2xl border-2 border-transparent animate-spin"
-                  style={{ borderTopColor: selected!.color, borderRightColor: selected!.color + '40' }}
-                />
-              </div>
-              <p className="text-sm font-semibold text-foreground">Verbindung wird hergestellt...</p>
-              <p className="text-xs text-muted-foreground mt-1">Transaktionen werden importiert</p>
-            </div>
-          )}
-
-          {step === 'done' && (
-            <div className="flex flex-col items-center py-8">
-              <div className="size-16 rounded-2xl bg-emerald-100 dark:bg-emerald-500/15 flex items-center justify-center mb-4">
-                <CheckCircle2 size={28} className="text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <p className="text-sm font-semibold text-foreground">Konto verbunden!</p>
-              <p className="text-xs text-muted-foreground mt-1">Transaktionen wurden importiert</p>
-            </div>
-          )}
         </div>
 
         {(step === 'credentials') && (
           <div className="modal-footer">
-            <button onClick={() => setStep('select')} className="btn btn-md btn-secondary">Zurück</button>
-            <button onClick={handleConnect} disabled={!iban} className="btn btn-md btn-primary">
-              <Link2 size={14} /> Verbinden
+            <button onClick={() => setStep('select')} className="btn btn-md btn-secondary" disabled={busy}>
+              Zurück
+            </button>
+            <button onClick={handleConnect} disabled={busy} className="btn btn-md btn-primary">
+              {busy ? <Loader2 size={14} className="animate-spin" /> : <Link2 size={14} />}
+              {busy ? 'Weiterleitung …' : 'Verbinden'}
             </button>
           </div>
         )}
@@ -488,116 +511,127 @@ function ConnectModal({ onClose, onConnect }: {
   );
 }
 
-function generateDemoTransactions(
-  accountId: string,
-  tenants: { id: string; name: string; propertyId: string; unitId?: string }[],
-  units: { id: string; currentRent: number; propertyId: string }[],
-): Omit<BankTransaction, 'id' | 'createdAt'>[] {
-  const txs: Omit<BankTransaction, 'id' | 'createdAt'>[] = [];
-  const now = new Date();
-
-  // Generate last 3 months of rent payments
-  for (let monthOffset = 0; monthOffset < 3; monthOffset++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1);
-    for (const tenant of tenants) {
-      const unit = units.find(u => u.id === tenant.unitId);
-      if (!unit) continue;
-      // 85% chance rent was paid
-      if (Math.random() < 0.85 || monthOffset > 0) {
-        const payDay = Math.min(1 + Math.floor(Math.random() * 5), 28);
-        txs.push({
-          bankAccountId: accountId,
-          date: new Date(d.getFullYear(), d.getMonth(), payDay).toISOString().split('T')[0],
-          amount: unit.currentRent,
-          counterparty: tenant.name,
-          purpose: `Miete ${MONTHS[d.getMonth()]} ${d.getFullYear()} - ${tenant.name}`,
-          category: 'miete',
-          matchedTenantId: tenant.id,
-          matchedPropertyId: tenant.propertyId,
-          matchedUnitId: tenant.unitId,
-          isReconciled: monthOffset > 0,
-        });
-      }
-    }
-
-    // Add some random expense transactions
-    const expenses = [
-      { name: 'Hausverwaltung GmbH', purpose: 'Hausgeld', amount: -(350 + Math.floor(Math.random() * 200)), cat: 'nebenkosten' as const },
-      { name: 'DEVK Versicherung', purpose: 'Gebäudeversicherung', amount: -(80 + Math.floor(Math.random() * 40)), cat: 'versicherung' as const },
-      { name: 'Handwerker Service', purpose: 'Reparatur', amount: -(150 + Math.floor(Math.random() * 300)), cat: 'instandhaltung' as const },
-    ];
-    for (const exp of expenses) {
-      if (Math.random() < 0.6) {
-        txs.push({
-          bankAccountId: accountId,
-          date: new Date(d.getFullYear(), d.getMonth(), 10 + Math.floor(Math.random() * 15)).toISOString().split('T')[0],
-          amount: exp.amount,
-          counterparty: exp.name,
-          purpose: `${exp.purpose} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`,
-          category: exp.cat,
-          isReconciled: false,
-        });
-      }
-    }
-  }
-
-  return txs.sort((a, b) => b.date.localeCompare(a.date));
-}
-
 export function BankingPage() {
-  const { accounts, transactions, addAccount, addTransaction } = useBanking();
+  const {
+    accounts,
+    transactions,
+    mappings,
+    updateAccount,
+    addTransaction,
+    assignTransaction,
+    unassignTransaction,
+  } = useBanking();
   const { properties } = useRentalProperties();
   const { allUnits } = useRentalUnits();
   const { allTenants } = useTenants();
+  const { allContracts } = useRentalContracts();
   const { moveToTrash } = useTrash();
   const [activeTab, setActiveTab] = useState<Tab>('konten');
   const [showConnect, setShowConnect] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState<{ id: string; bankName: string } | null>(null);
   const [txFilter, setTxFilter] = useState<TxFilter>('alle');
   const [txSearch, setTxSearch] = useState('');
+  const [assignTxId, setAssignTxId] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
 
-  const handleConnect = (bank: BankPreset, iban: string, holder: string) => {
-    const account = addAccount({
-      bankName: bank.name,
-      iban,
-      bic: bank.bic,
-      accountHolder: holder || 'Kontoinhaber',
-      balance: 5000 + Math.floor(Math.random() * 45000),
-      lastSync: new Date().toISOString(),
-      status: 'connected',
-      color: bank.color,
-      domain: bank.domain,
+  /**
+   * Reichert alle Transaktionen mit Match-Informationen an. Bereits zugeordnete
+   * Transaktionen (matchedTenantId gesetzt) bleiben unverändert. Offene
+   * Transaktionen laufen durch den Matcher und bekommen entweder Auto-Match,
+   * Vorschlag oder bleiben offen.
+   */
+  const matchContext = useMemo(
+    () => ({ tenants: allTenants, units: allUnits, contracts: allContracts, mappings }),
+    [allTenants, allUnits, allContracts, mappings],
+  );
+
+  const enrichedTransactions = useMemo(() => {
+    return transactions.map((tx) => {
+      if (tx.matchedTenantId) return tx;
+      const result = matchTransaction(tx, matchContext);
+      const enriched = applyMatch(tx, result);
+      // suggested-Match: Tipp für UI mitgeben, aber matchedTenantId bleibt leer,
+      // damit der Mieteingang-Tab nur bestätigte Zahlungen zählt.
+      if (result.status === 'suggested' && result.tenantId) {
+        return { ...enriched, _suggestedTenantId: result.tenantId } as BankTransaction & { _suggestedTenantId?: string };
+      }
+      return enriched;
     });
+  }, [transactions, matchContext]);
 
-    // Generate demo transactions
-    const activeTenants = allTenants.filter(t => t.unitId);
-    const demoTxs = generateDemoTransactions(account.id, activeTenants, allUnits);
-    for (const tx of demoTxs) {
-      addTransaction(tx);
-    }
+  const txById = useMemo(() => {
+    const map = new Map<string, BankTransaction & { _suggestedTenantId?: string }>();
+    for (const tx of enrichedTransactions) map.set(tx.id, tx as BankTransaction & { _suggestedTenantId?: string });
+    return map;
+  }, [enrichedTransactions]);
 
-    setShowConnect(false);
-    setActiveTab('transaktionen');
-  };
+  const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<{ accountId: string; message: string } | null>(null);
 
-  const handleSync = (accountId: string) => {
-    // Fake sync animation
+  /**
+   * Synchronisierung. Demo-Konten bekommen nur ein lastSync-Update (kein echter
+   * API-Call). banksapi-Konten gehen über die Edge Function, die neue/aktuelle
+   * Transaktionen liefert; Dubletten werden via banksapiTransactionId
+   * (UNIQUE-Index in Postgres) abgefangen.
+   */
+  const handleSync = async (accountId: string) => {
     const acc = accounts.find(a => a.id === accountId);
     if (!acc) return;
-    // Just update lastSync
-    // In a real app this would trigger API call
+    setSyncError(null);
+
+    if (acc.provider !== 'banksapi' || !acc.banksapiAccessId) {
+      updateAccount(accountId, { lastSync: new Date().toISOString() });
+      return;
+    }
+
+    setSyncingId(accountId);
+    try {
+      const result = await syncBanksapiAccount(acc.banksapiAccessId);
+      const existing = new Set(
+        transactions
+          .filter(t => t.bankAccountId === accountId && t.banksapiTransactionId)
+          .map(t => t.banksapiTransactionId),
+      );
+      for (const tx of result.transactions) {
+        if (existing.has(tx.banksapiTransactionId)) continue;
+        addTransaction({
+          bankAccountId: accountId,
+          date: tx.date,
+          amount: tx.amount,
+          counterparty: tx.counterparty,
+          purpose: tx.purpose,
+          iban: tx.iban,
+          banksapiTransactionId: tx.banksapiTransactionId,
+          isReconciled: false,
+        });
+      }
+      updateAccount(accountId, { lastSync: new Date().toISOString() });
+    } catch (e) {
+      setSyncError({ accountId, message: (e as Error).message });
+    } finally {
+      setSyncingId(null);
+    }
   };
 
-  // Filtered transactions
+  const handleBanksapiDisconnect = async (accessId: string) => {
+    try {
+      await disconnectBanksapiAccount(accessId);
+    } catch {
+      // Wir trennen lokal trotzdem — der User kann den Zugang notfalls über
+      // das BANKSapi-Dashboard widerrufen.
+    }
+  };
+
+  // Filtered transactions (basieren auf den angereicherten TXs, damit die
+  // Match-Badges in jeder Filter-Ansicht sichtbar bleiben)
   const filteredTx = useMemo(() => {
-    let txs = [...transactions];
+    let txs = [...enrichedTransactions];
     if (txFilter === 'eingang') txs = txs.filter(t => t.amount > 0);
     if (txFilter === 'ausgang') txs = txs.filter(t => t.amount < 0);
-    if (txFilter === 'miete') txs = txs.filter(t => t.category === 'miete');
+    if (txFilter === 'miete') txs = txs.filter(t => t.category === 'miete' || t.matchStatus === 'suggested' || t.matchStatus === 'unmatched');
     if (txSearch) {
       const q = txSearch.toLowerCase();
       txs = txs.filter(t =>
@@ -606,7 +640,7 @@ export function BankingPage() {
       );
     }
     return txs.sort((a, b) => b.date.localeCompare(a.date));
-  }, [transactions, txFilter, txSearch]);
+  }, [enrichedTransactions, txFilter, txSearch]);
 
   // Rent matching data for selected month
   const rentMatching = useMemo(() => {
@@ -618,10 +652,9 @@ export function BankingPage() {
         const property = properties.find(p => p.id === tenant.propertyId);
         const expectedRent = unit?.currentRent || 0;
 
-        // Find matching transaction
-        const matchingTx = transactions.find(tx =>
+        // Find matching transaction (nur bestätigte Auto-/Manual-Matches zählen)
+        const matchingTx = enrichedTransactions.find(tx =>
           tx.matchedTenantId === tenant.id &&
-          tx.category === 'miete' &&
           new Date(tx.date).getFullYear() === year &&
           new Date(tx.date).getMonth() + 1 === month
         );
@@ -645,7 +678,7 @@ export function BankingPage() {
           isCurrentMonth,
         };
       });
-  }, [allTenants, allUnits, properties, transactions, selectedMonth]);
+  }, [allTenants, allUnits, properties, enrichedTransactions, selectedMonth]);
 
   const totalExpected = rentMatching.reduce((s, r) => s + r.expectedRent, 0);
   const totalReceived = rentMatching.filter(r => r.status === 'paid').reduce((s, r) => s + (r.matchingTx?.amount || 0), 0);
@@ -707,6 +740,22 @@ export function BankingPage() {
       {/* ═══ KONTEN TAB ═══ */}
       {activeTab === 'konten' && (
         <div>
+          {syncError && (
+            <div className="mb-4 p-3 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20">
+              <div className="flex items-start gap-2">
+                <AlertCircle size={14} className="text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+                <div className="flex-1">
+                  <p className="text-xs font-semibold text-red-700 dark:text-red-400">
+                    Synchronisierung fehlgeschlagen
+                  </p>
+                  <p className="text-xs text-red-700 dark:text-red-300 mt-0.5 whitespace-pre-wrap">{syncError.message}</p>
+                </div>
+                <button onClick={() => setSyncError(null)} className="text-red-600 dark:text-red-400">
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+          )}
           {accounts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16">
               <div className="size-20 rounded-2xl bg-[#4F6BFF]/10 flex items-center justify-center mb-5">
@@ -748,9 +797,11 @@ export function BankingPage() {
                             size={22}
                           />
                         </div>
-                        <div>
-                          <p className="text-sm font-bold text-white">{account.bankName}</p>
-                          <p className="text-xs text-white/70">{account.accountHolder}</p>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-white truncate">{account.label || account.bankName}</p>
+                          <p className="text-xs text-white/70 truncate">
+                            {account.label ? account.bankName : (account.accountHolder || ' ')}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
@@ -780,13 +831,16 @@ export function BankingPage() {
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => handleSync(account.id)}
-                          className="size-8 rounded-lg border border-card-line flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer"
-                          title="Synchronisieren"
+                          disabled={syncingId === account.id}
+                          className="size-8 rounded-lg border border-card-line flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer disabled:opacity-60"
+                          title={account.provider === 'banksapi' ? 'BANKSapi synchronisieren' : 'Synchronisieren'}
                         >
-                          <RefreshCw size={13} />
+                          {syncingId === account.id
+                            ? <Loader2 size={13} className="animate-spin" />
+                            : <RefreshCw size={13} />}
                         </button>
                         <button
-                          onClick={() => setConfirmDisconnect({ id: account.id, bankName: account.bankName })}
+                          onClick={() => setConfirmDisconnect({ id: account.id, bankName: account.label || account.bankName })}
                           className="size-8 rounded-lg border border-card-line flex items-center justify-center text-muted-foreground hover:text-red-500 hover:border-red-200 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors cursor-pointer"
                           title="Trennen"
                         >
@@ -865,9 +919,23 @@ export function BankingPage() {
               <div className="divide-y divide-card-divider">
                 {filteredTx.map(tx => {
                   const isIncome = tx.amount > 0;
-                  const cat = tx.category;
+                  const matchedTenant = tx.matchedTenantId
+                    ? allTenants.find(t => t.id === tx.matchedTenantId)
+                    : undefined;
+                  const suggested = (tx as BankTransaction & { _suggestedTenantId?: string })._suggestedTenantId;
+                  const suggestedTenant = suggested ? allTenants.find(t => t.id === suggested) : undefined;
+                  const canAssign = isIncome;
                   return (
-                    <div key={tx.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-muted/30 transition-colors">
+                    <button
+                      key={tx.id}
+                      type="button"
+                      onClick={() => canAssign && setAssignTxId(tx.id)}
+                      disabled={!canAssign}
+                      className={cn(
+                        'w-full flex items-center gap-4 px-5 py-3.5 text-left transition-colors',
+                        canAssign ? 'hover:bg-muted/30 cursor-pointer' : 'cursor-default',
+                      )}
+                    >
                       <div className={cn(
                         'size-9 rounded-xl flex items-center justify-center shrink-0',
                         isIncome ? 'bg-emerald-100 dark:bg-emerald-500/15' : 'bg-red-100 dark:bg-red-500/15'
@@ -878,12 +946,19 @@ export function BankingPage() {
                         }
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-sm font-medium text-foreground truncate">{tx.counterparty}</p>
-                          {cat === 'miete' && (
-                            <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400 uppercase tracking-wide">
-                              Miete
-                            </span>
+                          {matchedTenant && (
+                            <MatchBadge
+                              status={tx.matchStatus === 'auto' ? 'auto' : 'manual'}
+                              label={matchedTenant.name}
+                            />
+                          )}
+                          {!matchedTenant && suggestedTenant && (
+                            <MatchBadge status="suggested" label={`Vorschlag: ${suggestedTenant.name}`} />
+                          )}
+                          {!matchedTenant && !suggestedTenant && isIncome && (
+                            <MatchBadge status="unmatched" label="Offen – zuordnen" />
                           )}
                           {tx.isReconciled && (
                             <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
@@ -900,7 +975,7 @@ export function BankingPage() {
                         </p>
                         <p className="text-[11px] text-muted-foreground">{formatDate(tx.date)}</p>
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -1041,7 +1116,7 @@ export function BankingPage() {
       </PageCard>
 
       {showConnect && (
-        <ConnectModal onClose={() => setShowConnect(false)} onConnect={handleConnect} />
+        <ConnectModal onClose={() => setShowConnect(false)} />
       )}
 
       {confirmDisconnect && (
@@ -1049,12 +1124,77 @@ export function BankingPage() {
           title="Konto trennen"
           message={`Konto bei "${confirmDisconnect.bankName}" mit allen zugehörigen Transaktionen in den Papierkorb verschieben? Innerhalb von 30 Tagen wiederherstellbar.`}
           onConfirm={() => {
+            const acc = accounts.find(a => a.id === confirmDisconnect.id);
+            if (acc?.provider === 'banksapi' && acc.banksapiAccessId) {
+              void handleBanksapiDisconnect(acc.banksapiAccessId);
+            }
             cascadeBankAccountToTrash(confirmDisconnect.id, moveToTrash);
             setConfirmDisconnect(null);
           }}
           onCancel={() => setConfirmDisconnect(null)}
         />
       )}
+
+      {assignTxId && (() => {
+        const tx = txById.get(assignTxId);
+        if (!tx) return null;
+        return (
+          <MatchTransactionModal
+            tx={tx}
+            tenants={allTenants}
+            units={allUnits}
+            suggestedTenantId={tx._suggestedTenantId}
+            onClose={() => setAssignTxId(null)}
+            onSubmit={(tenantId, learn) => {
+              assignTransaction(tx.id, tenantId, learn);
+              setAssignTxId(null);
+            }}
+            onUnassign={() => {
+              unassignTransaction(tx.id);
+              setAssignTxId(null);
+            }}
+          />
+        );
+      })()}
     </div>
+  );
+}
+
+function MatchBadge({
+  status,
+  label,
+}: {
+  status: 'auto' | 'manual' | 'suggested' | 'unmatched';
+  label: string;
+}) {
+  const config = {
+    auto: {
+      icon: Sparkles,
+      cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400',
+    },
+    manual: {
+      icon: UserCheck,
+      cls: 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400',
+    },
+    suggested: {
+      icon: HelpCircle,
+      cls: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400',
+    },
+    unmatched: {
+      icon: AlertCircle,
+      cls: 'bg-muted text-muted-foreground',
+    },
+  }[status];
+  const Icon = config.icon;
+  return (
+    <span
+      className={cn(
+        'shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide max-w-[180px]',
+        config.cls,
+      )}
+    >
+      <Icon size={10} className="shrink-0" />
+      <span className="truncate">{label}</span>
+    </span>
   );
 }

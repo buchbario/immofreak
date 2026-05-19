@@ -27,24 +27,32 @@ import { LEAD_STATUSES, type Lead, type LeadStatus } from '../../types';
 import { cn, formatCurrency } from '../../lib/utils';
 
 // =====================================================================
-// Stratify-Style Farben — pastell, sehr dezent, hoher Whitespace
+// Spalten-Farben — identische Optik wie das Projekte-Kanban-Board:
+// dezent getönter Hintergrund je Status + farbige Outline. Die Karten
+// selbst bleiben weiß und heben sich klar vom getönten Spalten-Bereich ab.
 // =====================================================================
-// Spalten-Hintergrund ist nahezu weiß; das visuelle "Status"-Signal
-// kommt aus dem Header-Dot, der Counter-Pill und einer dünnen
-// Bottom-Stripe auf der Karte. Keine intensiven Hintergründe.
 const COLUMN_ACCENT: Record<
   LeadStatus,
-  { dot: string; pill: string; stripe: string; tag: string }
+  { dot: string; pill: string; stripe: string; tag: string; colBg: string; colBorder: string; dropHl: string }
 > = {
-  Lead:               { dot: 'bg-slate-400',   pill: 'bg-slate-100 text-slate-700',     stripe: 'bg-slate-300',   tag: 'bg-slate-100 text-slate-700' },
-  Erstkontakt:        { dot: 'bg-sky-500',     pill: 'bg-[#DCEBF5] text-[#1A3D52]',    stripe: 'bg-sky-300',     tag: 'bg-[#DCEBF5] text-[#1A3D52]' },
-  Kalkulation:        { dot: 'bg-violet-500',  pill: 'bg-[#E8DAFF] text-[#3D1F5A]',    stripe: 'bg-violet-300',  tag: 'bg-[#E8DAFF] text-[#3D1F5A]' },
-  Besichtigung:       { dot: 'bg-amber-500',   pill: 'bg-[#FFF1CC] text-[#5A4A1A]',    stripe: 'bg-amber-300',   tag: 'bg-[#FFF1CC] text-[#5A4A1A]' },
-  Angebot:            { dot: 'bg-blue-500',    pill: 'bg-[#DCE5F5] text-[#1A2D54]',    stripe: 'bg-blue-300',    tag: 'bg-[#DCE5F5] text-[#1A2D54]' },
-  Unterlagenprüfung:  { dot: 'bg-fuchsia-500', pill: 'bg-[#F5DCEC] text-[#5A1F45]',    stripe: 'bg-fuchsia-300', tag: 'bg-[#F5DCEC] text-[#5A1F45]' },
-  'Follow-Up':        { dot: 'bg-orange-500',  pill: 'bg-[#FFE0CC] text-[#5A2D1F]',    stripe: 'bg-orange-300',  tag: 'bg-[#FFE0CC] text-[#5A2D1F]' },
-  Deal:               { dot: 'bg-emerald-500', pill: 'bg-[#D6F0DC] text-[#1A4D2C]',    stripe: 'bg-emerald-300', tag: 'bg-[#D6F0DC] text-[#1A4D2C]' },
-  Archiv:             { dot: 'bg-zinc-400',    pill: 'bg-zinc-100 text-zinc-600',       stripe: 'bg-zinc-300',    tag: 'bg-zinc-100 text-zinc-600' },
+  Lead:               { dot: 'bg-slate-400',   pill: 'bg-slate-100 text-slate-700',     stripe: 'bg-slate-300',   tag: 'bg-slate-100 text-slate-700',
+                        colBg: 'bg-slate-500/5',   colBorder: 'border-slate-500/15',   dropHl: 'ring-slate-500/30 bg-slate-500/10' },
+  Erstkontakt:        { dot: 'bg-sky-500',     pill: 'bg-[#DCEBF5] text-[#1A3D52]',    stripe: 'bg-sky-300',     tag: 'bg-[#DCEBF5] text-[#1A3D52]',
+                        colBg: 'bg-sky-500/5',     colBorder: 'border-sky-500/15',     dropHl: 'ring-sky-500/30 bg-sky-500/10' },
+  Kalkulation:        { dot: 'bg-violet-500',  pill: 'bg-[#E8DAFF] text-[#3D1F5A]',    stripe: 'bg-violet-300',  tag: 'bg-[#E8DAFF] text-[#3D1F5A]',
+                        colBg: 'bg-violet-500/5',  colBorder: 'border-violet-500/15',  dropHl: 'ring-violet-500/30 bg-violet-500/10' },
+  Besichtigung:       { dot: 'bg-amber-500',   pill: 'bg-[#FFF1CC] text-[#5A4A1A]',    stripe: 'bg-amber-300',   tag: 'bg-[#FFF1CC] text-[#5A4A1A]',
+                        colBg: 'bg-amber-500/5',   colBorder: 'border-amber-500/15',   dropHl: 'ring-amber-500/30 bg-amber-500/10' },
+  Angebot:            { dot: 'bg-blue-500',    pill: 'bg-[#DCE5F5] text-[#1A2D54]',    stripe: 'bg-blue-300',    tag: 'bg-[#DCE5F5] text-[#1A2D54]',
+                        colBg: 'bg-blue-500/5',    colBorder: 'border-blue-500/15',    dropHl: 'ring-blue-500/30 bg-blue-500/10' },
+  Unterlagenprüfung:  { dot: 'bg-fuchsia-500', pill: 'bg-[#F5DCEC] text-[#5A1F45]',    stripe: 'bg-fuchsia-300', tag: 'bg-[#F5DCEC] text-[#5A1F45]',
+                        colBg: 'bg-fuchsia-500/5', colBorder: 'border-fuchsia-500/15', dropHl: 'ring-fuchsia-500/30 bg-fuchsia-500/10' },
+  'Follow-Up':        { dot: 'bg-orange-500',  pill: 'bg-[#FFE0CC] text-[#5A2D1F]',    stripe: 'bg-orange-300',  tag: 'bg-[#FFE0CC] text-[#5A2D1F]',
+                        colBg: 'bg-orange-500/5',  colBorder: 'border-orange-500/15',  dropHl: 'ring-orange-500/30 bg-orange-500/10' },
+  Deal:               { dot: 'bg-emerald-500', pill: 'bg-[#D6F0DC] text-[#1A4D2C]',    stripe: 'bg-emerald-300', tag: 'bg-[#D6F0DC] text-[#1A4D2C]',
+                        colBg: 'bg-emerald-500/5', colBorder: 'border-emerald-500/15', dropHl: 'ring-emerald-500/30 bg-emerald-500/10' },
+  Archiv:             { dot: 'bg-zinc-400',    pill: 'bg-zinc-100 text-zinc-600',       stripe: 'bg-zinc-300',    tag: 'bg-zinc-100 text-zinc-600',
+                        colBg: 'bg-zinc-500/5',    colBorder: 'border-zinc-500/15',    dropHl: 'ring-zinc-500/30 bg-zinc-500/10' },
 };
 
 function getInitials(name?: string): string {
@@ -208,7 +216,14 @@ export function LeadsPage() {
         </div>
 
         <DragOverlay dropAnimation={{ duration: 220, easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)' }}>
-          {activeLead ? <LeadCard lead={activeLead} onEdit={() => {}} dragging /> : null}
+          {activeLead ? (
+            <div
+              style={{ transform: 'rotate(2deg)' }}
+              className="opacity-95 shadow-[0_20px_40px_-12px_rgba(15,20,48,0.25)] rounded-[20px] ring-2 ring-[#4F6BFF]/25"
+            >
+              <LeadCard lead={activeLead} onEdit={() => {}} dragging />
+            </div>
+          ) : null}
         </DragOverlay>
       </DndContext>
 
@@ -259,8 +274,12 @@ function Column({
   const totalValue = leads.reduce((s, l) => s + (l.askingPrice ?? 0), 0);
 
   return (
-    <div className="w-[300px] shrink-0 flex flex-col max-h-[calc(100vh-200px)] rounded-3xl bg-white/60 border border-[#1e1b4b]/[0.06]">
-      {/* Header — Stratify-Style: Name + kleine Counter-Pill */}
+    <div className={cn(
+      'w-[300px] shrink-0 flex flex-col max-h-[calc(100vh-200px)] rounded-2xl border transition-colors',
+      accent.colBg,
+      accent.colBorder,
+    )}>
+      {/* Header — Status-Dot + Counter-Pill */}
       <div className="flex items-center justify-between px-4 pt-4 pb-3">
         <div className="flex items-center gap-2 min-w-0">
           <span className={cn('size-2 rounded-full shrink-0', accent.dot)} />
@@ -286,7 +305,7 @@ function Column({
       )}
 
       <SortableContext items={leads.map((l) => l.id)} strategy={verticalListSortingStrategy}>
-        <DropZone status={status} isEmpty={leads.length === 0}>
+        <DropZone status={status} isEmpty={leads.length === 0} dropHl={accent.dropHl}>
           <div className="px-3 pb-3 flex flex-col gap-2.5 overflow-y-auto flex-1">
             {leads.length === 0 && !creating && (
               <button
@@ -356,15 +375,15 @@ function Column({
   );
 }
 
-function DropZone({ status, children, isEmpty }: { status: LeadStatus; children: React.ReactNode; isEmpty: boolean }) {
+function DropZone({ status, children, isEmpty, dropHl }: { status: LeadStatus; children: React.ReactNode; isEmpty: boolean; dropHl: string }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        'flex-1 rounded-2xl transition-colors',
+        'flex-1 rounded-xl transition-colors',
         isEmpty && 'min-h-[160px]',
-        isOver && 'ring-2 ring-[#4F6BFF]/30 bg-[#4F6BFF]/[0.04]',
+        isOver && cn('ring-2', dropHl),
       )}
     >
       {children}
@@ -412,7 +431,9 @@ function LeadCard({ lead, onEdit, dragging }: { lead: Lead; onEdit: () => void; 
       className={cn(
         'group relative rounded-[20px] bg-white border border-[#1e1b4b]/[0.07] overflow-hidden',
         'hover:border-[#1e1b4b]/[0.15] transition-all duration-200',
-        dragging && 'shadow-[0_20px_40px_-12px_rgba(15,20,48,0.25)] rotate-[1deg]',
+        // Beim Drag erledigen Shadow + Rotation der DragOverlay-Wrapper —
+        // hier nur den Border etwas hervorheben, sonst nichts.
+        dragging && 'border-[#4F6BFF]/40',
       )}
     >
       <div className="px-4 pt-3.5 pb-3.5">

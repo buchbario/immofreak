@@ -31,3 +31,6 @@ dist-ssr
 
 # Vercel
 .vercel
+
+# Supabase CLI cache (linked-project metadata)
+supabase/.temp/

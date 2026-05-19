@@ -13,6 +13,8 @@ export interface StorageAdapter<T extends { id: string }> {
   update(id: string, updates: Partial<T>): T;
   delete(id: string): void;
   subscribe(listener: () => void): () => void;
+  /** Verwirft den Cache und triggert einen Refetch (Supabase-Variante). No-op bei LocalStorage. */
+  invalidate(): void;
 }
 
 // =====================================================================
@@ -79,6 +81,13 @@ export class LocalStorageAdapter<T extends { id: string }> implements StorageAda
   delete(id: string): void {
     const items = this.read().filter((item) => item.id !== id);
     this.write(items);
+  }
+
+  invalidate(): void {
+    // Synchroner Speicher — kein Cache zu invalidieren. Wir notifizieren trotzdem,
+    // damit aufrufender Code (z.B. nach externen Inserts) einheitlich `invalidate()`
+    // nutzen kann.
+    this.notify();
   }
 }
 
@@ -311,6 +320,7 @@ export const dealAnalysisStore        = makeStore<import('../types').DealAnalysi
 // Banking
 export const bankAccountStore         = makeStore<import('../types').BankAccount>('bank_accounts', 'immofreak_bank_accounts');
 export const bankTransactionStore     = makeStore<import('../types').BankTransaction>('bank_transactions', 'immofreak_bank_transactions');
+export const tenantPaymentMappingStore = makeStore<import('../types').TenantPaymentMapping>('tenant_payment_mappings', 'immofreak_tenant_payment_mappings');
 
 // Tasks
 export const taskStore                = makeStore<import('../types').Task>('tasks', 'immofreak_tasks');

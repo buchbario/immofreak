@@ -137,6 +137,7 @@ export const translations = {
     'mobilenav.tenants': 'Mieter',
     'mobilenav.payments': 'Zahlungen',
     'mobilenav.finance': 'Finanzen',
+    'mobilenav.banking': 'Banking',
     'mobilenav.tasks': 'Aufgaben',
     'mobilenav.boards': 'Boards',
 
@@ -418,6 +419,7 @@ export const translations = {
     'mobilenav.tenants': 'Tenants',
     'mobilenav.payments': 'Payments',
     'mobilenav.finance': 'Finance',
+    'mobilenav.banking': 'Banking',
     'mobilenav.tasks': 'Tasks',
     'mobilenav.boards': 'Boards',
 

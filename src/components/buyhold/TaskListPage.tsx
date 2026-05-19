@@ -34,15 +34,15 @@ function daysUntil(date?: string) {
 
 // Soft pastel chip styles (matching screenshot's HIGH/MEDIUM/LOW pills)
 const PRIO_CHIP: Record<TaskPriority, { bg: string; dot: string; label: string }> = {
-  hoch:    { bg: 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300',       dot: 'bg-rose-500',    label: 'HOCH' },
-  mittel:  { bg: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',   dot: 'bg-amber-500',   label: 'MITTEL' },
-  niedrig: { bg: 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300', dot: 'bg-violet-500',  label: 'NIEDRIG' },
+  hoch:    { bg: 'bg-rose-100 text-black dark:bg-rose-500/15 dark:text-white',       dot: 'bg-rose-500',    label: 'Hoch' },
+  mittel:  { bg: 'bg-amber-100 text-black dark:bg-amber-500/15 dark:text-white',     dot: 'bg-amber-500',   label: 'Mittel' },
+  niedrig: { bg: 'bg-violet-100 text-black dark:bg-violet-500/15 dark:text-white',   dot: 'bg-violet-500',  label: 'Niedrig' },
 };
 
 const STATUS_CHIP: Record<TaskStatus, { label: string; bg: string; dot: string }> = {
-  offen:            { label: 'OFFEN',          bg: 'bg-[#4F6BFF]/10 text-[#4F6BFF]',                                        dot: 'bg-[#4F6BFF]' },
-  'in-bearbeitung': { label: 'IN BEARBEITUNG', bg: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',  dot: 'bg-amber-500' },
-  erledigt:         { label: 'ERLEDIGT',       bg: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300', dot: 'bg-emerald-500' },
+  offen:            { label: 'Offen',           bg: 'bg-[#4F6BFF]/12 text-neutral-900',                          dot: 'bg-[#4F6BFF]' },
+  'in-bearbeitung': { label: 'In Bearbeitung',  bg: 'bg-amber-100 text-black dark:bg-amber-500/15 dark:text-white',        dot: 'bg-amber-500' },
+  erledigt:         { label: 'Erledigt',        bg: 'bg-emerald-100 text-black dark:bg-emerald-500/15 dark:text-white',    dot: 'bg-emerald-500' },
 };
 
 const STATUS_LABEL: Record<TaskStatus, string> = {
@@ -488,7 +488,7 @@ export function TaskListPage({ mode }: TaskListPageProps = {}) {
 
                                 {/* Priority chip */}
                                 <span className={cn(
-                                  'shrink-0 inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider',
+                                  'shrink-0 inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[11px] font-semibold',
                                   prio.bg,
                                 )}>
                                   {prio.label}

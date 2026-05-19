@@ -30,6 +30,7 @@ import { ZaehlerPage } from './components/buyhold/ZaehlerPage';
 import { ExposeGenerator } from './components/projects/ExposeGenerator';
 import { DealAnalyzerPage } from './components/deal-analyzer/DealAnalyzerPage';
 import { BankingPage } from './components/buyhold/BankingPage';
+import { BankingCallback } from './components/buyhold/BankingCallback';
 import { TaskListPage } from './components/buyhold/TaskListPage';
 import { DokumenteArchivPage } from './components/buyhold/DokumenteArchivPage';
 import { TrashPage } from './components/buyhold/TrashPage';
@@ -133,6 +134,7 @@ export const router = createBrowserRouter([
       { path: 'bh/mietvertraege/:id', element: <MietvertragDetailPage /> },
       { path: 'bh/zaehler', element: <ZaehlerPage /> },
       { path: 'bh/banking', element: <BankingPage /> },
+      { path: 'bh/banking/callback', element: <BankingCallback /> },
       { path: 'bh/aufgaben', element: <TaskListPage mode="buyhold" /> },
       // Legacy-Alias: alte Bookmarks auf /bh/vorgaenge weiterhin bedienen.
       { path: 'bh/vorgaenge', element: <TaskListPage mode="buyhold" /> },

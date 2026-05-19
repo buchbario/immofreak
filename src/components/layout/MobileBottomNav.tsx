@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Building2, Calculator, SearchCheck,
-  Home, Wallet, ListTodo, Sparkles, Target,
+  Home, Wallet, ListTodo, Sparkles, Target, Landmark,
 } from 'lucide-react';
 import { useAppMode } from '../../context/AppModeContext';
 import { useTranslation } from '../../context/LocaleContext';
@@ -31,11 +31,12 @@ const fixFlipItems: NavItem[] = [
   { to: '/aufgaben', icon: ListTodo, label: 'mobilenav.tasks' },
 ];
 
-// Buy & Hold Mobile: Dashboard, Objekte, Finanzen, Aufgaben — reduzierte Set,
-// Mieter / Verträge / Versorger etc. nur am Desktop.
+// Buy & Hold Mobile: Dashboard, Objekte, Banking, Finanzen, Aufgaben —
+// reduzierte Set, Mieter / Verträge / Versorger etc. nur am Desktop.
 const buyHoldItems: NavItem[] = [
   { to: '/bh', icon: LayoutDashboard, label: 'mobilenav.start', end: true },
   { to: '/bh/objekte', icon: Home, label: 'mobilenav.objects' },
+  { to: '/bh/banking', icon: Landmark, label: 'mobilenav.banking' },
   { to: '/bh/finanzen', icon: Wallet, label: 'mobilenav.finance' },
   { to: '/bh/aufgaben', icon: ListTodo, label: 'mobilenav.tasks' },
 ];

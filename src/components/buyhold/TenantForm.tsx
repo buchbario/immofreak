@@ -26,6 +26,7 @@ export function TenantForm({ initial, properties, units, onClose, onSave }: Prop
     leaseEnd: initial?.leaseEnd || '',
     deposit: initial?.deposit || 0,
     notes: initial?.notes || '',
+    iban: initial?.iban || '',
   });
 
   const set = (key: keyof TenantData, value: string | number) =>
@@ -83,6 +84,17 @@ export function TenantForm({ initial, properties, units, onClose, onSave }: Prop
             />
           </Field>
         </FormRow>
+        <Field label="IBAN" htmlFor="t-iban" help="Optional – wird für automatische Zuordnung der Mietzahlungen verwendet.">
+          <input
+            id="t-iban"
+            value={form.iban || ''}
+            onChange={(e) => set('iban', e.target.value.toUpperCase().replace(/\s+/g, ''))}
+            placeholder="DE89 3704 0044 0532 0130 00"
+            className="input font-mono"
+            autoCapitalize="characters"
+            spellCheck={false}
+          />
+        </Field>
       </FormSection>
 
       <FormSection title="Objekt & Einheit">
