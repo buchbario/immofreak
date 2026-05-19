@@ -107,9 +107,34 @@ export class LocalStorageAdapter<T extends { id: string }> implements StorageAda
 
 const ALL_SUPABASE_ADAPTERS: SupabaseAdapter<{ id: string }>[] = [];
 
-// Bei jedem Login/Logout alle Adapter zurücksetzen, damit der nächste
-// Subscribe neu fetcht (mit der Identity des neu eingeloggten Users).
-supabase.auth.onAuthStateChange((_event) => {
+const CACHE_VERSION = 1;
+const CACHE_PREFIX = `supacache:v${CACHE_VERSION}:`;
+
+function cacheKey(table: string): string {
+  return `${CACHE_PREFIX}${table}`;
+}
+
+function clearAllSupabaseCaches(): void {
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(CACHE_PREFIX)) keys.push(k);
+    }
+    for (const k of keys) localStorage.removeItem(k);
+  } catch { /* ignore */ }
+}
+
+// Auth-Events:
+//  • INITIAL_SESSION / TOKEN_REFRESHED → kein Reset. Der erste fires beim Page-Load,
+//    der zweite alle ~50 Min. Bei jedem Reload den Cache wegzuwerfen würde die
+//    UI auf leer setzen bis der nächste Fetch durch ist — exakt der "alles ist
+//    kurz weg"-Effekt, den der User vermeiden will.
+//  • SIGNED_OUT / SIGNED_IN / USER_UPDATED → Cache invalidieren, da sich der
+//    User-Kontext ändert und RLS andere Zeilen zurückgibt.
+supabase.auth.onAuthStateChange((event) => {
+  if (event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') return;
+  if (event === 'SIGNED_OUT') clearAllSupabaseCaches();
   for (const a of ALL_SUPABASE_ADAPTERS) {
     a.invalidate();
   }
@@ -127,6 +152,25 @@ export class SupabaseAdapter<T extends { id: string }> implements StorageAdapter
     this.table = table;
     this.orderBy = orderBy;
     ALL_SUPABASE_ADAPTERS.push(this as unknown as SupabaseAdapter<{ id: string }>);
+    // Letzten Snapshot aus localStorage laden — so zeigt die UI beim Reload
+    // sofort die zuletzt gesehenen Daten an, statt einen leeren Zustand bis
+    // der erste Supabase-Fetch zurück ist (typisch 300-800ms).
+    this.hydrateFromCache();
+  }
+
+  private hydrateFromCache(): void {
+    try {
+      const raw = localStorage.getItem(cacheKey(this.table));
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as T[];
+      if (Array.isArray(parsed)) this.cache = parsed;
+    } catch { /* corrupt cache — ignore */ }
+  }
+
+  private persistCache(): void {
+    try {
+      localStorage.setItem(cacheKey(this.table), JSON.stringify(this.cache));
+    } catch { /* quota oder serialization fail — ignorieren */ }
   }
 
   /** Cache leeren — nächster subscribe holt frisch. */
@@ -134,6 +178,7 @@ export class SupabaseAdapter<T extends { id: string }> implements StorageAdapter
     this.cache = [];
     this.fetched = false;
     this.fetchInFlight = null;
+    try { localStorage.removeItem(cacheKey(this.table)); } catch { /* ignore */ }
     this.notify();
     // Wenn bereits Listener da sind, gleich neu fetchen
     if (this.listeners.size > 0) {
@@ -150,6 +195,7 @@ export class SupabaseAdapter<T extends { id: string }> implements StorageAdapter
   }
 
   private notify(): void {
+    this.persistCache();
     this.listeners.forEach((l) => l());
   }
 

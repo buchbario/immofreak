@@ -46,6 +46,16 @@ export function formatDate(dateString: string): string {
   }).format(new Date(dateString));
 }
 
+export function formatDateTime(dateString: string): string {
+  return new Intl.DateTimeFormat('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(dateString));
+}
+
 export function getStatusColor(status: string): string {
   const colors: Record<string, string> = {
     Akquise: 'bg-blue-100 text-blue-700',

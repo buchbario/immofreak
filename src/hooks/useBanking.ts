@@ -70,6 +70,29 @@ export function useBanking() {
     });
   };
 
+  /**
+   * Markiert eine Transaktion als „kein Mieteingang". Beim erneuten Toggeln
+   * wird die Markierung zurückgenommen und — falls vorhanden — das letzte
+   * Match aufgehoben, damit die Transaktion nach dem Reaktivieren wieder
+   * sauber durch den Matcher läuft.
+   */
+  const toggleIgnoreTransaction = (txId: string) => {
+    const tx = txStore.getById(txId);
+    if (!tx) return;
+    if (tx.isIgnored) {
+      txStore.update(txId, { isIgnored: false });
+    } else {
+      txStore.update(txId, {
+        isIgnored: true,
+        matchedTenantId: undefined,
+        matchedPropertyId: undefined,
+        matchedUnitId: undefined,
+        matchStatus: 'unmatched',
+        matchConfidence: 0,
+      });
+    }
+  };
+
   return {
     accounts: accountStore.items,
     transactions: txStore.items,
@@ -81,6 +104,7 @@ export function useBanking() {
     deleteTransaction,
     assignTransaction,
     unassignTransaction,
+    toggleIgnoreTransaction,
     refreshAccounts: accountStore.refresh,
     refreshTransactions: txStore.refresh,
   };

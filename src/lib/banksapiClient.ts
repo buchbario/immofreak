@@ -136,7 +136,7 @@ export function getBanksapiMode() {
 }
 
 export function syncBanksapiAccount(accessId: string) {
-  return invoke<{ accessId: string; transactions: BanksapiTransaction[]; mode: string }>(
+  return invoke<{ accessId: string; account: BanksapiAccount | null; transactions: BanksapiTransaction[]; mode: string }>(
     `accounts/${accessId}/sync`,
     {},
   );

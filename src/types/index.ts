@@ -438,6 +438,10 @@ export interface BankTransaction {
   /** Provider-spezifische Transaktions-ID (Idempotenz beim Re-Sync). */
   banksapiTransactionId?: string;
   isReconciled: boolean;
+  /** Manuell als „kein Mieteingang" markiert — wird vom Matcher, der
+   *  Mieteingang-Übersicht und den synthetischen TenantPayments
+   *  übersprungen. */
+  isIgnored?: boolean;
   createdAt: string;
 }
 

@@ -7,18 +7,21 @@ type UnitData = Omit<RentalUnit, 'id' | 'createdAt'>;
 
 interface Props {
   propertyId: string;
+  unit?: RentalUnit;
   onClose: () => void;
   onSave: (data: UnitData) => void;
 }
 
-export function UnitForm({ propertyId, onClose, onSave }: Props) {
+export function UnitForm({ propertyId, unit, onClose, onSave }: Props) {
+  const isEdit = !!unit;
   const [form, setForm] = useState<UnitData>({
     propertyId,
-    name: '',
-    area: 0,
-    rooms: 1,
-    currentRent: 0,
-    targetRent: 0,
+    name: unit?.name ?? '',
+    area: unit?.area ?? 0,
+    rooms: unit?.rooms ?? 1,
+    currentRent: unit?.currentRent ?? 0,
+    targetRent: unit?.targetRent ?? 0,
+    tenantId: unit?.tenantId,
   });
 
   const set = (key: keyof UnitData, value: string | number) => setForm((f) => ({ ...f, [key]: value }));
@@ -28,12 +31,14 @@ export function UnitForm({ propertyId, onClose, onSave }: Props) {
       open
       onClose={onClose}
       size="md"
-      title="Neue Einheit"
-      description="Wohnung, Gewerbe oder Stellplatz innerhalb des Objekts."
+      title={isEdit ? 'Einheit bearbeiten' : 'Neue Einheit'}
+      description={isEdit ? 'Miete anpassen, Fläche oder Zimmer aktualisieren.' : 'Wohnung, Gewerbe oder Stellplatz innerhalb des Objekts.'}
       footer={
         <>
           <button onClick={onClose} className="btn btn-md btn-secondary">Abbrechen</button>
-          <button onClick={() => onSave(form)} disabled={!form.name} className="btn btn-md btn-primary">Anlegen</button>
+          <button onClick={() => onSave(form)} disabled={!form.name} className="btn btn-md btn-primary">
+            {isEdit ? 'Speichern' : 'Anlegen'}
+          </button>
         </>
       }
     >

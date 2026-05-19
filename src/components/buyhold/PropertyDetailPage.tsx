@@ -28,7 +28,7 @@ export function PropertyDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getProperty, updateProperty } = useRentalProperties();
-  const { units, createUnit, deleteUnit, totalMonthlyRent } = useRentalUnits(id);
+  const { units, createUnit, updateUnit, deleteUnit, totalMonthlyRent } = useRentalUnits(id);
   const { tenants } = useTenants(id);
   const { utilities } = useUtilities(id);
   const { readings, createReading, deleteReading } = useMeterReadings(id);
@@ -36,6 +36,7 @@ export function PropertyDetailPage() {
   const { documents, addDocument, deleteDocument } = usePropertyDocuments(id);
   const { moveToTrash } = useTrash();
   const [showUnitForm, setShowUnitForm] = useState(false);
+  const [editingUnit, setEditingUnit] = useState<import('../../types').RentalUnit | null>(null);
   const [showEditForm, setShowEditForm] = useState(false);
   const [showMeterForm, setShowMeterForm] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -282,6 +283,9 @@ export function PropertyDetailPage() {
                     <div className="text-right shrink-0">
                       <p className="text-sm font-bold tabular-nums text-foreground">{fmt(u.currentRent)} €/M</p>
                     </div>
+                    <button onClick={(e) => { e.stopPropagation(); setEditingUnit(u); }} className="cursor-pointer transition-colors text-muted-foreground hover:text-[#4F6BFF] shrink-0" title="Einheit bearbeiten">
+                      <Edit2 size={14} />
+                    </button>
                     <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteUnit({ id: u.id, name: u.name }); }} className="cursor-pointer transition-colors text-muted-foreground hover:text-red-500 shrink-0">
                       <Trash2 size={14} />
                     </button>
@@ -436,6 +440,15 @@ export function PropertyDetailPage() {
 
       {showUnitForm && (
         <UnitForm propertyId={property.id} onClose={() => setShowUnitForm(false)} onSave={(data) => { createUnit(data); setShowUnitForm(false); }} />
+      )}
+
+      {editingUnit && (
+        <UnitForm
+          propertyId={property.id}
+          unit={editingUnit}
+          onClose={() => setEditingUnit(null)}
+          onSave={(data) => { updateUnit(editingUnit.id, data); setEditingUnit(null); }}
+        />
       )}
 
       {showEditForm && (

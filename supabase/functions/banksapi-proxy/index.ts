@@ -420,6 +420,37 @@ async function realRefreshBankzugang(accessId: string): Promise<void> {
   });
 }
 
+/**
+ * Wartet bis BANKSapi den Refresh durch ist. BANKSapi liefert nach
+ * `?refresh=true` sofort zurück, der eigentliche Bank-Roundtrip läuft im
+ * Hintergrund — wenn wir direkt danach `getBankzugang` lesen, kriegen wir
+ * die alten Umsätze. Wir merken uns also den `aktualisierungszeitpunkt`
+ * VOR dem Refresh und pollen bis er sich ändert (oder bis das Timeout
+ * greift). Wenn das BANKSapi-Backend mal länger braucht, kehren wir
+ * trotzdem zurück und liefern was wir haben — kein Hänger.
+ */
+async function waitForRefreshDone(
+  accessId: string,
+  oldAktualisierung: string | undefined,
+  timeoutMs = 25_000,
+): Promise<BanksapiBankzugang> {
+  const start = Date.now();
+  let pollDelay = 800;
+  let last: BanksapiBankzugang | null = null;
+  while (Date.now() - start < timeoutMs) {
+    try {
+      last = await realGetBankzugang(accessId);
+      const now = last.aktualisierungszeitpunkt;
+      const refreshed = !!now && now !== oldAktualisierung;
+      const completed = !last.status || last.status === 'VOLLSTAENDIG' || last.status === 'TEILWEISE';
+      if (refreshed && completed) return last;
+    } catch (_e) { /* keep polling */ }
+    await new Promise((r) => setTimeout(r, pollDelay));
+    pollDelay = Math.min(pollDelay + 200, 1800);
+  }
+  return last ?? await realGetBankzugang(accessId);
+}
+
 async function realRevokeBankzugang(accessId: string): Promise<void> {
   const token = await getBanksapiToken();
   await fetch(`${ENV.BANKSAPI_BASE_URL}/customer/v2/bankzugaenge/${accessId}`, {
@@ -679,8 +710,15 @@ async function handleConnectFinish(body: ConnectFinishBody) {
 
 async function handleAccountSync(accessId: string) {
   if (REAL_MODE) {
+    // Snapshot der aktuellen Aktualisierungszeit, damit wir nach dem
+    // Refresh erkennen, ob BANKSapi tatsächlich frische Daten hat.
+    let oldAktualisierung: string | undefined;
+    try {
+      const pre = await realGetBankzugang(accessId);
+      oldAktualisierung = pre.aktualisierungszeitpunkt;
+    } catch (_e) { /* erste Sync, ignorieren */ }
     await realRefreshBankzugang(accessId);
-    const zugang = await realGetBankzugang(accessId);
+    const zugang = await waitForRefreshDone(accessId, oldAktualisierung);
     const produkte = normalizeProdukte(zugang.bankprodukte);
     const transactions: any[] = [];
     for (const produkt of produkte) {
@@ -694,9 +732,12 @@ async function handleAccountSync(accessId: string) {
         console.error(`[banksapi] sync umsatz-fetch failed for product ${productKey}: ${(e as Error).message}`);
       }
     }
-    return jsonResponse({ accessId, transactions, mode: 'real' });
+    // Auch das Konto neu mappen — so kann der Client den aktuellen Saldo
+    // anziehen, ohne einen separaten Bankzugang-Call zu machen.
+    const account = await mapBankzugangToAccount(zugang, '');
+    return jsonResponse({ accessId, account, transactions, mode: 'real' });
   }
-  return jsonResponse({ accessId, transactions: stubBuildTransactions(accessId, true), mode: 'stub' });
+  return jsonResponse({ accessId, account: null, transactions: stubBuildTransactions(accessId, true), mode: 'stub' });
 }
 
 /**

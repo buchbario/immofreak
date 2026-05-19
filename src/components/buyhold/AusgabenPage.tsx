@@ -1,30 +1,14 @@
 import { useState, useMemo } from 'react';
 import { Plus, Check, Minus, Wallet } from 'lucide-react';
 import { useRentalProperties } from '../../hooks/useRentalProperties';
+import { useExpenses } from '../../hooks/useExpenses';
 import { Modal } from '../ui/Modal';
 import { NumberInput } from '../ui/NumberInput';
 import { PageCard, PageCardNoResults } from '../ui/PageCard';
 import { DateInput } from '../ui/DateInput';
+import type { Expense } from '../../types';
 
-type ExpenseCategory =
-  | 'Instandhaltung'
-  | 'Versicherung'
-  | 'Verwaltung'
-  | 'Grundsteuer'
-  | 'Hausgeld'
-  | 'Sonstiges';
-
-interface Expense {
-  id: string;
-  propertyId: string;
-  unitId?: string;
-  category: ExpenseCategory;
-  description: string;
-  amount: number;
-  date: string;
-  isUmlagefaehig: boolean;
-  createdAt: string;
-}
+type ExpenseCategory = Expense['category'];
 
 const CATEGORIES: ExpenseCategory[] = [
   'Instandhaltung',
@@ -62,24 +46,9 @@ function getMonthOptions() {
   return options;
 }
 
-const MOCK_EXPENSES: Expense[] = [
-  { id: '1', propertyId: '', category: 'Instandhaltung', description: 'Heizungsreparatur', amount: 850, date: '2026-03-15', isUmlagefaehig: false, createdAt: '2026-03-15' },
-  { id: '2', propertyId: '', category: 'Versicherung', description: 'Gebäudeversicherung Q1', amount: 420, date: '2026-03-01', isUmlagefaehig: true, createdAt: '2026-03-01' },
-  { id: '3', propertyId: '', category: 'Hausgeld', description: 'Hausgeld März', amount: 380, date: '2026-03-01', isUmlagefaehig: true, createdAt: '2026-03-01' },
-  { id: '4', propertyId: '', category: 'Grundsteuer', description: 'Grundsteuer Q1', amount: 290, date: '2026-02-15', isUmlagefaehig: true, createdAt: '2026-02-15' },
-  { id: '5', propertyId: '', category: 'Verwaltung', description: 'Hausverwaltung Feb', amount: 180, date: '2026-02-01', isUmlagefaehig: false, createdAt: '2026-02-01' },
-  { id: '6', propertyId: '', category: 'Sonstiges', description: 'Schornsteinfeger', amount: 95, date: '2026-01-20', isUmlagefaehig: true, createdAt: '2026-01-20' },
-  { id: '7', propertyId: '', category: 'Instandhaltung', description: 'Dachreparatur', amount: 2400, date: '2026-01-10', isUmlagefaehig: false, createdAt: '2026-01-10' },
-  { id: '8', propertyId: '', category: 'Hausgeld', description: 'Hausgeld Jan', amount: 380, date: '2026-01-01', isUmlagefaehig: true, createdAt: '2026-01-01' },
-];
-
 export function AusgabenPage() {
   const { properties } = useRentalProperties();
-
-  const [expenses, setExpenses] = useState<Expense[]>(() => {
-    const pid = properties.length > 0 ? properties[0].id : '';
-    return MOCK_EXPENSES.map((e) => ({ ...e, propertyId: e.propertyId || pid }));
-  });
+  const { items: expenses, create: createExpense } = useExpenses();
 
   const [categoryFilter, setCategoryFilter] = useState<string>('alle');
   const [propertyFilter, setPropertyFilter] = useState<string>('alle');
@@ -123,17 +92,14 @@ export function AusgabenPage() {
 
   const handleAddExpense = () => {
     if (!formDescription || !formAmount || !formDate) return;
-    const newExpense: Expense = {
-      id: crypto.randomUUID(),
+    createExpense({
       propertyId: formPropertyId || (properties.length > 0 ? properties[0].id : ''),
       category: formCategory,
       description: formDescription,
       amount: parseFloat(formAmount) || 0,
       date: formDate,
       isUmlagefaehig: formUmlagefaehig,
-      createdAt: new Date().toISOString(),
-    };
-    setExpenses((prev) => [newExpense, ...prev]);
+    });
     setDialogOpen(false);
     setFormDescription('');
     setFormAmount('');

@@ -83,7 +83,7 @@ export function SignupPage() {
               </div>
               <Link
                 to="/login"
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-[#0f1430] text-white font-semibold text-[13.5px] hover:bg-[#1a2050] transition-all"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-[#0f1430] text-white font-semibold text-[13.5px] hover:bg-[#1a2050] transition-all"
               >
                 Zur Anmeldung
               </Link>
@@ -112,7 +112,7 @@ export function SignupPage() {
                       setError('');
                     }}
                     placeholder="Max Mustermann"
-                    className="w-full px-3.5 py-2.5 rounded-full bg-white border border-[#1e1b4b]/12 text-[14px] text-[#0f1430] placeholder:text-[#1e1b4b]/35 focus:outline-none focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15 transition-all"
+                    className="w-full px-3.5 py-2.5 rounded-lg bg-white border border-[#1e1b4b]/12 text-[14px] text-[#0f1430] placeholder:text-[#1e1b4b]/35 focus:outline-none focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15 transition-all"
                     autoComplete="name"
                   />
                 </div>
@@ -129,7 +129,7 @@ export function SignupPage() {
                       setError('');
                     }}
                     placeholder="name@example.com"
-                    className="w-full px-3.5 py-2.5 rounded-full bg-white border border-[#1e1b4b]/12 text-[14px] text-[#0f1430] placeholder:text-[#1e1b4b]/35 focus:outline-none focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15 transition-all"
+                    className="w-full px-3.5 py-2.5 rounded-lg bg-white border border-[#1e1b4b]/12 text-[14px] text-[#0f1430] placeholder:text-[#1e1b4b]/35 focus:outline-none focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15 transition-all"
                     autoComplete="email"
                   />
                 </div>
@@ -147,7 +147,7 @@ export function SignupPage() {
                         setError('');
                       }}
                       placeholder="••••••••"
-                      className="w-full pl-3.5 pr-10 py-2.5 rounded-full bg-white border border-[#1e1b4b]/12 text-[14px] text-[#0f1430] placeholder:text-[#1e1b4b]/35 focus:outline-none focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15 transition-all"
+                      className="w-full pl-3.5 pr-10 py-2.5 rounded-lg bg-white border border-[#1e1b4b]/12 text-[14px] text-[#0f1430] placeholder:text-[#1e1b4b]/35 focus:outline-none focus:border-[#4F6BFF] focus:ring-2 focus:ring-[#4F6BFF]/15 transition-all"
                       autoComplete="new-password"
                     />
                     <button
@@ -169,7 +169,7 @@ export function SignupPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 mt-1 rounded-full bg-[#0f1430] text-white font-semibold text-[13.5px] hover:bg-[#1a2050] transition-all cursor-pointer disabled:opacity-60"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 mt-1 rounded-lg bg-[#0f1430] text-white font-semibold text-[13.5px] hover:bg-[#1a2050] transition-all cursor-pointer disabled:opacity-60"
                 >
                   {loading ? (
                     <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

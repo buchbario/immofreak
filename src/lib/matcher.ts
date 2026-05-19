@@ -82,6 +82,9 @@ export function matchTransaction(tx: BankTransaction, ctx: MatchContext): MatchR
   if (tx.amount <= 0) {
     return { status: 'unmatched', confidence: 0, reason: 'outgoing' };
   }
+  if (tx.isIgnored) {
+    return { status: 'unmatched', confidence: 0, reason: 'ignored' };
+  }
 
   const txIban = normalizeIban(tx.iban);
   const txTokens = tokenize(tx.counterparty);

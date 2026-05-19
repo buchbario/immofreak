@@ -4,6 +4,7 @@ import {
   CheckCircle2, XCircle, Clock, Search, X,
   Link2, Unlink, CreditCard, TrendingUp, AlertCircle, Check,
   ChevronDown, Users, Sparkles, HelpCircle, UserCheck, Loader2, ShieldCheck, ArrowRight,
+  EyeOff, Eye,
 } from 'lucide-react';
 import { useBanking } from '../../hooks/useBanking';
 import { useRentalProperties } from '../../hooks/useRentalProperties';
@@ -13,7 +14,7 @@ import { useRentalContracts } from '../../hooks/useRentalContracts';
 import { useTrash } from '../../hooks/useTrash';
 import { cascadeBankAccountToTrash } from '../../lib/cascadeDelete';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
-import { cn, formatDate } from '../../lib/utils';
+import { cn, formatDate, formatDateTime } from '../../lib/utils';
 import { PageCard } from '../ui/PageCard';
 import { applyMatch, matchTransaction } from '../../lib/matcher';
 import { MatchTransactionModal } from './MatchTransactionModal';
@@ -45,7 +46,7 @@ function bankKeyFor(name: string): string {
 }
 
 type Tab = 'konten' | 'transaktionen' | 'mieteingang';
-type TxFilter = 'alle' | 'eingang' | 'ausgang' | 'miete';
+type TxFilter = 'alle' | 'eingang' | 'ausgang' | 'miete' | 'ignoriert';
 
 type BankPreset = {
   name: string;
@@ -579,6 +580,7 @@ export function BankingPage() {
     addTransaction,
     assignTransaction,
     unassignTransaction,
+    toggleIgnoreTransaction,
   } = useBanking();
   const { properties } = useRentalProperties();
   const { allUnits } = useRentalUnits();
@@ -629,17 +631,19 @@ export function BankingPage() {
 
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<{ accountId: string; message: string } | null>(null);
+  const [syncSuccess, setSyncSuccess] = useState<{ accountId: string; added: number; balance?: number } | null>(null);
 
   /**
    * Synchronisierung. Demo-Konten bekommen nur ein lastSync-Update (kein echter
    * API-Call). banksapi-Konten gehen über die Edge Function, die neue/aktuelle
-   * Transaktionen liefert; Dubletten werden via banksapiTransactionId
-   * (UNIQUE-Index in Postgres) abgefangen.
+   * Transaktionen + den aktuellen Saldo liefert; Dubletten werden via
+   * banksapiTransactionId (UNIQUE-Index in Postgres) abgefangen.
    */
   const handleSync = async (accountId: string) => {
     const acc = accounts.find(a => a.id === accountId);
     if (!acc) return;
     setSyncError(null);
+    setSyncSuccess(null);
 
     if (acc.provider !== 'banksapi' || !acc.banksapiAccessId) {
       updateAccount(accountId, { lastSync: new Date().toISOString() });
@@ -654,6 +658,8 @@ export function BankingPage() {
           .filter(t => t.bankAccountId === accountId && t.banksapiTransactionId)
           .map(t => t.banksapiTransactionId),
       );
+      let added = 0;
+      let deltaAmount = 0;
       for (const tx of result.transactions) {
         if (existing.has(tx.banksapiTransactionId)) continue;
         addTransaction({
@@ -666,8 +672,23 @@ export function BankingPage() {
           banksapiTransactionId: tx.banksapiTransactionId,
           isReconciled: false,
         });
+        added++;
+        deltaAmount += tx.amount;
       }
-      updateAccount(accountId, { lastSync: new Date().toISOString() });
+      // Wenn die Edge Function einen aktualisierten Saldo zurückliefert, den
+      // bevorzugen — das ist die Wahrheit von BANKSapi. Sonst aus dem alten
+      // Saldo + Summe der neu hinzugekommenen Transaktionen ableiten. So
+      // bleibt der Saldo aktuell auch wenn die Edge Function noch keinen
+      // Saldo zurückliefert (Pre-Deploy-Stand).
+      let newBalance: number | undefined;
+      if (typeof result.account?.balance === 'number') {
+        newBalance = result.account.balance;
+      } else if (added > 0) {
+        newBalance = Math.round((acc.balance + deltaAmount) * 100) / 100;
+      }
+      const balanceUpdate = typeof newBalance === 'number' ? { balance: newBalance } : {};
+      updateAccount(accountId, { ...balanceUpdate, lastSync: new Date().toISOString() });
+      setSyncSuccess({ accountId, added, balance: newBalance });
     } catch (e) {
       setSyncError({ accountId, message: (e as Error).message });
     } finally {
@@ -685,12 +706,19 @@ export function BankingPage() {
   };
 
   // Filtered transactions (basieren auf den angereicherten TXs, damit die
-  // Match-Badges in jeder Filter-Ansicht sichtbar bleiben)
+  // Match-Badges in jeder Filter-Ansicht sichtbar bleiben).
+  // Ignorierte Eingänge werden standardmäßig ausgeblendet — nur sichtbar,
+  // wenn aktiv über den „Ignoriert"-Filter angefordert.
   const filteredTx = useMemo(() => {
     let txs = [...enrichedTransactions];
-    if (txFilter === 'eingang') txs = txs.filter(t => t.amount > 0);
-    if (txFilter === 'ausgang') txs = txs.filter(t => t.amount < 0);
-    if (txFilter === 'miete') txs = txs.filter(t => t.category === 'miete' || t.matchStatus === 'suggested' || t.matchStatus === 'unmatched');
+    if (txFilter === 'ignoriert') {
+      txs = txs.filter(t => t.isIgnored);
+    } else {
+      txs = txs.filter(t => !t.isIgnored);
+      if (txFilter === 'eingang') txs = txs.filter(t => t.amount > 0);
+      if (txFilter === 'ausgang') txs = txs.filter(t => t.amount < 0);
+      if (txFilter === 'miete') txs = txs.filter(t => t.category === 'miete' || t.matchStatus === 'suggested' || t.matchStatus === 'unmatched');
+    }
     if (txSearch) {
       const q = txSearch.toLowerCase();
       txs = txs.filter(t =>
@@ -700,6 +728,26 @@ export function BankingPage() {
     }
     return txs.sort((a, b) => b.date.localeCompare(a.date));
   }, [enrichedTransactions, txFilter, txSearch]);
+
+  // Lookup: Konto-ID → Konto + visuelle Bank-Info (Logo/Name). Wird in jeder
+  // Transaktions-Zeile angezeigt, damit bei mehreren Konten klar ist, woher
+  // die Transaktion stammt.
+  const accountInfoMap = useMemo(() => {
+    const map = new Map<string, { account: typeof accounts[number]; preset: BankPreset; }>();
+    for (const a of accounts) {
+      const dir = lookupBankByName(a.bankName, a.bic);
+      map.set(a.id, {
+        account: a,
+        preset: {
+          name: a.bankName,
+          color: a.color || dir?.color || '#4F6BFF',
+          bic: a.bic,
+          domain: a.domain || dir?.domain,
+        },
+      });
+    }
+    return map;
+  }, [accounts]);
 
   // Rent matching data for selected month
   const rentMatching = useMemo(() => {
@@ -711,9 +759,12 @@ export function BankingPage() {
         const property = properties.find(p => p.id === tenant.propertyId);
         const expectedRent = unit?.currentRent || 0;
 
-        // Find matching transaction (nur bestätigte Auto-/Manual-Matches zählen)
+        // Find matching transaction (nur bestätigte Auto-/Manual-Matches zählen).
+        // Ignorierte Transaktionen werden übersprungen — die zählen explizit
+        // nicht als Mieteingang.
         const matchingTx = enrichedTransactions.find(tx =>
           tx.matchedTenantId === tenant.id &&
+          !tx.isIgnored &&
           new Date(tx.date).getFullYear() === year &&
           new Date(tx.date).getMonth() + 1 === month
         );
@@ -750,7 +801,7 @@ export function BankingPage() {
     { key: 'mieteingang', label: 'Mieteingang', icon: TrendingUp },
   ];
 
-  const fmt = (n: number) => n.toLocaleString('de-DE', { maximumFractionDigits: 0 });
+  const fmt = (n: number) => n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const monthOptions = useMemo(() => {
     const opts = [];
@@ -780,7 +831,7 @@ export function BankingPage() {
             {accounts.length > 0 && (
               <>
                 <span className="size-[3px] rounded-full bg-muted-foreground/40 mx-0.5" />
-                <span className="tabular-nums font-medium text-foreground">{totalBalance.toLocaleString('de-DE', { maximumFractionDigits: 0 })} € Saldo</span>
+                <span className="tabular-nums font-medium text-foreground">{totalBalance.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € Saldo</span>
               </>
             )}
           </>
@@ -810,6 +861,28 @@ export function BankingPage() {
                   <p className="text-xs text-red-700 dark:text-red-300 mt-0.5 whitespace-pre-wrap">{syncError.message}</p>
                 </div>
                 <button onClick={() => setSyncError(null)} className="text-red-600 dark:text-red-400">
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+          )}
+          {syncSuccess && (
+            <div className="mb-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20">
+              <div className="flex items-start gap-2">
+                <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
+                <div className="flex-1">
+                  <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                    {syncSuccess.added > 0
+                      ? `${syncSuccess.added} neue ${syncSuccess.added === 1 ? 'Transaktion' : 'Transaktionen'} geladen`
+                      : 'Konto ist auf dem neuesten Stand'}
+                  </p>
+                  {typeof syncSuccess.balance === 'number' && (
+                    <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-0.5 tabular-nums">
+                      Aktueller Saldo: {syncSuccess.balance.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                    </p>
+                  )}
+                </div>
+                <button onClick={() => setSyncSuccess(null)} className="text-emerald-600 dark:text-emerald-400">
                   <X size={14} />
                 </button>
               </div>
@@ -886,7 +959,7 @@ export function BankingPage() {
                           {maskIban(account.iban, false)}
                         </p>
                         <p className="text-[11px] text-muted-foreground mt-0.5">
-                          Zuletzt synchronisiert: {formatDate(account.lastSync)}
+                          Zuletzt synchronisiert: {formatDateTime(account.lastSync)}
                         </p>
                       </div>
                       <div className="flex items-center gap-1.5">
@@ -951,6 +1024,7 @@ export function BankingPage() {
                 { key: 'eingang', label: 'Eingang' },
                 { key: 'ausgang', label: 'Ausgang' },
                 { key: 'miete', label: 'Miete' },
+                { key: 'ignoriert', label: 'Ignoriert' },
               ] as { key: TxFilter; label: string }[]).map(f => (
                 <button
                   key={f.key}
@@ -985,16 +1059,17 @@ export function BankingPage() {
                     : undefined;
                   const suggested = (tx as BankTransaction & { _suggestedTenantId?: string })._suggestedTenantId;
                   const suggestedTenant = suggested ? allTenants.find(t => t.id === suggested) : undefined;
-                  const canAssign = isIncome;
+                  const canAssign = isIncome && !tx.isIgnored;
+                  const bankInfo = accountInfoMap.get(tx.bankAccountId);
+                  const showBankChip = accounts.length > 1 && !!bankInfo;
                   return (
-                    <button
+                    <div
                       key={tx.id}
-                      type="button"
                       onClick={() => canAssign && setAssignTxId(tx.id)}
-                      disabled={!canAssign}
                       className={cn(
                         'w-full flex items-center gap-4 px-5 py-3.5 text-left transition-colors',
                         canAssign ? 'hover:bg-muted/30 cursor-pointer' : 'cursor-default',
+                        tx.isIgnored && 'opacity-60',
                       )}
                     >
                       <div className={cn(
@@ -1009,16 +1084,33 @@ export function BankingPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-sm font-medium text-foreground truncate">{tx.counterparty}</p>
-                          {matchedTenant && (
+                          {showBankChip && bankInfo && (
+                            <span
+                              className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-muted/70 text-muted-foreground max-w-[160px]"
+                              title={bankInfo.account.label || bankInfo.account.bankName}
+                            >
+                              <span className="size-3 rounded bg-white border border-card-line flex items-center justify-center overflow-hidden shrink-0">
+                                <BankLogo bank={bankInfo.preset} size={9} />
+                              </span>
+                              <span className="truncate">{bankInfo.account.label || bankInfo.account.bankName}</span>
+                            </span>
+                          )}
+                          {tx.isIgnored && (
+                            <span className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-muted text-muted-foreground">
+                              <EyeOff size={10} className="shrink-0" />
+                              Ignoriert
+                            </span>
+                          )}
+                          {matchedTenant && !tx.isIgnored && (
                             <MatchBadge
                               status={tx.matchStatus === 'auto' ? 'auto' : 'manual'}
                               label={matchedTenant.name}
                             />
                           )}
-                          {!matchedTenant && suggestedTenant && (
+                          {!matchedTenant && suggestedTenant && !tx.isIgnored && (
                             <MatchBadge status="suggested" label={`Vorschlag: ${suggestedTenant.name}`} />
                           )}
-                          {!matchedTenant && !suggestedTenant && isIncome && (
+                          {!matchedTenant && !suggestedTenant && isIncome && !tx.isIgnored && (
                             <MatchBadge status="unmatched" label="Offen – zuordnen" />
                           )}
                           {tx.isReconciled && (
@@ -1036,7 +1128,17 @@ export function BankingPage() {
                         </p>
                         <p className="text-[11px] text-muted-foreground">{formatDate(tx.date)}</p>
                       </div>
-                    </button>
+                      {isIncome && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); toggleIgnoreTransaction(tx.id); }}
+                          className="shrink-0 size-8 rounded-lg border border-card-line flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer"
+                          title={tx.isIgnored ? 'Ignorierung aufheben' : 'Als „kein Mieteingang" ignorieren'}
+                        >
+                          {tx.isIgnored ? <Eye size={14} /> : <EyeOff size={14} />}
+                        </button>
+                      )}
+                    </div>
                   );
                 })}
               </div>
