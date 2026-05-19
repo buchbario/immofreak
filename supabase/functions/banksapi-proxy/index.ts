@@ -435,16 +435,27 @@ function parseAmount(value: number | string | undefined): number {
   return 0;
 }
 
-function mapBankzugangToAccount(z: BanksapiBankzugang, holderFallback: string) {
+async function mapBankzugangToAccount(z: BanksapiBankzugang, holderFallback: string) {
   const produkt = z.bankprodukte?.[0];
   const saldoNum =
     typeof produkt?.saldo === 'number'
       ? produkt.saldo
       : parseAmount((produkt?.saldo as any)?.betrag);
+
+  // Friendly Bank-Name via Provider-Lookup statt UUID anzeigen.
+  let bankName = 'Bank';
+  if (z.providerId) {
+    try {
+      const providers = await getBanksapiProviders();
+      const match = providers.find((p) => p.id === z.providerId);
+      if (match?.name) bankName = match.name;
+    } catch (_e) { /* fall back to default */ }
+  }
+
   return {
     banksapiAccessId: z.id,
     banksapiProductId: produkt?.id || produkt?.iban || '',
-    bankName: z.providerId || 'Bank', // TODO: über /providers/v2 in echten Banknamen auflösen
+    bankName,
     iban: produkt?.iban || '',
     bic: produkt?.bic || '',
     accountHolder: produkt?.inhaber || holderFallback,
@@ -625,7 +636,7 @@ async function handleConnectFinish(body: ConnectFinishBody) {
     const produkte = normalizeProdukte(zugang.bankprodukte);
     // eslint-disable-next-line no-console
     console.log(`[banksapi] zugang=${zugang.id} status=${zugang.status} produkte=${produkte.length}`);
-    const account = mapBankzugangToAccount({ ...zugang, bankprodukte: produkte }, body.accountHolder || '');
+    const account = await mapBankzugangToAccount({ ...zugang, bankprodukte: produkte }, body.accountHolder || '');
     const transactions: any[] = [];
     // Über ALLE Bankprodukte iterieren — User kann Giro + Sparbuch + Tagesgeld
     // im selben Zugang haben. Wir mergen die Umsätze.

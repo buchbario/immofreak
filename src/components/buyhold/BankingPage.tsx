@@ -132,6 +132,28 @@ const BANK_DIRECTORY: Record<string, BankPreset> = (() => {
   return out;
 })();
 
+/** Sekundärer Lookup nach BIC — wenn BANKSapi einen Banknamen liefert den wir
+ *  nicht im Directory haben (z.B. "Revolut Bank" statt "Revolut"), kommen wir
+ *  via BIC trotzdem an das passende Logo + die Markenfarbe. */
+const BANK_BY_BIC: Record<string, BankPreset> = (() => {
+  const out: Record<string, BankPreset> = {};
+  for (const b of [...BANK_PRESETS, ...ADDITIONAL_BANKS]) {
+    if (!b.bic) continue;
+    const upper = b.bic.toUpperCase();
+    out[upper] = b;
+    out[upper.slice(0, 8)] = b; // Base-8-BIC für 11-stellige XXX-Varianten
+  }
+  return out;
+})();
+
+function lookupBankByName(name: string, bic?: string): BankPreset | undefined {
+  return (
+    BANK_DIRECTORY[name] ||
+    (bic ? BANK_BY_BIC[bic.toUpperCase()] : undefined) ||
+    (bic ? BANK_BY_BIC[bic.toUpperCase().slice(0, 8)] : undefined)
+  );
+}
+
 /**
  * Renders a real bank logo. Tries Google's favicon service first (works for ~99% of
  * bank domains) then falls back to DuckDuckGo's icon service. If all sources fail
@@ -805,7 +827,7 @@ export function BankingPage() {
               {accounts.map(account => {
                 // Lookup domain/color from the bank directory so older accounts (stored
                 // before `domain` existed on BankAccount) still render their logo.
-                const directoryEntry = BANK_DIRECTORY[account.bankName];
+                const directoryEntry = lookupBankByName(account.bankName, account.bic);
                 const effectiveDomain = account.domain || directoryEntry?.domain;
                 const effectiveColor = account.color || directoryEntry?.color || '#4F6BFF';
                 return (
@@ -843,7 +865,9 @@ export function BankingPage() {
                     <div className="flex items-end justify-between">
                       <div>
                         <p className="text-xs text-white/60 mb-0.5">Kontostand</p>
-                        <p className="text-2xl font-bold text-white tabular-nums">{fmt(account.balance)} €</p>
+                        <p className="text-2xl font-bold text-white tabular-nums">
+                          {account.balance.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                        </p>
                       </div>
                     </div>
                   </div>
