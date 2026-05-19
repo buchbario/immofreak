@@ -6,7 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { objectToRow } from '../../lib/caseMapping';
 import { bankAccountStore, bankTransactionStore } from '../../lib/storage';
 import { generateId } from '../../lib/utils';
-import type { BankAccount, BankTransaction } from '../../types';
+import type { BankAccount } from '../../types';
 
 type State = 'loading' | 'success' | 'error';
 
@@ -84,25 +84,33 @@ export function BankingCallback() {
         // 2) Transaktionen in einem Bulk-Insert — Account existiert jetzt, FK passt.
         setMessage(`Lade ${result.transactions.length} Transaktionen …`);
         if (result.transactions.length > 0) {
-          // Bei BANKSapi-Sandbox können einzelne Umsatz-Felder fehlen (z.B. Bankgebühren
-          // ohne Gegenkonto-Inhaber). `safeStr` (oben deklariert) erzwingt non-null
-          // Strings für Felder mit NOT-NULL-Constraint — andernfalls würde objectToRow
-          // null durchreichen und der Postgres-Default `''` greift nicht.
-          const txObjs: BankTransaction[] = result.transactions.map((tx) => ({
-            id: generateId(),
-            bankAccountId: accountId,
-            date: safeStr(tx.date) || new Date().toISOString().slice(0, 10),
-            amount: typeof tx.amount === 'number' ? tx.amount : 0,
-            counterparty: safeStr(tx.counterparty),
-            purpose: safeStr(tx.purpose),
-            iban: tx.iban && typeof tx.iban === 'string' ? tx.iban : undefined,
-            banksapiTransactionId: safeStr(tx.banksapiTransactionId) || generateId(),
-            isReconciled: false,
-            createdAt: new Date().toISOString(),
-          }));
-          const txRows = txObjs.map((t) => {
-            const row = objectToRow(t as unknown as Record<string, unknown>);
-            delete row.user_id;
+          // Direkter snake_case-Row-Bau ohne objectToRow-Magic. Pflicht-String-Felder
+          // (counterparty, purpose) bekommen IMMER einen String — selbst wenn BANKSapi
+          // null/object/missing liefert. Optionale Felder werden bei "leer" weggelassen,
+          // damit der Postgres-Default greift.
+          const txRows = result.transactions.map((tx) => {
+            const counterparty = typeof tx.counterparty === 'string' ? tx.counterparty : '';
+            const purpose = typeof tx.purpose === 'string' ? tx.purpose : '';
+            const date = typeof tx.date === 'string' && tx.date
+              ? tx.date.slice(0, 10)
+              : new Date().toISOString().slice(0, 10);
+            const amount = typeof tx.amount === 'number' && Number.isFinite(tx.amount) ? tx.amount : 0;
+            const ibanStr = typeof tx.iban === 'string' && tx.iban ? tx.iban : null;
+            const banksapiTxId = typeof tx.banksapiTransactionId === 'string' && tx.banksapiTransactionId
+              ? tx.banksapiTransactionId
+              : null;
+            const row: Record<string, unknown> = {
+              id: generateId(),
+              bank_account_id: accountId,
+              date,
+              amount,
+              counterparty,
+              purpose,
+              is_reconciled: false,
+              created_at: new Date().toISOString(),
+            };
+            if (ibanStr) row.iban = ibanStr;
+            if (banksapiTxId) row.banksapi_transaction_id = banksapiTxId;
             return row;
           });
           const { error: txErr } = await supabase.from('bank_transactions').insert(txRows);
