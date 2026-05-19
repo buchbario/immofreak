@@ -20,11 +20,14 @@ export function useRentalContracts(propertyId?: string) {
     return store.update(id, data);
   };
 
+  const deleteContract = (id: string) => store.remove(id);
+
   return {
     contracts,
     allContracts: store.items,
     createContract,
     updateContract,
+    deleteContract,
     getContract: store.getById,
   };
 }
