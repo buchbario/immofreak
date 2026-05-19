@@ -177,22 +177,98 @@ async function realDeleteRegprotectSessions(): Promise<void> {
   }
 }
 
-// BANKSapi-Sentinel: "User wählt Provider in der Webform aus"
-const PROVIDER_PICK_IN_WEBFORM = '00000000-0000-0000-0000-000000000000';
+// BANKSapi-Demo-Provider — NICHT für echte User. Wird nur als Notfall-Fallback
+// für Tests genutzt; falls die Provider-Lookup fehlschlägt sollte besser ein
+// Fehler an den Frontend gehen statt im Demo zu landen.
+const DEMO_PROVIDER_ID = '00000000-0000-0000-0000-000000000000';
+
+interface BanksapiProvider {
+  id: string;
+  name?: string;
+  bic?: string;
+  blz?: string;
+}
+
+let providersCache: { list: BanksapiProvider[]; expiresAt: number } | null = null;
+
+/** Lädt die /providers/v2-Liste (4000+ Banken) und cached sie 1h. */
+async function getBanksapiProviders(): Promise<BanksapiProvider[]> {
+  const now = Date.now();
+  if (providersCache && providersCache.expiresAt > now) return providersCache.list;
+  const token = await getBanksapiToken();
+  const res = await fetch(`${ENV.BANKSAPI_BASE_URL}/providers/v2`, {
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`providers/v2 fetch failed (${res.status})`);
+  const json = await res.json();
+  const list: BanksapiProvider[] = Array.isArray(json) ? json : (json?.providers ?? []);
+  providersCache = { list, expiresAt: now + 60 * 60 * 1000 };
+  return list;
+}
+
+/**
+ * Findet den BANKSapi-Provider für eine Bank anhand BIC und/oder BLZ. BLZ
+ * ist exakt — BIC kann mehrdeutig sein (Sparkasse hat 1 BIC, viele Filialen).
+ */
+function findBanksapiProvider(
+  providers: BanksapiProvider[],
+  opts: { bic?: string; blz?: string },
+): BanksapiProvider | null {
+  if (opts.blz) {
+    for (const p of providers) if (p.blz === opts.blz) return p;
+  }
+  if (opts.bic) {
+    const bic = opts.bic.toUpperCase();
+    const base = bic.slice(0, 8);
+    // 1. exakter BIC-Match
+    for (const p of providers) if ((p.bic || '').toUpperCase() === bic) return p;
+    // 2. BIC mit XXX-Suffix (BANKSapi nutzt oft 11-stellige BICs)
+    for (const p of providers) if ((p.bic || '').toUpperCase() === bic.slice(0, 8) + 'XXX') return p;
+    // 3. Base-8-Match (kann mehrdeutig sein, nimmt den ersten)
+    for (const p of providers) if ((p.bic || '').toUpperCase().startsWith(base)) return p;
+  }
+  return null;
+}
+
+/**
+ * Extrahiert die BLZ aus einer deutschen IBAN: Zeichen 5-12 (1-indexed) =
+ * BLZ. Z.B. DE89370400440532013000 → BLZ 37040044 (Commerzbank Köln).
+ */
+function blzFromIban(iban: string | undefined): string | undefined {
+  if (!iban) return undefined;
+  const clean = iban.replace(/\s+/g, '').toUpperCase();
+  if (!clean.startsWith('DE') || clean.length !== 22) return undefined;
+  return clean.slice(4, 12);
+}
 
 async function realCreateWebform(opts: {
   accessId: string;
   callbackUrl: string;
   customerIp: string;
+  bankBic?: string;
+  iban?: string;
 }): Promise<string> {
   // Alte Sessions löschen (Best-Practice, non-fatal bei Fehler).
   await realDeleteRegprotectSessions();
 
+  // Provider-Lookup: BLZ (aus IBAN) ist genauer als BIC.
+  const providers = await getBanksapiProviders();
+  const blz = blzFromIban(opts.iban);
+  const provider = findBanksapiProvider(providers, { bic: opts.bankBic, blz });
+
+  if (!provider) {
+    throw new Error(
+      `Diese Bank wurde bei BANKSapi nicht gefunden (BIC: ${opts.bankBic || '–'}, BLZ: ${blz || '–'}). ` +
+      `Bitte gib deine IBAN ein, damit wir die richtige Filiale auswählen können.`,
+    );
+  }
+
+  // eslint-disable-next-line no-console
+  console.log(`[banksapi] connect/start matched provider id=${provider.id} name=${provider.name} bic=${provider.bic} blz=${provider.blz}`);
+
   const token = await getBanksapiToken();
   const url = `${ENV.BANKSAPI_BASE_URL}/customer/v2/bankzugaenge?callbackUrl=${encodeURIComponent(opts.callbackUrl)}`;
-  // BANKSapi will einen providerId-Eintrag haben, auch wenn der User die Bank
-  // in der Webform aussucht — All-Zeros-UUID ist das Sentinel dafür.
-  const body = { [opts.accessId]: { providerId: PROVIDER_PICK_IN_WEBFORM } };
+  const body = { [opts.accessId]: { providerId: provider.id } };
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -203,19 +279,19 @@ async function realCreateWebform(opts: {
     body: JSON.stringify(body),
     redirect: 'manual',
   });
-  // BANKSapi liefert 451 (Unavailable For Legal Reasons) als Signal für
-  // "User-Interaction benötigt" — die eigentliche Webform-URL steht im
-  // Location-Header. 201/200 wären andere Statuscodes je nach Doc-Version.
+  // BANKSapi liefert 451 als Signal für "User-Interaction benötigt" — die
+  // eigentliche Webform-URL steht im Location-Header.
   if (![451, 201, 200].includes(res.status)) {
     const txt = await res.text();
-    const headers: Record<string, string> = {};
-    res.headers.forEach((v, k) => { headers[k] = v; });
-    throw new Error(`BANKSapi webform request failed (${res.status}): body="${txt}" url="${url}" headers=${JSON.stringify(headers)}`);
+    throw new Error(`BANKSapi webform request failed (${res.status}): ${txt}`);
   }
   const location = res.headers.get('Location') || res.headers.get('location');
   if (!location) throw new Error('BANKSapi gab keine Webform-URL zurück (Location-Header fehlt)');
   return location;
 }
+
+// Kept for backwards-compat / debug — currently unused but documents the demo sentinel.
+void DEMO_PROVIDER_ID;
 
 /**
  * Liest den Bankzugang inkl. Konten/Produkte. Wird nach Rückkehr aus der
@@ -445,6 +521,8 @@ function stubBuildTransactions(accessId: string, isResync: boolean) {
 interface ConnectStartBody {
   redirectUri: string;
   bankKey?: string;
+  bankBic?: string;
+  iban?: string;
   accountHolder?: string;
   label?: string;
 }
@@ -468,7 +546,13 @@ async function handleConnectStart(body: ConnectStartBody, customerIp: string) {
   const appCallbackUrl = `${body.redirectUri}${sep}${queryParts.join('&')}`;
 
   if (REAL_MODE) {
-    const webformUrl = await realCreateWebform({ accessId, callbackUrl: appCallbackUrl, customerIp });
+    const webformUrl = await realCreateWebform({
+      accessId,
+      callbackUrl: appCallbackUrl,
+      customerIp,
+      bankBic: body.bankBic,
+      iban: body.iban,
+    });
     return jsonResponse({ redirectUrl: webformUrl, accessId, mode: 'real' });
   }
 

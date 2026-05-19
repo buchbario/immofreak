@@ -366,8 +366,15 @@ function ConnectModal({ onClose }: { onClose: () => void }) {
   const [selected, setSelected] = useState<BankPreset | null>(null);
   const [label, setLabel] = useState('');
   const [holder, setHolder] = useState('');
+  const [iban, setIban] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  // Bei Sparkasse/Volksbank brauchen wir die IBAN um die richtige Filiale
+  // zu finden — der generische BIC im Preset reicht da nicht.
+  const needsIbanForProvider = selected
+    ? /sparkasse|volksbank|raiffeisen|genoss/i.test(selected.name)
+    : false;
 
   const handleConnect = async () => {
     if (!selected) return;
@@ -378,6 +385,8 @@ function ConnectModal({ onClose }: { onClose: () => void }) {
       const result = await startBanksapiConnect({
         redirectUri,
         bankKey: bankKeyFor(selected.name),
+        bankBic: selected.bic,
+        iban: iban.trim() || undefined,
         accountHolder: holder,
         label,
       });
@@ -498,6 +507,25 @@ function ConnectModal({ onClose }: { onClose: () => void }) {
                 />
               </div>
 
+              <div>
+                <label className="input-label">
+                  IBAN <span className="text-muted-foreground font-normal">
+                    {needsIbanForProvider ? '(Pflicht für diese Bank)' : '(optional)'}
+                  </span>
+                </label>
+                <input
+                  value={iban}
+                  onChange={e => setIban(e.target.value.toUpperCase())}
+                  className="input font-mono tracking-wider"
+                  placeholder="DE89 3704 0044 0532 0130 00"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  {needsIbanForProvider
+                    ? 'Wir brauchen die IBAN um deine konkrete Filiale zu identifizieren — Sparkasse/Volksbank haben viele Standorte.'
+                    : 'Wenn angegeben, wird die richtige Bank-Filiale exakt zugeordnet.'}
+                </p>
+              </div>
+
               <p className="text-xs text-muted-foreground flex items-start gap-2">
                 <ShieldCheck size={13} className="text-[#4F6BFF] mt-0.5 shrink-0" />
                 Du wirst auf das sichere Bank-Login weitergeleitet und bestätigst dort den
@@ -519,7 +547,12 @@ function ConnectModal({ onClose }: { onClose: () => void }) {
             <button onClick={() => setStep('select')} className="btn btn-md btn-secondary" disabled={busy}>
               Zurück
             </button>
-            <button onClick={handleConnect} disabled={busy} className="btn btn-md btn-primary">
+            <button
+              onClick={handleConnect}
+              disabled={busy || (needsIbanForProvider && !iban.trim())}
+              className="btn btn-md btn-primary"
+              title={needsIbanForProvider && !iban.trim() ? 'IBAN erforderlich' : undefined}
+            >
               {busy ? <Loader2 size={14} className="animate-spin" /> : <Link2 size={14} />}
               {busy ? 'Weiterleitung …' : 'Verbinden'}
             </button>

@@ -70,6 +70,11 @@ async function invoke<T>(path: string, body?: Record<string, unknown>, method: '
 export function startBanksapiConnect(opts: {
   redirectUri: string;
   bankKey: string;
+  /** BIC der gewählten Bank — Edge Function nutzt das zur Provider-Auflösung. */
+  bankBic?: string;
+  /** IBAN des Users (optional). Wird genutzt um die exakte Filiale per BLZ zu finden
+   *  — wichtig bei Sparkasse/Volksbank wo der BIC mehrdeutig ist. */
+  iban?: string;
   accountHolder?: string;
   /** Optionale interne Konto-Bezeichnung — wird im Callback wieder eingelesen. */
   label?: string;
