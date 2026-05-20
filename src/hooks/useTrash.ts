@@ -99,14 +99,16 @@ export function daysLeftInTrash(deletedAt: string): number {
 export function useTrash() {
   const store = useStorageAdapter(trashStore);
 
+  // Nur auf `store.items` abhängen — sonst läuft der Effect bei jedem Render,
+  // weil das Store-Objekt ohne Memoization vor dem Fix instabil war. `trashStore.delete`
+  // benachrichtigt die Subscriber bereits, daher braucht es kein explizites `refresh()`.
   useEffect(() => {
     const now = Date.now();
     const expired = store.items.filter((i) => now - new Date(i.deletedAt).getTime() > THIRTY_DAYS_MS);
     if (expired.length > 0) {
       expired.forEach((i) => trashStore.delete(i.id));
-      store.refresh();
     }
-  }, [store]);
+  }, [store.items]);
 
   const sorted = useMemo(
     () => [...store.items].sort((a, b) => b.deletedAt.localeCompare(a.deletedAt)),
@@ -149,7 +151,6 @@ export function useTrash() {
 
   const emptyTrash = () => {
     store.items.forEach((i) => trashStore.delete(i.id));
-    store.refresh();
   };
 
   return {

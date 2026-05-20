@@ -26,7 +26,7 @@ function fmtDateLong(d?: string) {
   if (!d) return '--';
   return new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(d));
 }
-function daysUntil(date?: string) {
+function daysUntil(date?: string | null) {
   if (!date) return null;
   const ms = new Date(date).getTime() - Date.now();
   return Math.ceil(ms / (1000 * 60 * 60 * 24));
@@ -97,17 +97,19 @@ export function TaskListPage({ mode }: TaskListPageProps = {}) {
   // Aufgabe, deren Abhaken gerade bestätigt werden soll. Beim Zurück-Setzen
   // (erledigt → offen) wird KEIN Modal gezeigt, das ist nur Korrektur.
   const [confirmingDone, setConfirmingDone] = useState<Task | null>(null);
+  // Stabiler Mount-Timestamp — verhindert `react-hooks/purity`-Lint und sorgt für
+  // konsistente "überfällig"-Anzeige während die Komponente sichtbar ist.
+  const [nowMs] = useState(() => Date.now());
 
   const counts = useMemo(() => {
-    const now = Date.now();
     const offen = allTasks.filter((t) => t.status === 'offen').length;
     const inBearbeitung = allTasks.filter((t) => t.status === 'in-bearbeitung').length;
     const erledigt = allTasks.filter((t) => t.status === 'erledigt').length;
     const ueberfaellig = allTasks.filter(
-      (t) => t.status !== 'erledigt' && t.dueDate && new Date(t.dueDate).getTime() < now,
+      (t) => t.status !== 'erledigt' && t.dueDate && new Date(t.dueDate).getTime() < nowMs,
     ).length;
     return { offen, inBearbeitung, erledigt, ueberfaellig, total: allTasks.length };
-  }, [allTasks]);
+  }, [allTasks, nowMs]);
 
   const filtered = useMemo(() => {
     let list = [...allTasks];
@@ -121,14 +123,13 @@ export function TaskListPage({ mode }: TaskListPageProps = {}) {
           properties.find((p) => p.id === t.propertyId)?.name.toLowerCase().includes(q),
       );
     }
-    const now = Date.now();
     if (filter === 'offen') list = list.filter((t) => t.status === 'offen');
     else if (filter === 'in-bearbeitung') list = list.filter((t) => t.status === 'in-bearbeitung');
     else if (filter === 'erledigt') list = list.filter((t) => t.status === 'erledigt');
     else if (filter === 'ueberfaellig')
-      list = list.filter((t) => t.status !== 'erledigt' && t.dueDate && new Date(t.dueDate).getTime() < now);
+      list = list.filter((t) => t.status !== 'erledigt' && t.dueDate && new Date(t.dueDate).getTime() < nowMs);
     return list;
-  }, [allTasks, search, filter, properties]);
+  }, [allTasks, search, filter, properties, nowMs]);
 
   // Group filtered tasks by status
   const grouped = useMemo(() => {

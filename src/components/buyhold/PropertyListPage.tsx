@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useRentalProperties } from '../../hooks/useRentalProperties';
 import { useRentalUnits } from '../../hooks/useRentalUnits';
+import { useTenants } from '../../hooks/useTenants';
 import { usePropertyPhotos } from '../../hooks/usePropertyPhotos';
 import { useTranslation } from '../../context/LocaleContext';
 import { PropertyForm } from './PropertyForm';
@@ -32,6 +33,10 @@ function readPersistedViewMode(): ViewMode {
 export function PropertyListPage() {
   const { properties, createProperty } = useRentalProperties();
   const { allUnits } = useRentalUnits();
+  // Belegung wird aus `tenants.unitId` abgeleitet — das ist die Quelle der Wahrheit.
+  // `units.tenantId` ist denormalisiert und kann durch FK-Races temporär NULL bleiben.
+  const { allTenants } = useTenants();
+  const occupiedUnitIds = new Set(allTenants.map((t) => t.unitId).filter((id): id is string => !!id));
   const { allPhotos } = usePropertyPhotos();
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -156,7 +161,7 @@ export function PropertyListPage() {
               const monthlyRent = units.reduce((s, u) => s + u.currentRent, 0);
               const yearlyRent = monthlyRent * 12;
               const rendite = p.purchasePrice > 0 ? (yearlyRent / p.purchasePrice) * 100 : 0;
-              const occupied = units.filter((u) => u.tenantId).length;
+              const occupied = units.filter((u) => occupiedUnitIds.has(u.id)).length;
               const occupancyRate = units.length > 0 ? (occupied / units.length) * 100 : 0;
               const cover = getCover(p.id);
 
@@ -268,7 +273,7 @@ export function PropertyListPage() {
                 const monthlyRent = units.reduce((s, u) => s + u.currentRent, 0);
                 const yearlyRent = monthlyRent * 12;
                 const rendite = p.purchasePrice > 0 ? (yearlyRent / p.purchasePrice) * 100 : 0;
-                const occupied = units.filter((u) => u.tenantId).length;
+                const occupied = units.filter((u) => occupiedUnitIds.has(u.id)).length;
                 const occupancyRate = units.length > 0 ? (occupied / units.length) * 100 : 0;
                 const cover = getCover(p.id);
 
@@ -353,7 +358,7 @@ export function PropertyListPage() {
               const monthlyRent = units.reduce((s, u) => s + u.currentRent, 0);
               const yearlyRent = monthlyRent * 12;
               const rendite = p.purchasePrice > 0 ? (yearlyRent / p.purchasePrice) * 100 : 0;
-              const occupied = units.filter((u) => u.tenantId).length;
+              const occupied = units.filter((u) => occupiedUnitIds.has(u.id)).length;
               const cover = getCover(p.id);
 
               return (

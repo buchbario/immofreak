@@ -32,11 +32,39 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 // ── CORS ─────────────────────────────────────────────────────────────────────
+// Allowlist für `redirectUri` (Open-Redirect-Schutz). `ALLOWED_ORIGINS` aus ENV
+// (Komma-separiert) erlaubt zusätzliche Frontends, z.B. Staging-Deployments.
+// Defaults decken localhost-Dev + die Production-Domain ab.
+const ALLOWED_ORIGINS_ENV = (Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map((s) => s.trim()).filter(Boolean);
+const ALLOWED_ORIGINS = new Set<string>([
+  'http://localhost:5173',
+  'http://localhost:4173',
+  'https://immofreak.vercel.app',
+  ...ALLOWED_ORIGINS_ENV,
+]);
+
+// CORS bleibt `*` für die Function selbst — Auth via Bearer-Token, kein Credentials-Mode,
+// daher kein Datenleck-Risiko durch Cross-Origin-Calls. Der wirkliche Schutz ist die
+// Allowlist für `redirectUri` (siehe `isAllowedRedirect`).
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, GET, DELETE, OPTIONS',
 };
+
+function corsHeadersFor(_req: Request): Record<string, string> {
+  return corsHeaders;
+}
+
+/** Prüft, ob `uri` zu einem erlaubten Origin gehört (Open-Redirect-Schutz). */
+function isAllowedRedirect(uri: string): boolean {
+  try {
+    const u = new URL(uri);
+    return ALLOWED_ORIGINS.has(`${u.protocol}//${u.host}`);
+  } catch {
+    return false;
+  }
+}
 
 // ── ENV / Mode ───────────────────────────────────────────────────────────────
 const ENV = {
@@ -52,7 +80,7 @@ const ENV = {
 const REAL_MODE = !!(ENV.BANKSAPI_CLIENT_ID && ENV.BANKSAPI_CLIENT_SECRET);
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-function jsonResponse(body: unknown, status = 200): Response {
+function jsonResponse(body: unknown, status = 200, _req?: Request): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -482,8 +510,18 @@ function parseAmount(value: number | string | undefined): number {
   return 0;
 }
 
-async function mapBankzugangToAccount(z: BanksapiBankzugang, holderFallback: string) {
-  const produkt = z.bankprodukte?.[0];
+/**
+ * Mappt einen Bankzugang auf unser Account-Schema. Wenn `productKey` (productId
+ * ODER IBAN) gesetzt ist, suchen wir gezielt nach diesem Produkt — wichtig bei
+ * Zugängen mit mehreren Produkten (Giro+Tagesgeld), sonst würde immer das erste
+ * Produkt zurückgegeben und der Saldo wäre für das gewünschte Konto falsch.
+ */
+async function mapBankzugangToAccount(z: BanksapiBankzugang, holderFallback: string, productKey?: string) {
+  const produkte = normalizeProdukte(z.bankprodukte);
+  const produkt =
+    (productKey ? produkte.find((p) => p.id === productKey || p.iban === productKey) : undefined)
+    ?? produkte[0];
+
   const saldoNum =
     typeof produkt?.saldo === 'number'
       ? produkt.saldo
@@ -631,8 +669,12 @@ interface ConnectStartBody {
   label?: string;
 }
 
-async function handleConnectStart(body: ConnectStartBody, customerIp: string) {
-  if (!body.redirectUri) return jsonResponse({ error: 'redirectUri missing' }, 400);
+async function handleConnectStart(body: ConnectStartBody, customerIp: string, req: Request) {
+  if (!body.redirectUri) return jsonResponse({ error: 'redirectUri missing' }, 400, req);
+  // Open-Redirect-Schutz: nur Frontends auf der Allowlist dürfen als Callback dienen.
+  if (!isAllowedRedirect(body.redirectUri)) {
+    return jsonResponse({ error: 'redirectUri not allowed' }, 400, req);
+  }
 
   const accessId = crypto.randomUUID();
 
@@ -660,13 +702,13 @@ async function handleConnectStart(body: ConnectStartBody, customerIp: string) {
       bankBic: body.bankBic,
       iban: body.iban,
     });
-    return jsonResponse({ redirectUrl: webformUrl, accessId, mode: 'real' });
+    return jsonResponse({ redirectUrl: webformUrl, accessId, mode: 'real' }, 200, req);
   }
 
   // STUB: redirected direkt auf den Frontend-Callback mit fake-code zurück.
   const code = `stub-${accessId}`;
   const redirectUrl = `${appCallbackUrl}&code=${encodeURIComponent(code)}`;
-  return jsonResponse({ redirectUrl, accessId, code, mode: 'stub' });
+  return jsonResponse({ redirectUrl, accessId, code, mode: 'stub' }, 200, req);
 }
 
 interface ConnectFinishBody {
@@ -724,33 +766,50 @@ async function handleConnectFinish(body: ConnectFinishBody) {
   return jsonResponse({ account, transactions, mode: 'stub' });
 }
 
-async function handleAccountSync(accessId: string) {
+/**
+ * Sync für ein Konto. `productKey` (optional, productId ODER IBAN) erlaubt es,
+ * gezielt einen bestimmten Bankprodukt-Saldo zurückzugeben — entscheidend wenn
+ * der Zugang mehrere Produkte hat (Giro+Tagesgeld auf derselben accessId).
+ * Ohne `productKey` fallen wir auf das erste Produkt zurück (bisheriges Verhalten).
+ */
+async function handleAccountSync(accessId: string, productKey?: string) {
   if (REAL_MODE) {
     await realRefreshBankzugang(accessId);
     const zugang = await waitForRefreshDone(accessId);
     const produkte = normalizeProdukte(zugang.bankprodukte);
     const transactions: any[] = [];
-    for (const produkt of produkte) {
-      const productKey = produkt.iban || produkt.id || '';
-      if (!productKey) continue;
+    // Wenn ein productKey mitgegeben wurde: NUR Umsätze dieses Produkts ziehen.
+    // Sonst alle Produkte des Zugangs durchgehen (Legacy-Fall ohne productKey).
+    const produkteToSync = productKey
+      ? produkte.filter((p) => p.id === productKey || p.iban === productKey)
+      : produkte;
+    for (const produkt of produkteToSync) {
+      const key = produkt.iban || produkt.id || '';
+      if (!key) continue;
       try {
-        const umsaetze = await realGetKontoumsaetze(accessId, productKey);
+        const umsaetze = await realGetKontoumsaetze(accessId, key);
         for (const u of umsaetze) transactions.push(mapUmsatzToTransaction(u));
       } catch (e) {
         // eslint-disable-next-line no-console
-        console.error(`[banksapi] sync umsatz-fetch failed for product ${productKey}: ${(e as Error).message}`);
+        console.error(`[banksapi] sync umsatz-fetch failed for product ${key}: ${(e as Error).message}`);
       }
     }
-    // Auch das Konto neu mappen — so kann der Client den aktuellen Saldo
-    // anziehen, ohne einen separaten Bankzugang-Call zu machen.
-    const account = await mapBankzugangToAccount(zugang, '');
-    // freshness = 'fresh' wenn BANKSapi VOLLSTAENDIG meldet, 'stale' wenn
-    // wir das Timeout erreicht haben. Der Client kann darauf eine Hinweis-
-    // Toast anzeigen.
+    // Konto neu mappen, gezielt für das angefragte Produkt. So bekommt der
+    // Client immer den Saldo des KONKRETEN Kontos, nicht zufällig den des
+    // ersten Produkts des Zugangs.
+    const account = await mapBankzugangToAccount(zugang, '', productKey);
     const freshness = zugang.status === 'VOLLSTAENDIG' ? 'fresh' : 'stale';
     return jsonResponse({ accessId, account, transactions, mode: 'real', freshness, bankStatus: zugang.status });
   }
-  return jsonResponse({ accessId, account: null, transactions: stubBuildTransactions(accessId, true), mode: 'stub', freshness: 'fresh' });
+  // STUB: simuliert eine "fresh" Antwort mit einem aktuellen Saldo, damit der
+  // Client (a) sieht dass der Refresh durchgelaufen ist, (b) den Saldo
+  // tatsächlich aktualisieren kann (vorher kam `account: null` zurück, was den
+  // Saldo-Update-Pfad im Client komplett geblockt hat).
+  const stubAccount = stubBuildAccount('deutsche-bank', '', 'stub-user');
+  stubAccount.banksapiAccessId = accessId;
+  // Saldo leicht "wackeln" lassen damit der User sieht dass der Refresh wirkt.
+  stubAccount.balance = Math.round((stubAccount.balance + (Math.random() - 0.5) * 50) * 100) / 100;
+  return jsonResponse({ accessId, account: stubAccount, transactions: stubBuildTransactions(accessId, true), mode: 'stub', freshness: 'fresh' });
 }
 
 /**
@@ -775,7 +834,7 @@ async function handleAccountDisconnect(accessId: string) {
 // ── Entry Point ──────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeadersFor(req) });
 
   const url = new URL(req.url);
   const segments = url.pathname.split('/').filter(Boolean);
@@ -783,7 +842,7 @@ Deno.serve(async (req) => {
   const route = fnIdx >= 0 ? segments.slice(fnIdx + 1).join('/') : '';
 
   const user = await requireUser(req);
-  if (!user) return jsonResponse({ error: 'Unauthorized' }, 401);
+  if (!user) return jsonResponse({ error: 'Unauthorized' }, 401, req);
 
   const customerIp =
     req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
@@ -793,20 +852,23 @@ Deno.serve(async (req) => {
   try {
     if (req.method === 'POST' && route === 'connect/start') {
       const body = (await req.json().catch(() => ({}))) as ConnectStartBody;
-      return await handleConnectStart(body, customerIp);
+      return await handleConnectStart(body, customerIp, req);
     }
     if (req.method === 'POST' && route === 'connect/finish') {
       const body = (await req.json().catch(() => ({}))) as ConnectFinishBody;
       return await handleConnectFinish(body);
     }
     if (req.method === 'POST' && route.startsWith('accounts/') && route.endsWith('/sync')) {
-      return await handleAccountSync(route.split('/')[1]);
+      // Optional: { productKey } im Body, damit bei Multi-Produkt-Zugängen
+      // gezielt der Saldo des richtigen Kontos zurückkommt.
+      const body = (await req.json().catch(() => ({}))) as { productKey?: string };
+      return await handleAccountSync(route.split('/')[1], body.productKey);
     }
     if (req.method === 'POST' && route.startsWith('accounts/') && route.endsWith('/disconnect')) {
       return await handleAccountDisconnect(route.split('/')[1]);
     }
     if (req.method === 'GET' && route === 'mode') {
-      return jsonResponse({ mode: REAL_MODE ? 'real' : 'stub' });
+      return jsonResponse({ mode: REAL_MODE ? 'real' : 'stub' }, 200, req);
     }
     // GET /providers/search?q=<query>&limit=30 — Fuzzy-Suche über BANKSapi's
     // Provider-Liste (4000+ Banken). Liefert eine kompakte Liste {id, name,
@@ -819,7 +881,7 @@ Deno.serve(async (req) => {
             { id: 'stub-ing', name: 'ING (Sandbox)', bic: 'INGDDEFFXXX', blz: '50010517' },
           ],
           mode: 'stub',
-        });
+        }, 200, req);
       }
       const q = url.searchParams.get('q')?.trim().toLowerCase() || '';
       const limit = Math.min(Number(url.searchParams.get('limit')) || 30, 100);
@@ -829,10 +891,10 @@ Deno.serve(async (req) => {
         providers: ranked.map((p) => ({ id: p.id, name: p.name, bic: p.bic, blz: p.blz })),
         total: providers.length,
         mode: 'real',
-      });
+      }, 200, req);
     }
-    return jsonResponse({ error: 'Not Found', route, method: req.method }, 404);
+    return jsonResponse({ error: 'Not Found', route, method: req.method }, 404, req);
   } catch (e) {
-    return jsonResponse({ error: (e as Error).message, mode: REAL_MODE ? 'real' : 'stub' }, 500);
+    return jsonResponse({ error: (e as Error).message, mode: REAL_MODE ? 'real' : 'stub' }, 500, req);
   }
 });

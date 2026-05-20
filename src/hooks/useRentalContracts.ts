@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { rentalContractStore } from '../lib/storage';
 import { useStorageAdapter } from './useLocalStorage';
 import { generateId } from '../lib/utils';
@@ -12,15 +13,18 @@ export function useRentalContracts(propertyId?: string) {
   const store = useStorageAdapter(rentalContractStore);
   const contracts = propertyId ? store.items.filter((c) => c.propertyId === propertyId) : store.items;
 
-  const createContract = (data: Omit<RentalContract, 'id' | 'createdAt'>) => {
+  // useCallback macht createContract/deleteContract stabil über Re-Renders.
+  // Wichtig für `useEnsureContractTemplates`, das diese als Effect-Deps benutzt —
+  // unstable refs lösen sonst bei jedem Render ein neues Insert aus.
+  const createContract = useCallback((data: Omit<RentalContract, 'id' | 'createdAt'>) => {
     return store.create({ ...data, id: generateId(), createdAt: new Date().toISOString() });
-  };
+  }, [store]);
 
-  const updateContract = (id: string, data: Partial<RentalContract>) => {
+  const updateContract = useCallback((id: string, data: Partial<RentalContract>) => {
     return store.update(id, data);
-  };
+  }, [store]);
 
-  const deleteContract = (id: string) => store.remove(id);
+  const deleteContract = useCallback((id: string) => store.remove(id), [store]);
 
   return {
     contracts,

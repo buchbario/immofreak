@@ -16,7 +16,7 @@ function getInitials(name: string) {
     .slice(0, 2);
 }
 
-function getLeaseStatus(leaseEnd?: string): { label: string; cls: string } | null {
+function getLeaseStatus(leaseEnd?: string | null): { label: string; cls: string } | null {
   if (!leaseEnd) return { label: 'Unbefristet', cls: 'badge-blue' };
   const now = new Date();
   const end = new Date(leaseEnd);
@@ -26,7 +26,7 @@ function getLeaseStatus(leaseEnd?: string): { label: string; cls: string } | nul
   return null;
 }
 
-function fmtDate(d?: string) {
+function fmtDate(d?: string | null) {
   if (!d) return '--';
   return new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(d));
 }

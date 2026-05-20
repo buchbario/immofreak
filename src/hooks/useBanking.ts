@@ -62,9 +62,9 @@ export function useBanking() {
 
   const unassignTransaction = (txId: string) => {
     txStore.update(txId, {
-      matchedTenantId: undefined,
-      matchedPropertyId: undefined,
-      matchedUnitId: undefined,
+      matchedTenantId: null,
+      matchedPropertyId: null,
+      matchedUnitId: null,
       matchStatus: 'unmatched',
       matchConfidence: 0,
     });
@@ -84,9 +84,9 @@ export function useBanking() {
     } else {
       txStore.update(txId, {
         isIgnored: true,
-        matchedTenantId: undefined,
-        matchedPropertyId: undefined,
-        matchedUnitId: undefined,
+        matchedTenantId: null,
+        matchedPropertyId: null,
+        matchedUnitId: null,
         matchStatus: 'unmatched',
         matchConfidence: 0,
       });

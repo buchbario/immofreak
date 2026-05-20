@@ -17,7 +17,8 @@ export interface MatchContext {
 export interface MatchResult {
   tenantId?: string;
   propertyId?: string;
-  unitId?: string;
+  // null-tolerant — Tenant.unitId ist nullable (DB-Schema), gleiche FK auf Match-Result durchgereicht.
+  unitId?: string | null;
   status: MatchStatus;
   confidence: number;
   reason: string;
@@ -47,7 +48,7 @@ function tokenize(s: string): string[] {
   return normalize(s).split(' ').filter((t) => t.length >= 2);
 }
 
-function normalizeIban(iban: string | undefined): string | undefined {
+function normalizeIban(iban: string | null | undefined): string | undefined {
   if (!iban) return undefined;
   return iban.toUpperCase().replace(/\s+/g, '');
 }

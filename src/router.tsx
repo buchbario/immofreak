@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { createBrowserRouter, Navigate, useNavigationType } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
 import { AuthGuard } from './components/auth/AuthGuard';
@@ -35,14 +36,8 @@ import { TaskListPage } from './components/buyhold/TaskListPage';
 import { DokumenteArchivPage } from './components/buyhold/DokumenteArchivPage';
 import { TrashPage } from './components/buyhold/TrashPage';
 import { SettingsPage } from './components/settings/SettingsPage';
-import { PropertySharePage } from './components/shared/PropertySharePage';
 import { PrivateDashboardPage } from './components/private/PrivateDashboardPage';
 import { PrivateBoardPage } from './components/private/PrivateBoardPage';
-
-// Modul-Singleton: zeigt, ob `RootRedirect` innerhalb dieser Page-Session bereits
-// einmal die Default-Dashboard-Präferenz angewendet hat. Überlebt In-App-Navigation,
-// wird aber bei Page-Reload zurückgesetzt (Modul wird neu evaluiert).
-let defaultDashboardApplied = false;
 
 /**
  * Root-Redirect für `/`.
@@ -52,31 +47,44 @@ let defaultDashboardApplied = false;
  * der Mode-Switch „Fix & Flip" den User wieder nach `/bh` umleiten, wenn seine
  * Default-Präferenz „Buy & Hold" ist.
  *
- * Unterscheidung:
- * - `POP` + erster Mount in dieser Session → echter Page-Load → Default anwenden
- * - `PUSH`/`REPLACE` (In-App-`navigate`) → direkt das F&F-Dashboard rendern
- * - `POP` (Back/Forward) nach initialem Load → F&F-Dashboard (User hatte bewusst
- *   hierher navigiert, also respektieren wir die History)
+ * Persistenz via `sessionStorage` statt Modul-Variable, damit der State nicht
+ * im Render-Body mutiert wird (React-Compiler-Regel `react-hooks/globals`).
+ * `sessionStorage` überlebt In-App-Navigation, wird bei echtem Reload aber
+ * vom Tab beibehalten — daher prüfen wir zusätzlich gegen den ersten POP
+ * dieser Tab-Lebenszeit über `performance.navigation`-Ersatz (siehe useEffect).
  */
+const DEFAULT_APPLIED_KEY = 'immofreak_default_dashboard_applied';
+
 function RootRedirect() {
   const navigationType = useNavigationType();
 
   if (navigationType !== 'POP') {
-    // In-App-Navigation zu `/` → immer F&F-Dashboard
-    defaultDashboardApplied = true;
-    return <DashboardPage />;
+    // In-App-Navigation zu `/` → immer F&F-Dashboard.
+    // Markierung nur als Effect setzen, damit Render rein bleibt.
+    return <DashboardPageWithFlag />;
   }
 
-  if (!defaultDashboardApplied) {
-    // Erster `/`-Mount nach Page-Load → Default-Präferenz anwenden
-    defaultDashboardApplied = true;
+  const applied = sessionStorage.getItem(DEFAULT_APPLIED_KEY) === 'true';
+  if (!applied) {
     const def = getDefaultDashboard();
-    if (def === 'fixflip') return <DashboardPage />;
-    return <Navigate to="/bh" replace />;
+    if (def === 'fixflip') return <DashboardPageWithFlag />;
+    return <NavigateAndFlag to="/bh" />;
   }
-
-  // Back/Forward auf `/` innerhalb der Session → F&F-Dashboard
   return <DashboardPage />;
+}
+
+function DashboardPageWithFlag() {
+  useEffect(() => {
+    sessionStorage.setItem(DEFAULT_APPLIED_KEY, 'true');
+  }, []);
+  return <DashboardPage />;
+}
+
+function NavigateAndFlag({ to }: { to: string }) {
+  useEffect(() => {
+    sessionStorage.setItem(DEFAULT_APPLIED_KEY, 'true');
+  }, []);
+  return <Navigate to={to} replace />;
 }
 
 // 404-Seite: fängt alle unbekannten Pfade innerhalb des AppLayouts ab, damit der
@@ -100,7 +108,9 @@ export const router = createBrowserRouter([
   { path: 'login', element: <LoginPage /> },
   { path: 'signup', element: <SignupPage /> },
   { path: 'reset-password', element: <ResetPasswordPage /> },
-  { path: 'share/:id', element: <PropertySharePage /> },
+  // `/share/:id` wurde entfernt — die Seite las private Property-Daten in einer
+  // öffentlichen Route. Ein vollwertiges Share-Feature müsste über `share_tokens`
+  // mit eigenständiger RLS-Policy implementiert werden.
   {
     path: '/',
     element: <AuthGuard><AppLayout /></AuthGuard>,

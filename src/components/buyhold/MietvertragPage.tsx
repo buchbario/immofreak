@@ -10,26 +10,32 @@ import { useRentalProperties } from '../../hooks/useRentalProperties';
 import { useTranslation } from '../../context/LocaleContext';
 import { cn } from '../../lib/utils';
 import { ContractPreviewModal } from './ContractPreviewModal';
+import { getEffectiveContractStatus } from '../../types';
 import type { RentalContract } from '../../types';
 
-type Filter = 'alle' | 'unbefristet' | 'befristet' | 'auslaufend';
+type Filter = 'alle' | 'unbefristet' | 'befristet' | 'auslaufend' | 'unsigned';
 
 /**
- * Status-Helfer akzeptiert die `t()`-Funktion, damit das Status-Label in der
- * aktuellen Sprache zurückkommt (Unbefristet/Open-ended, Befristet/Fixed-term, …).
+ * Status-Helfer für die Übersichtstabelle. Kombiniert Lifecycle (`status`-Feld)
+ * mit Ablauf-Frist (`endDate`). Sprachausgabe via `t()`-Funktion.
  */
 function getContractStatus(
-  contract: { contractType: string; endDate?: string },
+  contract: RentalContract,
   t: (k: string, vars?: Record<string, string | number>) => string,
+  nowMs: number,
 ) {
-  if (contract.contractType === 'unbefristet') return { label: t('contracts.status.openEnded'), cls: 'badge-blue' };
-  if (!contract.endDate) return { label: t('contracts.status.fixed'), cls: 'badge-amber' };
-  const end = new Date(contract.endDate);
-  const now = new Date();
-  const daysLeft = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  if (daysLeft < 0) return { label: t('contracts.status.expired'), cls: 'badge-red' };
-  if (daysLeft <= 90) return { label: t('contracts.status.daysLeft', { days: daysLeft }), cls: 'badge-amber' };
-  return { label: t('contracts.status.fixed'), cls: 'badge-green' };
+  const status = getEffectiveContractStatus(contract);
+  if (status === 'terminated') return { label: t('contracts.status.expired'), cls: 'badge-red' };
+  if (status === 'draft') return { label: 'Entwurf', cls: 'badge-gray' };
+  if (status === 'generated') return { label: 'Wartet auf Unterschrift', cls: 'badge-amber' };
+  // signed / active — zusätzlich Ablaufwarnung
+  if (contract.endDate) {
+    const end = new Date(contract.endDate);
+    const daysLeft = Math.ceil((end.getTime() - nowMs) / (1000 * 60 * 60 * 24));
+    if (daysLeft < 0) return { label: t('contracts.status.expired'), cls: 'badge-red' };
+    if (daysLeft <= 90) return { label: t('contracts.status.daysLeft', { days: daysLeft }), cls: 'badge-amber' };
+  }
+  return { label: t('contracts.status.openEnded'), cls: 'badge-green' };
 }
 
 export function MietvertragPage() {
@@ -42,6 +48,7 @@ export function MietvertragPage() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('alle');
   const [previewContract, setPreviewContract] = useState<RentalContract | null>(null);
+  const [nowMs] = useState(() => Date.now());
 
   // Locale-spezifische Zahlen-/Datumsformate. Die Werte (€-Beträge) bleiben
   // numerisch identisch, nur Tausenderpunkt/-komma und Datumsreihenfolge ändern sich.
@@ -49,18 +56,38 @@ export function MietvertragPage() {
   const fmt = (n: number) => n.toLocaleString(numLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString(numLocale, { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-  const enriched = useMemo(() => allContracts.map((c) => {
+  // Falls aus Cache-Echos noch Duplikate (mehr als 1 Vertrag pro Mieter)
+  // im Store stehen, zeigen wir hier nur den ältesten je Mieter an —
+  // `useEnsureContractTemplates` räumt parallel im Hintergrund auf.
+  const dedupedContracts = useMemo(() => {
+    const byTenant = new Map<string, typeof allContracts[number]>();
+    for (const c of allContracts) {
+      if (!c.tenantId) continue;
+      const prev = byTenant.get(c.tenantId);
+      if (!prev) { byTenant.set(c.tenantId, c); continue; }
+      const t = prev.createdAt.localeCompare(c.createdAt);
+      if (t > 0 || (t === 0 && prev.id.localeCompare(c.id) > 0)) byTenant.set(c.tenantId, c);
+    }
+    return Array.from(byTenant.values());
+  }, [allContracts]);
+
+  const enriched = useMemo(() => dedupedContracts.map((c) => {
     const tenant = allTenants.find((tn) => tn.id === c.tenantId);
     const unit = allUnits.find((u) => u.id === c.unitId);
     const property = properties.find((p) => p.id === c.propertyId);
     const warmmiete = c.rentAmount + c.operatingCosts + c.heatingCosts;
-    const status = getContractStatus(c, t);
+    const badge = getContractStatus(c, t, nowMs);
     const isExpiring = c.contractType === 'befristet' && c.endDate && (() => {
-      const d = Math.ceil((new Date(c.endDate!).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      const d = Math.ceil((new Date(c.endDate!).getTime() - nowMs) / (1000 * 60 * 60 * 24));
       return d >= 0 && d <= 90;
     })();
-    return { ...c, tenant, unit, property, warmmiete, status, isExpiring };
-  }), [allContracts, allTenants, allUnits, properties, t]);
+    const eff = getEffectiveContractStatus(c);
+    const isUnsigned = eff === 'draft' || eff === 'generated';
+    // `contract` separat halten, damit ein späterer `setPreviewContract(...)` ohne
+    // Typkonflikt funktioniert — der `status`-Field-Name kollidierte sonst mit
+    // RentalContract.status (Lifecycle-Enum).
+    return { contract: c, tenant, unit, property, warmmiete, badge, isExpiring, isUnsigned, ...c };
+  }), [dedupedContracts, allTenants, allUnits, properties, t, nowMs]);
 
   const filtered = useMemo(() => {
     let list = enriched;
@@ -75,12 +102,14 @@ export function MietvertragPage() {
     if (filter === 'unbefristet') list = list.filter((c) => c.contractType === 'unbefristet');
     if (filter === 'befristet') list = list.filter((c) => c.contractType === 'befristet');
     if (filter === 'auslaufend') list = list.filter((c) => c.isExpiring);
+    if (filter === 'unsigned') list = list.filter((c) => c.isUnsigned);
     return list;
   }, [enriched, search, filter]);
 
   const expiringCount = enriched.filter((c) => c.isExpiring).length;
   const unbefristetCount = enriched.filter((c) => c.contractType === 'unbefristet').length;
   const befristetCount = enriched.filter((c) => c.contractType === 'befristet').length;
+  const unsignedCount = enriched.filter((c) => c.isUnsigned).length;
 
   return (
     <div className="page-container">
@@ -115,6 +144,7 @@ export function MietvertragPage() {
             <div className="flex items-center gap-3 sm:gap-4 -mb-3">
               {([
                 { key: 'alle', label: t('contracts.tab.all'), cnt: allContracts.length },
+                { key: 'unsigned', label: 'Unsigniert', cnt: unsignedCount },
                 { key: 'unbefristet', label: t('contracts.tab.openEnded'), cnt: unbefristetCount },
                 { key: 'befristet', label: t('contracts.tab.fixed'), cnt: befristetCount },
                 { key: 'auslaufend', label: t('contracts.tab.expiring'), cnt: expiringCount },
@@ -161,7 +191,7 @@ export function MietvertragPage() {
           ) : (
             <>
               {/* Table Header (desktop) */}
-              <div className="hidden md:grid grid-cols-[1fr_140px_110px_130px_110px_110px_72px] gap-4 px-5 sm:px-7 py-2.5 border-b border-card-divider text-[10.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold">
+              <div className="hidden md:grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_100px_130px_100px_180px_64px] gap-4 px-5 sm:px-7 py-2.5 border-b border-card-divider text-[10.5px] uppercase tracking-wider text-muted-foreground/70 font-semibold">
                 <span>{t('contracts.col.tenantUnit')}</span>
                 <span>{t('contracts.col.property')}</span>
                 <span>{t('contracts.col.warmRent')}</span>
@@ -176,7 +206,7 @@ export function MietvertragPage() {
                   <div
                     key={c.id}
                     onClick={() => navigate(`/bh/mietvertraege/${c.id}`)}
-                    className="grid grid-cols-1 md:grid-cols-[1fr_140px_110px_130px_110px_110px_72px] gap-2 md:gap-4 items-center px-5 sm:px-7 py-3.5 cursor-pointer hover:bg-layer-hover transition-colors"
+                    className="grid grid-cols-1 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_100px_130px_100px_180px_64px] gap-2 md:gap-4 items-center px-5 sm:px-7 py-3.5 cursor-pointer hover:bg-layer-hover transition-colors"
                   >
                     <div className="min-w-0">
                       <span className="text-sm font-semibold text-foreground truncate tracking-tight">{c.tenant?.name || '–'}</span>
@@ -192,10 +222,10 @@ export function MietvertragPage() {
                       <span className="text-[12.5px] tabular-nums text-foreground">{fmt(c.depositAmount)} €</span>
                     </div>
                     <p className="text-[12.5px] text-muted-foreground tabular-nums hidden md:block">{formatDate(c.startDate)}</p>
-                    <span className={`badge ${c.status.cls} hidden md:inline-flex w-fit`}>{c.status.label}</span>
+                    <span className={`badge ${c.badge.cls} hidden md:inline-flex w-fit whitespace-nowrap`}>{c.badge.label}</span>
                     <div className="hidden md:flex items-center justify-end gap-1">
                       <button
-                        onClick={(e) => { e.stopPropagation(); setPreviewContract(c); }}
+                        onClick={(e) => { e.stopPropagation(); setPreviewContract(c.contract); }}
                         className="size-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-[#4F6BFF] hover:bg-[#4F6BFF]/10 transition-colors cursor-pointer"
                         aria-label={t("contracts.action.view")}
                         title={t("contracts.action.view")}
@@ -209,12 +239,12 @@ export function MietvertragPage() {
                     <div className="flex items-center justify-between gap-2 md:hidden">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="text-[11.5px] text-muted-foreground truncate">{c.property?.name}</span>
-                        <span className={`badge ${c.status.cls} flex-shrink-0`}>{c.status.label}</span>
+                        <span className={`badge ${c.badge.cls} flex-shrink-0 whitespace-nowrap`}>{c.badge.label}</span>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <span className="text-[13px] font-semibold tabular-nums text-foreground">{fmt(c.warmmiete)} €</span>
                         <button
-                          onClick={(e) => { e.stopPropagation(); setPreviewContract(c); }}
+                          onClick={(e) => { e.stopPropagation(); setPreviewContract(c.contract); }}
                           className="size-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-[#4F6BFF] hover:bg-[#4F6BFF]/10 transition-colors cursor-pointer"
                           aria-label={t("contracts.action.view")}
                         >

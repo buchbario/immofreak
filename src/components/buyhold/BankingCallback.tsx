@@ -58,6 +58,8 @@ export function BankingCallback() {
   useEffect(() => {
     if (ranRef.current) return;
     ranRef.current = true;
+    let mounted = true;
+    let navTimer: ReturnType<typeof setTimeout> | null = null;
 
     const code = params.get('code') || undefined;
     const accessId = params.get('accessId') || undefined;
@@ -161,14 +163,23 @@ export function BankingCallback() {
         bankAccountStore.invalidate();
         bankTransactionStore.invalidate();
 
+        if (!mounted) return;
         setState('success');
         setMessage(`${result.account.bankName} verbunden – ${result.transactions.length} Transaktionen importiert.`);
-        setTimeout(() => navigate('/bh/banking', { replace: true }), 1500);
+        navTimer = setTimeout(() => {
+          if (mounted) navigate('/bh/banking', { replace: true });
+        }, 1500);
       } catch (e) {
+        if (!mounted) return;
         setError((e as Error).message || 'Unbekannter Fehler');
         setState('error');
       }
     })();
+
+    return () => {
+      mounted = false;
+      if (navTimer) clearTimeout(navTimer);
+    };
   }, [params, navigate]);
 
   return (

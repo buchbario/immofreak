@@ -24,7 +24,7 @@ export function useTasks(propertyId?: string) {
   const toggleStatus = (id: string, status: Task['status']) => {
     const patch: Partial<Task> = { status, updatedAt: new Date().toISOString() };
     if (status === 'erledigt') patch.completedAt = new Date().toISOString();
-    else patch.completedAt = undefined;
+    else patch.completedAt = null; // explizit löschen — sonst bleibt der Timestamp in der DB.
     return store.update(id, patch);
   };
 

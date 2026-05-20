@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit2, Trash2, Plus, Wallet, CheckCircle2, XCircle } from 'lucide-react';
+import {
+  ArrowLeft, Edit2, Trash2, Plus, Wallet, CheckCircle2, XCircle,
+  FileText, PenLine, AlertTriangle,
+} from 'lucide-react';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { useTenants } from '../../hooks/useTenants';
 import { useRentalProperties } from '../../hooks/useRentalProperties';
@@ -13,7 +16,9 @@ import { cascadeTenantToTrash } from '../../lib/cascadeDelete';
 import { DocumentList } from '../shared/DocumentList';
 import { TenantForm } from './TenantForm';
 import { PaymentForm } from './PaymentForm';
-import type { TenantPayment } from '../../types';
+import { buildDefaultContractFromTenant } from '../../lib/contractTemplate';
+import { getEffectiveContractStatus } from '../../types';
+import type { TenantPayment, RentalContract } from '../../types';
 
 function statusDotClass(status: TenantPayment['status']) {
   switch (status) {
@@ -30,7 +35,7 @@ export function TenantDetailPage() {
   const { properties } = useRentalProperties();
   const { allUnits } = useRentalUnits();
   const { payments, createPayment, deletePayment } = useTenantPayments(id);
-  const { allContracts } = useRentalContracts();
+  const { allContracts, createContract } = useRentalContracts();
   const { moveToTrash } = useTrash();
   const [showEdit, setShowEdit] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -38,7 +43,17 @@ export function TenantDetailPage() {
   const [showPaymentForm, setShowPaymentForm] = useState(false);
 
   const tenant = allTenants.find((t) => t.id === id);
-  const tenantContracts = allContracts.filter((c) => c.tenantId === id);
+  // Pro Mieter darf max. EIN Mietvertrag sichtbar sein. Falls (z.B. wegen
+  // Cache-Echos vor dem Dedup-Run) mehrere existieren, zeigen wir nur den
+  // ältesten (`createdAt asc`) — `useEnsureContractTemplates` räumt die
+  // Duplikate parallel im Hintergrund weg.
+  const tenantContracts = allContracts
+    .filter((c) => c.tenantId === id)
+    .sort((a, b) => {
+      const t = a.createdAt.localeCompare(b.createdAt);
+      return t !== 0 ? t : a.id.localeCompare(b.id);
+    })
+    .slice(0, 1);
   if (!tenant) {
     return (
       <div className="page-container">
@@ -199,6 +214,30 @@ export function TenantDetailPage() {
             <div className="surface">
               <div className="p-5">
                 <h3 className="section-title mb-4">Mietvertrag</h3>
+                {/* Empty-State: noch kein Vertrag — CTA "Generieren" */}
+                <div className="rounded-lg border border-dashed border-card-line bg-neutral-50 dark:bg-neutral-900/40 p-4 mb-4">
+                  <div className="flex items-start gap-2.5">
+                    <AlertTriangle size={16} className="text-amber-500 mt-0.5 shrink-0" />
+                    <div className="text-sm">
+                      <p className="font-medium text-foreground">Noch kein Mietvertrag angelegt.</p>
+                      <p className="text-muted-foreground mt-0.5">
+                        Generiere einen Standardvertrag aus den Mieter-Stammdaten und lade nach Unterschrift den Scan hoch.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      onClick={() => {
+                        const data = buildDefaultContractFromTenant(tenant, unit);
+                        const created = createContract(data);
+                        navigate(`/bh/mietvertraege/${created.id}`);
+                      }}
+                      className="btn btn-sm btn-primary"
+                    >
+                      <FileText size={13} /> Vertrag generieren
+                    </button>
+                  </div>
+                </div>
                 <div className="space-y-3">
                   {[
                     { label: 'Einzugsdatum', value: tenant.moveInDate ? formatDate(tenant.moveInDate) : '--' },
@@ -293,24 +332,35 @@ export function TenantDetailPage() {
 
 /* ---------- Tenant Contract Card ---------- */
 function TenantContractCard({ contract, navigate, fmt, formatDate }: {
-  contract: import('../../types').RentalContract;
+  contract: RentalContract;
   navigate: ReturnType<typeof useNavigate>;
   fmt: (n: number) => string;
   formatDate: (d: string) => string;
 }) {
   const { documents, addDocument, deleteDocument } = useContractDocuments(contract.id);
   const warmmiete = contract.rentAmount + contract.operatingCosts + contract.heatingCosts;
+  // Mount-Zeit-Snapshot — verhindert `react-hooks/purity`-Lint.
+  const [nowMs] = useState(() => Date.now());
 
+  const effectiveStatus = getEffectiveContractStatus(contract);
+  // Status-Badge spiegelt den Lifecycle wider (Entwurf/Generiert/Unterschrieben),
+  // nicht mehr nur `contractType` + `endDate`. Ablauf wird zusätzlich angezeigt,
+  // wenn der Vertrag aktiv ist.
   const getStatus = () => {
-    if (contract.contractType === 'unbefristet') return { label: 'Unbefristet', cls: 'badge-blue' };
-    if (!contract.endDate) return { label: 'Befristet', cls: 'badge-amber' };
-    const end = new Date(contract.endDate);
-    const daysLeft = Math.ceil((end.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-    if (daysLeft < 0) return { label: 'Abgelaufen', cls: 'badge-red' };
-    if (daysLeft <= 90) return { label: `${daysLeft}T übrig`, cls: 'badge-amber' };
-    return { label: 'Befristet', cls: 'badge-green' };
+    if (effectiveStatus === 'terminated') return { label: 'Beendet', cls: 'badge-red' };
+    if (effectiveStatus === 'draft') return { label: 'Entwurf', cls: 'badge-gray' };
+    if (effectiveStatus === 'generated') return { label: 'Wartet auf Unterschrift', cls: 'badge-amber' };
+    // signed/active: prüfe Ablauf
+    if (contract.endDate) {
+      const end = new Date(contract.endDate);
+      const daysLeft = Math.ceil((end.getTime() - nowMs) / (1000 * 60 * 60 * 24));
+      if (daysLeft < 0) return { label: 'Abgelaufen', cls: 'badge-red' };
+      if (daysLeft <= 90) return { label: `${daysLeft}T übrig`, cls: 'badge-amber' };
+    }
+    return { label: 'Unterschrieben', cls: 'badge-green' };
   };
   const status = getStatus();
+  const needsSignature = effectiveStatus === 'draft' || effectiveStatus === 'generated';
 
   return (
     <div className="bg-card border border-card-line rounded-xl overflow-hidden">
@@ -362,6 +412,24 @@ function TenantContractCard({ contract, navigate, fmt, formatDate }: {
             )}
           </div>
         </div>
+
+        {/* Hinweis falls Unterschrift noch fehlt */}
+        {needsSignature && (
+          <div className="border-t border-card-divider pt-3 flex items-start gap-2 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 p-2.5">
+            <PenLine size={14} className="text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+            <p className="text-xs text-foreground">
+              {effectiveStatus === 'draft'
+                ? 'Entwurf — bitte Vertrag generieren und unterschreiben lassen.'
+                : 'Vertrag generiert — warte auf Unterschrift.'}{' '}
+              <button
+                onClick={() => navigate(`/bh/mietvertraege/${contract.id}`)}
+                className="font-semibold text-[#4F6BFF] hover:underline"
+              >
+                Zum Vertrag →
+              </button>
+            </p>
+          </div>
+        )}
 
         {/* Contract Documents */}
         <div className="border-t border-card-divider pt-3">

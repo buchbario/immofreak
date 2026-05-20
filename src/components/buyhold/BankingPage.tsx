@@ -11,8 +11,7 @@ import { useRentalProperties } from '../../hooks/useRentalProperties';
 import { useRentalUnits } from '../../hooks/useRentalUnits';
 import { useTenants } from '../../hooks/useTenants';
 import { useRentalContracts } from '../../hooks/useRentalContracts';
-import { useTrash } from '../../hooks/useTrash';
-import { cascadeBankAccountToTrash } from '../../lib/cascadeDelete';
+import { deleteBankAccountPermanently } from '../../lib/cascadeDelete';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { cn, formatDate, formatDateTime } from '../../lib/utils';
 import { PageCard } from '../ui/PageCard';
@@ -323,8 +322,21 @@ function MerchantLogo({
   fallback: React.ReactNode;
   size?: number;
 }) {
+  // `key={domain}` zwingt React beim Wechsel der Bank zu einem Remount —
+  // damit ist `setFailed(false)` im Effect (Verstoß gegen `set-state-in-effect`) überflüssig.
+  return <BankFaviconInner key={domain || 'none'} domain={domain} fallback={fallback} size={size} />;
+}
+
+function BankFaviconInner({
+  domain,
+  fallback,
+  size,
+}: {
+  domain?: string;
+  fallback: React.ReactNode;
+  size: number;
+}) {
   const [failed, setFailed] = useState(false);
-  useEffect(() => { setFailed(false); }, [domain]);
   if (!domain || failed) return <>{fallback}</>;
   return (
     <img
@@ -358,6 +370,19 @@ function BankLogo({
   /** Wrap in a white background so dark logos (e.g. on gradient cards) stay readable. */
   whiteBg?: boolean;
 }) {
+  // Remount per Bank-Domain → kein `setState`-im-Effect für den Reset nötig.
+  return <BankLogoInner key={bank.domain || 'none'} bank={bank} size={size} whiteBg={whiteBg} />;
+}
+
+function BankLogoInner({
+  bank,
+  size,
+  whiteBg,
+}: {
+  bank: BankPreset;
+  size: number;
+  whiteBg: boolean;
+}) {
   const sources = useMemo(() => {
     if (!bank.domain) return [];
     return [
@@ -367,9 +392,6 @@ function BankLogo({
   }, [bank.domain]);
 
   const [srcIndex, setSrcIndex] = useState(0);
-
-  // Reset when bank changes.
-  useEffect(() => { setSrcIndex(0); }, [bank.domain]);
 
   if (sources.length === 0 || srcIndex >= sources.length) {
     return <Landmark size={Math.round(size * 0.9)} style={{ color: bank.color }} />;
@@ -770,7 +792,6 @@ export function BankingPage() {
   const { allUnits } = useRentalUnits();
   const { allTenants } = useTenants();
   const { allContracts } = useRentalContracts();
-  const { moveToTrash } = useTrash();
   const [activeTab, setActiveTab] = useState<Tab>('konten');
   const [showConnect, setShowConnect] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState<{ id: string; bankName: string } | null>(null);
@@ -836,7 +857,10 @@ export function BankingPage() {
 
     setSyncingId(accountId);
     try {
-      const result = await syncBanksapiAccount(acc.banksapiAccessId);
+      // productKey mitgeben — bei Multi-Produkt-Zugängen (Giro+Tagesgeld) liefert
+      // BANKSapi sonst zufällig das erste Produkt zurück und unser Saldo wäre
+      // für das KONKRETE Konto falsch.
+      const result = await syncBanksapiAccount(acc.banksapiAccessId, acc.banksapiProductId);
       const existing = new Set(
         transactions
           .filter(t => t.bankAccountId === accountId && t.banksapiTransactionId)
@@ -859,14 +883,18 @@ export function BankingPage() {
         added++;
         deltaAmount += tx.amount;
       }
-      // Wenn die Edge Function einen aktualisierten Saldo zurückliefert, den
-      // bevorzugen — das ist die Wahrheit von BANKSapi. Sonst aus dem alten
-      // Saldo + Summe der neu hinzugekommenen Transaktionen ableiten. So
-      // bleibt der Saldo aktuell auch wenn die Edge Function noch keinen
-      // Saldo zurückliefert (Pre-Deploy-Stand).
+      // Saldo-Update — Reihenfolge:
+      //   1. Bei `freshness === 'fresh'` IMMER den Server-Saldo nehmen (Wahrheit).
+      //   2. Bei `stale` nur dann nehmen, wenn er sich geändert hat (sonst alter
+      //      Wert beibehalten, damit der User keinen veralteten BANKSapi-Cache
+      //      sieht).
+      //   3. Fallback: alter Saldo + Summe der neu hinzugekommenen Transaktionen.
       let newBalance: number | undefined;
-      if (typeof result.account?.balance === 'number') {
-        newBalance = result.account.balance;
+      const serverBalance = result.account?.balance;
+      if (typeof serverBalance === 'number') {
+        if (result.freshness === 'fresh' || serverBalance !== acc.balance) {
+          newBalance = serverBalance;
+        }
       } else if (added > 0) {
         newBalance = Math.round((acc.balance + deltaAmount) * 100) / 100;
       }
@@ -875,7 +903,13 @@ export function BankingPage() {
       setSyncSuccess({
         accountId,
         added,
-        balance: newBalance,
+        // Zeige immer den aktuellen Saldo (neu oder unverändert), damit der User
+        // visuelle Bestätigung bekommt, dass der Refresh wirklich gelaufen ist.
+        balance: typeof newBalance === 'number'
+          ? newBalance
+          : typeof serverBalance === 'number'
+          ? serverBalance
+          : acc.balance,
         // 'stale' = BANKSapi war noch nicht VOLLSTAENDIG durch. Saldo könnte
         // also noch der alte sein — der Client zeigt einen Hinweis und der
         // User kann nochmal klicken.
@@ -1542,13 +1576,13 @@ export function BankingPage() {
       {confirmDisconnect && (
         <ConfirmDialog
           title="Konto trennen"
-          message={`Konto bei "${confirmDisconnect.bankName}" mit allen zugehörigen Transaktionen in den Papierkorb verschieben? Innerhalb von 30 Tagen wiederherstellbar.`}
+          message={`Konto bei "${confirmDisconnect.bankName}" und alle zugehörigen Transaktionen werden endgültig entfernt. Falls du das Konto später wieder brauchst, kannst du es jederzeit erneut verbinden — die Daten werden dann frisch von der Bank geholt.`}
           onConfirm={() => {
             const acc = accounts.find(a => a.id === confirmDisconnect.id);
             if (acc?.provider === 'banksapi' && acc.banksapiAccessId) {
               void handleBanksapiDisconnect(acc.banksapiAccessId);
             }
-            cascadeBankAccountToTrash(confirmDisconnect.id, moveToTrash);
+            deleteBankAccountPermanently(confirmDisconnect.id);
             setConfirmDisconnect(null);
           }}
           onCancel={() => setConfirmDisconnect(null)}

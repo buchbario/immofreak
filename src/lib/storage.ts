@@ -31,7 +31,17 @@ export class LocalStorageAdapter<T extends { id: string }> implements StorageAda
 
   read(): T[] {
     const data = localStorage.getItem(this.key);
-    return data ? JSON.parse(data) : [];
+    if (!data) return [];
+    try {
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) ? (parsed as T[]) : [];
+    } catch (err) {
+      // Korruptes JSON darf die App nicht crashen — Eintrag verwerfen und mit leerer Liste weitermachen.
+      // eslint-disable-next-line no-console
+      console.warn(`[LocalStorageAdapter:${this.key}] korruptes JSON verworfen`, err);
+      try { localStorage.removeItem(this.key); } catch { /* ignore */ }
+      return [];
+    }
   }
 
   write(items: T[]): void {

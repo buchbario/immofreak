@@ -47,18 +47,23 @@ export function buildDefaultContractFromTenant(
     depositAmount: deposit,
     depositPaid: false,
     startDate,
-    endDate: tenant.leaseEnd,
+    endDate: tenant.leaseEnd ?? null,
     contractType: isFixedTerm ? 'befristet' : 'unbefristet',
     noticePeriod: 3,
     rentPaymentDay: 3,
     notes: 'Automatisch erzeugter Standardvertrag — bitte vor Unterschrift prüfen und ggf. ergänzen.',
+    // Lifecycle-Felder (status, signedAt, signedDocumentId) werden bewusst nicht gesetzt:
+    // - Ohne angewendete Migration 0008 lehnt die DB die Spalten ab.
+    // - Mit Migration: Postgres-Default 'draft' greift, was inhaltlich richtig ist.
+    // Damit der TypeScript-Check trotz `Omit<…, 'id'|'createdAt'>` zufrieden ist,
+    // bleibt der Rückgabe-Typ kompatibel mit der jetzt optionalen `status`-Property.
   };
 }
 
 const fmt = (n: number) =>
   n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const fmtDate = (iso?: string) => {
+const fmtDate = (iso?: string | null) => {
   if (!iso) return '—';
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;

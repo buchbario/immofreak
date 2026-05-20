@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import {
   bankTransactionStore,
+  rentalContractStore,
   tenantPaymentStore,
   tenantStore,
 } from '../lib/storage';
@@ -66,7 +67,22 @@ export function useTenantPayments(tenantId?: string) {
   const payments = tenantId ? allPayments.filter((p) => p.tenantId === tenantId) : allPayments;
 
   const createPayment = (data: Omit<TenantPayment, 'id' | 'createdAt'>) => {
-    return store.create({ ...data, id: generateId(), createdAt: new Date().toISOString() });
+    const payment = store.create({ ...data, id: generateId(), createdAt: new Date().toISOString() });
+    // Kaution-Zahlung → zugehörigen Mietvertrag als "Kaution bezahlt" markieren.
+    // Der Status auf MietvertragDetailPage liest `depositPaid` / `depositPaidDate` —
+    // ohne dieses Sync bleibt das Badge auf "Ausstehend" obwohl die Zahlung gebucht wurde.
+    if (data.type === 'Kaution' && data.status === 'eingegangen') {
+      const contract = rentalContractStore
+        .getByField('tenantId', data.tenantId)
+        .find((c) => !c.depositPaid);
+      if (contract) {
+        rentalContractStore.update(contract.id, {
+          depositPaid: true,
+          depositPaidDate: data.date,
+        });
+      }
+    }
+    return payment;
   };
 
   const deletePayment = (id: string) => {

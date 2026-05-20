@@ -225,7 +225,7 @@ export function TransactionsPage() {
                   {filtered.map((payment) => {
                     const tenant = tenantMap.get(payment.tenantId);
                     const property = propertyMap.get(payment.propertyId);
-                    const unit = unitMap.get(payment.unitId);
+                    const unit = unitMap.get(payment.unitId ?? '');
                     return (
                       <tr key={payment.id} className="transition-colors hover:bg-layer-hover border-b border-card-divider">
                         <td className="td whitespace-nowrap tabular-nums text-muted-foreground text-[12.5px]">
@@ -269,7 +269,7 @@ export function TransactionsPage() {
               {filtered.map((payment) => {
                 const tenant = tenantMap.get(payment.tenantId);
                 const property = propertyMap.get(payment.propertyId);
-                const unit = unitMap.get(payment.unitId);
+                const unit = unitMap.get(payment.unitId ?? '');
                 return (
                   <div key={payment.id} className="px-5 py-3.5">
                     <div className="flex items-start justify-between gap-2">

@@ -58,7 +58,10 @@ export function PropertyDetailPage() {
   const fmt = (n: number) => n.toLocaleString('de-DE', { maximumFractionDigits: 0 });
   const yearlyRent = totalMonthlyRent * 12;
   const rendite = property.purchasePrice > 0 ? (yearlyRent / property.purchasePrice) * 100 : 0;
-  const occupied = units.filter((u) => u.tenantId).length;
+  // Belegung aus tenants ableiten — `unit.tenantId` ist denormalisiert und kann durch
+  // FK-Races zwischen Tenant-Insert und Unit-Update temporär NULL bleiben.
+  const occupiedUnitIds = new Set(tenants.map((t) => t.unitId).filter((x): x is string => !!x));
+  const occupied = units.filter((u) => occupiedUnitIds.has(u.id)).length;
   const occupancyRate = units.length > 0 ? (occupied / units.length) * 100 : 0;
   const valueDiff = property.currentValue - property.purchasePrice;
   const valueGrowth = property.purchasePrice > 0 ? (valueDiff / property.purchasePrice) * 100 : 0;
@@ -256,7 +259,8 @@ export function PropertyDetailPage() {
           ) : (
             <div className="grid gap-3">
               {units.map((u) => {
-                const tenant = tenants.find((t) => t.id === u.tenantId);
+                // Auch hier: tenants als Quelle der Wahrheit für Belegung (umgekehrte FK).
+                const tenant = tenants.find((t) => t.unitId === u.id);
                 const isOccupied = !!tenant;
                 return (
                   <div key={u.id} className="bg-card border border-card-line rounded-xl p-4 flex items-center gap-4 hover:border-[#4F6BFF]/20 transition-colors">

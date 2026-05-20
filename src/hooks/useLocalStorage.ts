@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import type { StorageAdapter } from '../lib/storage';
 
 /**
@@ -44,5 +44,10 @@ export function useStorageAdapter<T extends { id: string }>(adapter: StorageAdap
     return adapter.getByField(field, value);
   }, [adapter]);
 
-  return { items, create, update, remove, getById, getByField, refresh };
+  // Stabiles Rückgabe-Objekt — sonst läuft jeder useEffect mit `store` als
+  // Dependency bei JEDEM Render erneut (z.B. `useTrash`-Cleanup → Endlos-Loop).
+  return useMemo(
+    () => ({ items, create, update, remove, getById, getByField, refresh }),
+    [items, create, update, remove, getById, getByField, refresh],
+  );
 }

@@ -85,7 +85,7 @@ export function usePrivateBoards() {
       const board = boards.items.find((b) => b.id === id);
       if (!board) return;
       if (board.pinned) {
-        boards.update(id, { pinned: false, pinOrder: undefined });
+        boards.update(id, { pinned: false, pinOrder: null });
       } else {
         const maxOrder = boards.items
           .filter((b) => b.pinned)

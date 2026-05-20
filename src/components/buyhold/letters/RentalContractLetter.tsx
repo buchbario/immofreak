@@ -15,7 +15,7 @@ interface Props {
 const EUR = (n: number) =>
   n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const fmtDate = (d?: string) =>
+const fmtDate = (d?: string | null) =>
   d ? new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }) : '___________';
 
 export function RentalContractLetter({ onBack }: Props) {

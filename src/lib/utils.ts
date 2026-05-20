@@ -38,23 +38,43 @@ export function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-export function formatDate(dateString: string): string {
+export function formatDate(dateString: string | null | undefined): string {
+  if (!dateString) return '–';
+  const d = new Date(dateString);
+  if (Number.isNaN(d.getTime())) return '–';
   return new Intl.DateTimeFormat('de-DE', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-  }).format(new Date(dateString));
+  }).format(d);
 }
 
-export function formatDateTime(dateString: string): string {
+export function formatDateTime(dateString: string | null | undefined): string {
+  if (!dateString) return '–';
+  const d = new Date(dateString);
+  if (Number.isNaN(d.getTime())) return '–';
   return new Intl.DateTimeFormat('de-DE', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-  }).format(new Date(dateString));
+  }).format(d);
 }
+
+/**
+ * Dezimalformat (de-DE) für Beträge ohne Währungssymbol — Ersatz für lokal
+ * definierte `fmt`-Helper, die identisch in 6 Komponenten standen.
+ */
+export function formatDecimal(value: number, fractionDigits = 2): string {
+  if (!Number.isFinite(value)) return '0,00';
+  return new Intl.NumberFormat('de-DE', {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  }).format(value);
+}
+
+/* IBAN-Validierung steht weiter unten — `isValidIBAN` war bereits vorhanden. */
 
 export function getStatusColor(status: string): string {
   const colors: Record<string, string> = {

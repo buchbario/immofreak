@@ -3,6 +3,7 @@ import type { Tenant, RentalProperty, RentalUnit } from '../../types';
 import { NumberInput } from '../ui/NumberInput';
 import { Modal, Field, FormSection, FormRow } from '../ui/Modal';
 import { DateInput } from '../ui/DateInput';
+import { isValidIBAN } from '../../lib/utils';
 
 type TenantData = Omit<Tenant, 'id' | 'createdAt'>;
 
@@ -33,8 +34,23 @@ export function TenantForm({ initial, properties, units, onClose, onSave }: Prop
     setForm((f) => ({ ...f, [key]: value }));
 
   const availableUnits = units.filter((u) => u.propertyId === form.propertyId && !u.tenantId);
-  const valid = !!form.name && !!form.propertyId;
+  const validIban = !form.iban || isValidIBAN(form.iban);
+  const valid = !!form.name && !!form.propertyId && validIban;
   const isEdit = !!initial;
+
+  // Beim Submit Date-/UUID-Felder explizit auf null setzen, falls leer — die Postgres-Spalten
+  // sind `date` bzw. `uuid` und akzeptieren keinen leeren String. caseMapping.objectToRow
+  // reicht `null` durch, dropt nur `undefined`.
+  const handleSave = () => {
+    onSave({
+      ...form,
+      unitId: form.unitId || null,
+      moveInDate: form.moveInDate || null,
+      leaseStart: form.leaseStart || null,
+      leaseEnd: form.leaseEnd || null,
+      iban: form.iban || null,
+    });
+  };
 
   return (
     <Modal
@@ -46,7 +62,7 @@ export function TenantForm({ initial, properties, units, onClose, onSave }: Prop
       footer={
         <>
           <button onClick={onClose} className="btn btn-md btn-secondary">Abbrechen</button>
-          <button onClick={() => onSave(form)} disabled={!valid} className="btn btn-md btn-primary">
+          <button onClick={handleSave} disabled={!valid} className="btn btn-md btn-primary">
             {isEdit ? 'Speichern' : 'Mieter anlegen'}
           </button>
         </>
@@ -84,15 +100,24 @@ export function TenantForm({ initial, properties, units, onClose, onSave }: Prop
             />
           </Field>
         </FormRow>
-        <Field label="IBAN" htmlFor="t-iban" help="Optional – wird für automatische Zuordnung der Mietzahlungen verwendet.">
+        <Field
+          label="IBAN"
+          htmlFor="t-iban"
+          help={
+            form.iban && !validIban
+              ? 'Ungültige IBAN — Prüfziffer falsch oder Länge nicht plausibel.'
+              : 'Optional – wird für automatische Zuordnung der Mietzahlungen verwendet.'
+          }
+        >
           <input
             id="t-iban"
             value={form.iban || ''}
             onChange={(e) => set('iban', e.target.value.toUpperCase().replace(/\s+/g, ''))}
             placeholder="DE89 3704 0044 0532 0130 00"
-            className="input font-mono"
+            className={`input font-mono ${form.iban && !validIban ? 'border-red-400 focus:border-red-500' : ''}`}
             autoCapitalize="characters"
             spellCheck={false}
+            aria-invalid={!!form.iban && !validIban}
           />
         </Field>
       </FormSection>
@@ -133,10 +158,10 @@ export function TenantForm({ initial, properties, units, onClose, onSave }: Prop
       <FormSection title="Mietverhältnis">
         <FormRow cols={3}>
           <Field label="Einzug">
-            <DateInput value={form.moveInDate} onChange={(v) => set('moveInDate', v)} />
+            <DateInput value={form.moveInDate || ''} onChange={(v) => set('moveInDate', v)} />
           </Field>
           <Field label="Mietbeginn">
-            <DateInput value={form.leaseStart} onChange={(v) => set('leaseStart', v)} />
+            <DateInput value={form.leaseStart || ''} onChange={(v) => set('leaseStart', v)} />
           </Field>
           <Field label="Mietende" help="Leer lassen für unbefristet">
             <DateInput value={form.leaseEnd || ''} onChange={(v) => set('leaseEnd', v)} />

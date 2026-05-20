@@ -234,7 +234,7 @@ export function cascadeTenantToTrash(tenantId: string, moveToTrash: MoveToTrashF
 
   // 3. Rück-Referenz auf Unit auflösen, damit die Einheit wieder frei ist
   if (tenant.unitId) {
-    rentalUnitStore.update(tenant.unitId, { tenantId: undefined });
+    rentalUnitStore.update(tenant.unitId, { tenantId: null });
   }
 
   // 4. Tenant selbst
@@ -269,6 +269,28 @@ export function cascadeBankAccountToTrash(accountId: string, moveToTrash: MoveTo
   bankAccountStore.delete(accountId);
   count++;
 
+  return count;
+}
+
+/**
+ * Bank-Konto **endgültig** entfernen, ohne Umweg über den Papierkorb.
+ * Wir nutzen das beim Trennen eines Bank-Zugangs: Der Zugang ist bei BANKSapi
+ * revoked, eine "Wiederherstellung" aus dem Papierkorb wäre ohne erneute
+ * Authentifizierung sowieso nutzlos. Der User verbindet das Konto bei Bedarf
+ * neu — frisch geholte Daten ersetzen den alten Stand.
+ */
+export function deleteBankAccountPermanently(accountId: string): number {
+  const account = bankAccountStore.getById(accountId);
+  if (!account) return 0;
+  let count = 0;
+
+  bankTransactionStore.getByField('bankAccountId', accountId).forEach((t) => {
+    bankTransactionStore.delete(t.id);
+    count++;
+  });
+
+  bankAccountStore.delete(accountId);
+  count++;
   return count;
 }
 

@@ -49,13 +49,17 @@ export function EditableText({
   inline = false,
 }: Props) {
   const [isEditing, setIsEditing] = useState(false);
+  // Draft folgt `value` solange wir nicht editieren — wir berechnen das im Render
+  // (mit `useRef` als Cache) statt im Effect, weil `setState`-im-Effect zu kaskadierenden
+  // Renders führen kann (Regel `react-hooks/set-state-in-effect`).
   const [draft, setDraft] = useState(value);
+  const lastSyncedValueRef = useRef(value);
+  if (!isEditing && lastSyncedValueRef.current !== value) {
+    lastSyncedValueRef.current = value;
+    setDraft(value);
+  }
   const [isHovered, setIsHovered] = useState(false);
   const textRef = useRef<HTMLTextAreaElement | HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (!isEditing) setDraft(value);
-  }, [value, isEditing]);
 
   useEffect(() => {
     if (isEditing && textRef.current) {

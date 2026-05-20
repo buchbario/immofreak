@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useEffect } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { ArrowLeft, Download, Plus, Trash2, AlertTriangle, Mail, Bell, Gavel } from 'lucide-react';
 import { useTenants } from '../../../hooks/useTenants';
 import { useRentalProperties } from '../../../hooks/useRentalProperties';
@@ -85,11 +85,15 @@ export function DunningLetter({ onBack }: Props) {
   const [items, setItems] = useState<OpenItem[]>([]);
   const [includeFee, setIncludeFee] = useState(false);
   const [bankInfoOverride, setBankInfoOverride] = useState<string | null>(null);
+  // Override beim Wechsel der Stamm-Bankinformation invalidieren — ohne `setState`-im-Effect.
+  // Wir merken uns die zuletzt gesehene `bankInfoBlock`-Quelle und reseten den Override,
+  // wenn sie sich ändert (Render-Pattern statt Effect).
+  const lastBankInfoBlockRef = useRef(bankInfoBlock);
+  if (lastBankInfoBlockRef.current !== bankInfoBlock) {
+    lastBankInfoBlockRef.current = bankInfoBlock;
+    if (bankInfoOverride !== null) setBankInfoOverride(null);
+  }
   const bankInfo = bankInfoOverride ?? (bankInfoBlock || 'IBAN: DE00 0000 0000 0000 0000 00\nBIC: XXXXXXXX\nVerwendungszweck: Miete bitte angeben');
-
-  useEffect(() => {
-    setBankInfoOverride(null);
-  }, [bankInfoBlock]);
 
   const tenant = allTenants.find((t) => t.id === tenantId);
   const unit = tenant ? allUnits.find((u) => u.id === tenant.unitId) : undefined;

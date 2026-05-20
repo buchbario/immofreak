@@ -146,7 +146,14 @@ export function getBanksapiMode() {
   return invoke<{ mode: 'real' | 'stub' }>('mode', undefined, 'GET');
 }
 
-export function syncBanksapiAccount(accessId: string) {
+/**
+ * Triggert einen Refresh bei BANKSapi für genau ein Konto. `productKey`
+ * (productId oder IBAN, das was wir im DB-Feld `banksapiProductId` gespeichert
+ * haben) ist wichtig wenn der Bankzugang mehrere Produkte enthält (Giro+
+ * Tagesgeld). Ohne den Key würde die Edge Function das erste Produkt nehmen
+ * und der Saldo wäre für das angefragte Konto falsch.
+ */
+export function syncBanksapiAccount(accessId: string, productKey?: string) {
   return invoke<{
     accessId: string;
     account: BanksapiAccount | null;
@@ -159,7 +166,7 @@ export function syncBanksapiAccount(accessId: string) {
     bankStatus?: string;
   }>(
     `accounts/${accessId}/sync`,
-    {},
+    productKey ? { productKey } : {},
   );
 }
 

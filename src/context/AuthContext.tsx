@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import type { Session, User, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
@@ -45,6 +45,32 @@ const AuthContext = createContext<AuthContextType>({
   logout: () => {},
   login: () => {},
 });
+
+/**
+ * Entfernt alle Immobilien-CRM-Daten aus localStorage (PII, Demo-Flag, Caches),
+ * behält aber Spracheinstellung, Theme, Sidebar-State und Standard-Dashboard-Wahl,
+ * weil das User-Präferenzen sind, die nichts mit Identität/Daten zu tun haben.
+ */
+function clearAllImmofreakLocalStorage(): void {
+  const KEEP = new Set([
+    'immofreak_locale',
+    'immofreak_theme',
+    'immofreak_sidebar',
+    'immofreak_default_dashboard',
+  ]);
+  try {
+    const toRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k) continue;
+      if (k.startsWith('immofreak_') && !KEEP.has(k)) {
+        toRemove.push(k);
+      }
+      if (k.startsWith('supacache:')) toRemove.push(k);
+    }
+    for (const k of toRemove) localStorage.removeItem(k);
+  } catch { /* ignore quota / sandbox errors */ }
+}
 
 function nameFromUser(u: User | null): string {
   if (!u) return '';
@@ -105,16 +131,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Demo-Flag noch in localStorage → Stores wurden als LocalStorageAdapter
   // initialisiert und zeigen Demo-Daten. Flag entfernen + Page-Reload, damit
   // storage.ts mit IS_DEMO=false neu lädt und SupabaseAdapter nutzt.
+  //
+  // Wichtig: Der Reload läuft NUR im allerersten Effect-Tick nach Mount —
+  // sonst riskieren wir, optimistische Inserts mitten in der Mutation wegzuwerfen.
+  // Damit der Refresh-Token-Cycle (~50min) nicht versehentlich einen Reload triggert,
+  // markieren wir die Heilung als „erledigt" und führen sie nur einmal aus.
+  const healedRef = useRef(false);
   useEffect(() => {
+    if (healedRef.current) return;
     if (session && localStorage.getItem('immofreak_demo') === 'true') {
+      healedRef.current = true;
       localStorage.removeItem('immofreak_demo');
       // Geschäftsdaten aus localStorage löschen (alte Demo-Reste)
+      const KEEP_PREFIXES = ['immofreak_profile_', 'immofreak_ff_'];
+      const KEEP_KEYS = new Set([
+        'immofreak_locale',
+        'immofreak_mode',
+        'immofreak_landlord_settings',
+        'immofreak_default_dashboard',
+        'immofreak_sidebar',
+        'immofreak_theme',
+      ]);
       const toRemove: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith('immofreak_') && !key.startsWith('immofreak_profile_') && key !== 'immofreak_locale' && key !== 'immofreak_mode' && key !== 'immofreak_landlord_settings' && key !== 'immofreak_default_dashboard' && !key.startsWith('immofreak_ff_') && key !== 'immofreak_sidebar') {
-          toRemove.push(key);
-        }
+        if (!key) continue;
+        if (!key.startsWith('immofreak_')) continue;
+        if (KEEP_KEYS.has(key)) continue;
+        if (KEEP_PREFIXES.some((p) => key.startsWith(p))) continue;
+        toRemove.push(key);
       }
       toRemove.forEach((k) => localStorage.removeItem(k));
       window.location.reload();
@@ -144,13 +189,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = useCallback(async () => {
     if (isDemo) {
       // Demo-Logout: Flag entfernen + Reload, damit Stores wieder mit Supabase laufen.
-      localStorage.removeItem('immofreak_demo');
-      localStorage.removeItem('immofreak_profile_name');
-      localStorage.removeItem('immofreak_profile_email');
+      clearAllImmofreakLocalStorage();
       window.location.href = '/login';
       return;
     }
     await supabase.auth.signOut();
+    // Beim echten Logout PII (Profil-Daten) und Vermieter-Einstellungen entfernen,
+    // damit auf Shared-Devices keine Reste für den nächsten User sichtbar bleiben.
+    clearAllImmofreakLocalStorage();
   }, [isDemo]);
 
   const resetPassword = useCallback(async (email: string): Promise<AuthResult> => {

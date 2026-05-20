@@ -16,7 +16,7 @@ import jsPDF from 'jspdf';
 
 const fmtInt = (n: number) => n.toLocaleString('de-DE', { maximumFractionDigits: 0 });
 const fmt2 = (n: number) => n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmtDate = (d?: string) => d ? new Date(d).toLocaleDateString('de-DE') : '—';
+const fmtDate = (d?: string | null) => d ? new Date(d).toLocaleDateString('de-DE') : '—';
 
 type Section = 'verwaltung' | 'rendite' | 'finanzen' | 'steuer' | 'buchhaltung' | 'compliance';
 
@@ -78,6 +78,9 @@ export function BerichtePage() {
   const [activeReport, setActiveReport] = useState<string | null>(null);
   const [year, setYear] = useState<number>(new Date().getFullYear() - 1);
   const [propertyFilter, setPropertyFilter] = useState<string>('__all__');
+  // Stabilen Zeitstempel beim Mount erfassen, damit `Date.now()` nicht
+  // im Render-Body läuft (Regel `react-hooks/purity`).
+  const [nowMs] = useState(() => Date.now());
 
   const activeDef = REPORTS.find((r) => r.id === activeReport);
   const selectedProp = properties.find((p) => p.id === propertyFilter);
@@ -331,7 +334,7 @@ export function BerichtePage() {
       const prop = properties.find((p) => p.id === c.propertyId);
       const max = c.rentAmount * 3;
       const overLimit = c.depositAmount > max;
-      const daysSinceEnd = c.endDate ? Math.max(0, Math.floor((Date.now() - new Date(c.endDate).getTime()) / 86400000)) : null;
+      const daysSinceEnd = c.endDate ? Math.max(0, Math.floor((nowMs - new Date(c.endDate).getTime()) / 86400000)) : null;
       return {
         mieter: tenant?.name || '—', objekt: prop?.name || '—',
         kaltmiete: c.rentAmount, kaution: c.depositAmount, max,
@@ -341,7 +344,7 @@ export function BerichtePage() {
         verjaehrungstage: daysSinceEnd,
       };
     });
-  }, [allContracts, allTenants, properties]);
+  }, [allContracts, allTenants, properties, nowMs]);
 
   // DATEV-Export Daten
   const datevInput = useMemo(() => ({

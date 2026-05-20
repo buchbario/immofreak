@@ -13,8 +13,9 @@ export interface PrivateBoard {
   order: number;
   /** Pinned to sidebar — shows as a quick-access nav entry */
   pinned?: boolean;
-  /** Sort order among pinned boards in the sidebar (lower = earlier) */
-  pinOrder?: number;
+  /** Sort order among pinned boards in the sidebar (lower = earlier).
+   *  null = explizit zurückgesetzt (z.B. nach Unpin) — wird so in der DB persistiert. */
+  pinOrder?: number | null;
   createdAt: string;
 }
 
@@ -221,7 +222,8 @@ export interface RentalUnit {
   rooms: number;
   currentRent: number;
   targetRent: number;
-  tenantId?: string;
+  /** `null` wird gesetzt, wenn der Mieter gelöscht wird (Cascade-Delete). */
+  tenantId?: string | null;
   createdAt: string;
 }
 
@@ -230,14 +232,15 @@ export interface Tenant {
   name: string;
   email: string;
   phone: string;
-  unitId?: string;
+  unitId?: string | null;
   propertyId: string;
-  moveInDate: string;
-  leaseStart: string;
-  leaseEnd?: string;
+  /** DB-Spalte ist nullable — explizit `null` möglich, wenn kein Einzugsdatum bekannt. */
+  moveInDate: string | null;
+  leaseStart: string | null;
+  leaseEnd?: string | null;
   deposit: number;
   notes: string;
-  iban?: string;
+  iban?: string | null;
   createdAt: string;
 }
 
@@ -272,7 +275,8 @@ export interface TenantPayment {
   id: string;
   tenantId: string;
   propertyId: string;
-  unitId: string;
+  /** DB-Spalte ist nullable (FK `on delete set null`). Bei Mietern ohne Einheit `null`. */
+  unitId: string | null;
   amount: number;
   date: string; // ISO date
   type: 'Miete' | 'Kaution' | 'Nachzahlung' | 'Gutschrift';
@@ -309,6 +313,12 @@ export interface MeterReading {
 }
 
 // ============= Rental Contracts =============
+export type RentalContractStatus = 'draft' | 'generated' | 'signed' | 'active' | 'terminated';
+
+export const RENTAL_CONTRACT_STATUSES: RentalContractStatus[] = [
+  'draft', 'generated', 'signed', 'active', 'terminated',
+];
+
 export interface RentalContract {
   id: string;
   propertyId: string;
@@ -319,15 +329,43 @@ export interface RentalContract {
   heatingCosts: number;
   depositAmount: number;
   depositPaid: boolean;
-  depositPaidDate?: string;
+  depositPaidDate?: string | null;
   startDate: string;
-  endDate?: string;
+  endDate?: string | null;
   contractType: 'unbefristet' | 'befristet';
   noticePeriod: number;
   rentPaymentDay: number;
   notes?: string;
+  /** Lifecycle (optional bis Migration 0008_contract_status angewendet ist):
+   *  - `draft`      : Vertrag ist im Tool angelegt, aber noch nicht endgültig generiert.
+   *  - `generated`  : Vertrag ist generiert/gedruckt, wartet auf Unterschrift.
+   *  - `signed`     : Unterschrieben (manuell markiert) — optional mit Upload des Scans.
+   *  - `active`     : Mietverhältnis läuft (Mietbeginn erreicht, Vertrag unterschrieben).
+   *  - `terminated` : Vertrag beendet (`endDate < heute` oder explizit gesetzt).
+   *
+   *  Wenn das Feld fehlt (Altdaten oder Migration nicht angewendet), behandelt die UI
+   *  den Vertrag als `'active'` — sonst würden alle bestehenden Verträge plötzlich als
+   *  "Entwurf" angezeigt.
+   */
+  status?: RentalContractStatus;
+  /** Unterschriftsdatum (ISO, nullable) — wird bei `signed`/`active` gesetzt. */
+  signedAt?: string | null;
+  /** FK auf `ContractDocument.id` des hochgeladenen unterschriebenen PDFs (nullable). */
+  signedDocumentId?: string | null;
   createdAt: string;
 }
+
+/**
+ * Effektiver Status eines Vertrags. Fällt für Altdaten / vor-Migration-Daten
+ * auf `'active'` zurück, damit die UI nicht plötzlich überall „Entwurf" anzeigt.
+ */
+export function getEffectiveContractStatus(c: Pick<RentalContract, 'status' | 'endDate'>): RentalContractStatus {
+  if (c.status) return c.status;
+  if (c.endDate && new Date(c.endDate).getTime() < Date.now()) return 'terminated';
+  return 'active';
+}
+
+export type ContractDocumentType = 'draft' | 'signed' | 'amendment' | 'other';
 
 export interface ContractDocument {
   id: string;
@@ -336,6 +374,10 @@ export interface ContractDocument {
   type: string;
   size: number;
   dataUrl?: string;
+  /** Inhaltliche Klassifizierung: ist das hier der unterschriebene Hauptvertrag, ein Entwurf, ein Nachtrag? Optional bis Migration 0008 angewendet ist. */
+  documentType?: ContractDocumentType;
+  /** Markiert das maßgebliche unterschriebene Original. Wird vom Workflow auf `rental_contracts.signed_document_id` referenziert. */
+  isSignedOriginal?: boolean;
   createdAt: string;
 }
 
@@ -428,9 +470,10 @@ export interface BankTransaction {
   /** IBAN des Gegenkontos (z.B. Mieter-IBAN bei Eingang). */
   iban?: string;
   category?: TransactionCategory;
-  matchedTenantId?: string;
-  matchedPropertyId?: string;
-  matchedUnitId?: string;
+  /** `null` = explizit aufgehoben (z.B. via unassignTransaction); wird so in der DB persistiert. */
+  matchedTenantId?: string | null;
+  matchedPropertyId?: string | null;
+  matchedUnitId?: string | null;
   /** Status der Mieter-Zuordnung; wird vom Matcher gesetzt oder bei manueller Zuordnung auf 'manual' gesetzt. */
   matchStatus?: MatchStatus;
   /** Confidence 0..1 — nur zur Anzeige/Debug. */
@@ -501,9 +544,10 @@ export interface Task {
   unitId?: string;
   tenantId?: string;
   contractId?: string;
-  dueDate?: string; // ISO date
+  dueDate?: string | null; // ISO date
   assignedTo?: string; // freier Text: Eigentümer, Hausverwaltung, Handwerker-Name
-  completedAt?: string;
+  /** `null` wird beim Reopen einer erledigten Aufgabe gesetzt, damit die DB den Timestamp tatsächlich verliert. */
+  completedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

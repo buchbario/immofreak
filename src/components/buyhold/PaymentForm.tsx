@@ -58,7 +58,8 @@ export function PaymentForm({ tenant, tenants = [], properties = [], units = [],
     onSave({
       tenantId: activeTenant.id,
       propertyId: activeTenant.propertyId,
-      unitId: activeTenant.unitId || '',
+      // `unit_id` ist eine `uuid`-Spalte und nullable — '' lehnt Postgres ab, daher explizit null.
+      unitId: activeTenant.unitId || null,
       amount: parsed,
       date,
       type,
