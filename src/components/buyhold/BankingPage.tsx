@@ -815,7 +815,7 @@ export function BankingPage() {
 
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<{ accountId: string; message: string } | null>(null);
-  const [syncSuccess, setSyncSuccess] = useState<{ accountId: string; added: number; balance?: number } | null>(null);
+  const [syncSuccess, setSyncSuccess] = useState<{ accountId: string; added: number; balance?: number; stale?: boolean } | null>(null);
 
   /**
    * Synchronisierung. Demo-Konten bekommen nur ein lastSync-Update (kein echter
@@ -872,7 +872,15 @@ export function BankingPage() {
       }
       const balanceUpdate = typeof newBalance === 'number' ? { balance: newBalance } : {};
       updateAccount(accountId, { ...balanceUpdate, lastSync: new Date().toISOString() });
-      setSyncSuccess({ accountId, added, balance: newBalance });
+      setSyncSuccess({
+        accountId,
+        added,
+        balance: newBalance,
+        // 'stale' = BANKSapi war noch nicht VOLLSTAENDIG durch. Saldo könnte
+        // also noch der alte sein — der Client zeigt einen Hinweis und der
+        // User kann nochmal klicken.
+        stale: result.freshness === 'stale',
+      });
     } catch (e) {
       setSyncError({ accountId, message: (e as Error).message });
     } finally {
@@ -1051,22 +1059,43 @@ export function BankingPage() {
             </div>
           )}
           {syncSuccess && (
-            <div className="mb-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20">
+            <div className={cn(
+              'mb-4 p-3 rounded-xl border',
+              syncSuccess.stale
+                ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20'
+                : 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20',
+            )}>
               <div className="flex items-start gap-2">
-                <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
+                {syncSuccess.stale
+                  ? <AlertCircle size={14} className="text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                  : <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
+                }
                 <div className="flex-1">
-                  <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-                    {syncSuccess.added > 0
-                      ? `${syncSuccess.added} neue ${syncSuccess.added === 1 ? 'Transaktion' : 'Transaktionen'} geladen`
-                      : 'Konto ist auf dem neuesten Stand'}
+                  <p className={cn(
+                    'text-xs font-semibold',
+                    syncSuccess.stale ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400',
+                  )}>
+                    {syncSuccess.stale
+                      ? 'Bank-Sync noch nicht ganz durch'
+                      : syncSuccess.added > 0
+                        ? `${syncSuccess.added} neue ${syncSuccess.added === 1 ? 'Transaktion' : 'Transaktionen'} geladen`
+                        : 'Konto ist auf dem neuesten Stand'}
                   </p>
-                  {typeof syncSuccess.balance === 'number' && (
+                  {syncSuccess.stale && (
+                    <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
+                      Die Bank hat die Anfrage noch nicht abgeschlossen — bitte in ein paar Sekunden nochmal aktualisieren, dann sollte der neue Saldo da sein.
+                    </p>
+                  )}
+                  {!syncSuccess.stale && typeof syncSuccess.balance === 'number' && (
                     <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-0.5 tabular-nums">
                       Aktueller Saldo: {syncSuccess.balance.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                     </p>
                   )}
                 </div>
-                <button onClick={() => setSyncSuccess(null)} className="text-emerald-600 dark:text-emerald-400">
+                <button
+                  onClick={() => setSyncSuccess(null)}
+                  className={cn(syncSuccess.stale ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400')}
+                >
                   <X size={14} />
                 </button>
               </div>

@@ -58,18 +58,29 @@ async function invoke<T>(path: string, body?: Record<string, unknown>, method: '
     }
 
     const msg = error.message || '';
-    const isMissingDeploy =
-      ctx?.status === 404 ||
-      msg.includes('Failed to send a request') ||
-      msg.includes('FunctionsFetchError') ||
-      msg.includes('Failed to fetch');
-    if (isMissingDeploy) {
+    // 404 → Function ist gar nicht deployed.
+    if (ctx?.status === 404) {
       throw new Error(
-        'Edge Function `banksapi-proxy` ist nicht erreichbar.\n\n' +
+        'Edge Function `banksapi-proxy` ist nicht deployed.\n\n' +
           'Deploy-Anleitung:\n' +
           '1. Supabase CLI installieren: `brew install supabase/tap/supabase`\n' +
           '2. Projekt verlinken: `supabase link --project-ref hlzlzhkedayfgoxphhbs`\n' +
           '3. Deployen: `supabase functions deploy banksapi-proxy`',
+      );
+    }
+    // 5xx oder Netzwerk-/Timeout-Fehler → transientes Problem, „bitte erneut".
+    // Auf Mobile kann ein längerer Sync (BANKSapi-Polling ~15s) die Verbindung
+    // verlieren, ohne dass die Function selbst kaputt ist.
+    const isTransient =
+      (typeof ctx?.status === 'number' && ctx.status >= 500) ||
+      msg.includes('Failed to send a request') ||
+      msg.includes('FunctionsFetchError') ||
+      msg.includes('Failed to fetch') ||
+      msg.includes('timeout');
+    if (isTransient) {
+      throw new Error(
+        'Verbindung zur Bank-Schnittstelle unterbrochen. Bitte in ein paar Sekunden erneut versuchen.\n' +
+          'Bei stabiler WLAN-Verbindung klappt der Abruf meist beim zweiten Versuch.',
       );
     }
     throw new Error(bodyMsg || msg || 'Unbekannter Edge-Function-Fehler');
@@ -136,7 +147,17 @@ export function getBanksapiMode() {
 }
 
 export function syncBanksapiAccount(accessId: string) {
-  return invoke<{ accessId: string; account: BanksapiAccount | null; transactions: BanksapiTransaction[]; mode: string }>(
+  return invoke<{
+    accessId: string;
+    account: BanksapiAccount | null;
+    transactions: BanksapiTransaction[];
+    mode: string;
+    /** 'fresh' = BANKSapi hat VOLLSTAENDIG-Status erreicht (Saldo + Umsätze
+     *  sind frisch von der Bank). 'stale' = Server-Timeout, Daten könnten
+     *  noch in Bearbeitung sein. */
+    freshness?: 'fresh' | 'stale';
+    bankStatus?: string;
+  }>(
     `accounts/${accessId}/sync`,
     {},
   );

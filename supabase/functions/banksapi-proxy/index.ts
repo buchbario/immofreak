@@ -341,8 +341,16 @@ void DEMO_PROVIDER_ID;
  */
 async function realGetBankzugang(accessId: string): Promise<BanksapiBankzugang> {
   const token = await getBanksapiToken();
-  const res = await fetch(`${ENV.BANKSAPI_BASE_URL}/customer/v2/bankzugaenge/${accessId}`, {
-    headers: { 'Authorization': `Bearer ${token}` },
+  // Cache-Busting + no-store, damit BANKSapi (oder CDN/Proxy davor) uns
+  // beim Polling nicht denselben Snapshot wiedergibt. Wir wollen bei jedem
+  // Poll wirklich den aktuellen Stand.
+  const url = `${ENV.BANKSAPI_BASE_URL}/customer/v2/bankzugaenge/${accessId}?_=${Date.now()}`;
+  const res = await fetch(url, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+    },
   });
   if (!res.ok) {
     const txt = await res.text();
@@ -370,9 +378,15 @@ interface BanksapiUmsatz {
  */
 async function realGetKontoumsaetze(accessId: string, productId: string): Promise<BanksapiUmsatz[]> {
   const token = await getBanksapiToken();
-  const url = `${ENV.BANKSAPI_BASE_URL}/customer/v2/bankzugaenge/${accessId}/${encodeURIComponent(productId)}/kontoumsaetze?maxTransactions=all`;
+  // Cache-Buster + no-store damit beim Refresh-Sync der CDN/Proxy uns nicht
+  // den alten Snapshot zurückgibt.
+  const url = `${ENV.BANKSAPI_BASE_URL}/customer/v2/bankzugaenge/${accessId}/${encodeURIComponent(productId)}/kontoumsaetze?maxTransactions=all&_=${Date.now()}`;
   const res = await fetch(url, {
-    headers: { 'Authorization': `Bearer ${token}` },
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+    },
   });
   if (!res.ok) {
     const txt = await res.text();
@@ -421,33 +435,35 @@ async function realRefreshBankzugang(accessId: string): Promise<void> {
 }
 
 /**
- * Wartet bis BANKSapi den Refresh durch ist. BANKSapi liefert nach
+ * Wartet bis BANKSapi den Refresh wirklich durchhat. BANKSapi liefert nach
  * `?refresh=true` sofort zurück, der eigentliche Bank-Roundtrip läuft im
- * Hintergrund — wenn wir direkt danach `getBankzugang` lesen, kriegen wir
- * die alten Umsätze. Wir merken uns also den `aktualisierungszeitpunkt`
- * VOR dem Refresh und pollen bis er sich ändert (oder bis das Timeout
- * greift). Wenn das BANKSapi-Backend mal länger braucht, kehren wir
- * trotzdem zurück und liefern was wir haben — kein Hänger.
+ * Hintergrund. Wir pollen den `status`, bis er auf `VOLLSTAENDIG` steht —
+ * nur dann sind Saldo + Umsätze frisch von der Bank gezogen.
+ *
+ * Wichtige Lehre: `TEILWEISE` reicht NICHT, das heißt nur „ein Teil der
+ * Produkte ist durch". Bei Revolut etc. liefert das stale Saldo. Und nur
+ * der `aktualisierungszeitpunkt` ohne Status-Check kann auch lügen — er
+ * springt manchmal hoch sobald BANKSapi den Refresh anstößt, nicht erst
+ * wenn die Daten da sind.
  */
 async function waitForRefreshDone(
   accessId: string,
-  oldAktualisierung: string | undefined,
-  timeoutMs = 25_000,
+  timeoutMs = 22_000,
 ): Promise<BanksapiBankzugang> {
   const start = Date.now();
-  let pollDelay = 800;
+  let pollDelay = 600;
   let last: BanksapiBankzugang | null = null;
   while (Date.now() - start < timeoutMs) {
     try {
       last = await realGetBankzugang(accessId);
-      const now = last.aktualisierungszeitpunkt;
-      const refreshed = !!now && now !== oldAktualisierung;
-      const completed = !last.status || last.status === 'VOLLSTAENDIG' || last.status === 'TEILWEISE';
-      if (refreshed && completed) return last;
+      if (last.status === 'VOLLSTAENDIG') return last;
     } catch (_e) { /* keep polling */ }
     await new Promise((r) => setTimeout(r, pollDelay));
-    pollDelay = Math.min(pollDelay + 200, 1800);
+    pollDelay = Math.min(pollDelay + 200, 1500);
   }
+  // Timeout — letzten Snapshot zurück, der Client zeigt dann eine Meldung
+  // wenn die Daten nicht aktualisiert wurden. Nicht hängenbleiben (Mobile-
+  // Safari würde sonst mit „Failed to fetch" abbrechen).
   return last ?? await realGetBankzugang(accessId);
 }
 
@@ -710,15 +726,8 @@ async function handleConnectFinish(body: ConnectFinishBody) {
 
 async function handleAccountSync(accessId: string) {
   if (REAL_MODE) {
-    // Snapshot der aktuellen Aktualisierungszeit, damit wir nach dem
-    // Refresh erkennen, ob BANKSapi tatsächlich frische Daten hat.
-    let oldAktualisierung: string | undefined;
-    try {
-      const pre = await realGetBankzugang(accessId);
-      oldAktualisierung = pre.aktualisierungszeitpunkt;
-    } catch (_e) { /* erste Sync, ignorieren */ }
     await realRefreshBankzugang(accessId);
-    const zugang = await waitForRefreshDone(accessId, oldAktualisierung);
+    const zugang = await waitForRefreshDone(accessId);
     const produkte = normalizeProdukte(zugang.bankprodukte);
     const transactions: any[] = [];
     for (const produkt of produkte) {
@@ -735,9 +744,13 @@ async function handleAccountSync(accessId: string) {
     // Auch das Konto neu mappen — so kann der Client den aktuellen Saldo
     // anziehen, ohne einen separaten Bankzugang-Call zu machen.
     const account = await mapBankzugangToAccount(zugang, '');
-    return jsonResponse({ accessId, account, transactions, mode: 'real' });
+    // freshness = 'fresh' wenn BANKSapi VOLLSTAENDIG meldet, 'stale' wenn
+    // wir das Timeout erreicht haben. Der Client kann darauf eine Hinweis-
+    // Toast anzeigen.
+    const freshness = zugang.status === 'VOLLSTAENDIG' ? 'fresh' : 'stale';
+    return jsonResponse({ accessId, account, transactions, mode: 'real', freshness, bankStatus: zugang.status });
   }
-  return jsonResponse({ accessId, account: null, transactions: stubBuildTransactions(accessId, true), mode: 'stub' });
+  return jsonResponse({ accessId, account: null, transactions: stubBuildTransactions(accessId, true), mode: 'stub', freshness: 'fresh' });
 }
 
 /**
